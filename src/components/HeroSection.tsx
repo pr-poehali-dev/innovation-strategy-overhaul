@@ -45,13 +45,9 @@ const HeroSection = () => {
           Работаем по всему Дальневосточному региону
         </div>
         <h1 className="max-w-4xl mx-auto text-4xl font-bold text-white md:text-5xl lg:text-6xl leading-tight">
-          Надёжные грузоперевозки <br />
-          <span className="text-blue-400">по Дальнему Востоку</span>
+          Группа компаний<br />
+          <span className="text-blue-400">ООО «Дальавтотранс»</span>
         </h1>
-        <p className="max-w-2xl mx-auto mt-6 text-lg text-gray-300">
-          Доставляем грузы точно в срок из любой точки региона. <br />
-          Более 15 лет опыта, собственный автопарк и ответственность за каждый рейс.
-        </p>
         <div className="flex flex-col mt-10 space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
           <Link
             to="/request"
