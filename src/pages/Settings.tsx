@@ -202,6 +202,9 @@ const Settings = () => {
   const [dezhDt,           setDezhDt]           = useState("");
   const [hozNuzhdyGarazh,  setHozNuzhdyGarazh]  = useState("");
 
+  // Фиксированная оплата: маршрут №6 — водитель без кондуктора
+  const [fixedRoute6, setFixedRoute6] = useState("7000");
+
   // Процентные таблицы (наименование + значение)
   const [procentVodBezCond, setProcentVodBezCond] = useState<SimpleRow[]>([emptySimpleRow()]);
   const [procentVodSCond,   setProcentVodSCond]   = useState<SimpleRow[]>([emptySimpleRow()]);
@@ -435,6 +438,26 @@ const Settings = () => {
           )}
           {tab === "hozNuzhdyGarazh" && (
             <FixedValueTab label="Хоз. нужды гараж" unit="₽" value={hozNuzhdyGarazh} onChange={(v) => { setHozNuzhdyGarazh(v); setSaved(false); }} />
+          )}
+
+          {/* Блок фиксированных исключений для вкладки "% водителя без кондуктора" */}
+          {tab === "procentVodBezCond" && (
+            <div className="px-5 py-3 border-b border-gray-200 bg-amber-50">
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">Фиксированная оплата (исключения)</p>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-700 w-52">Маршрут №6 — оплата за смену:</span>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={fixedRoute6}
+                    onChange={(e) => { setFixedRoute6(e.target.value); setSaved(false); }}
+                    className="w-24 h-7 px-2 text-xs text-gray-800 border border-gray-300 rounded outline-none focus:border-blue-500 focus:bg-blue-50 transition-colors text-right"
+                  />
+                  <span className="text-xs text-gray-500">₽</span>
+                </div>
+                <span className="text-xs text-gray-400 italic">независимо от выручки</span>
+              </div>
+            </div>
           )}
 
           {/* Процентные вкладки */}
