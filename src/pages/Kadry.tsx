@@ -16,27 +16,33 @@ const emptyEmployee = (dolzhnost: string): Employee => ({
   dataRozhd: "",
   dataPriema: "",
   status: "active",
+  inn: "",
+  snils: "",
 });
 
 const VOD_COLUMNS = [
-  { key: "tabNum",     label: "Таб. №",       width: "70px"  },
-  { key: "fio",        label: "ФИО",          width: "200px" },
-  { key: "bort",       label: "Борт №",       width: "80px"  },
-  { key: "kategoriya", label: "Категория",    width: "90px"  },
-  { key: "telefon",    label: "Телефон",      width: "130px" },
+  { key: "tabNum",     label: "Таб. №",        width: "70px"  },
+  { key: "fio",        label: "ФИО",           width: "200px" },
+  { key: "bort",       label: "Борт №",        width: "80px"  },
+  { key: "kategoriya", label: "Категория",     width: "90px"  },
+  { key: "telefon",    label: "Телефон",       width: "130px" },
+  { key: "inn",        label: "ИНН",           width: "120px" },
+  { key: "snils",      label: "СНИЛС",         width: "130px" },
   { key: "dataRozhd",  label: "Дата рождения", width: "110px" },
-  { key: "dataPriema", label: "Дата приёма",  width: "110px" },
-  { key: "status",     label: "Статус",       width: "90px"  },
+  { key: "dataPriema", label: "Дата приёма",   width: "110px" },
+  { key: "status",     label: "Статус",        width: "90px"  },
 ] as const;
 
 const COND_COLUMNS = [
-  { key: "tabNum",     label: "Таб. №",       width: "70px"  },
-  { key: "fio",        label: "ФИО",          width: "200px" },
-  { key: "bort",       label: "Борт №",       width: "80px"  },
-  { key: "telefon",    label: "Телефон",      width: "130px" },
+  { key: "tabNum",     label: "Таб. №",        width: "70px"  },
+  { key: "fio",        label: "ФИО",           width: "200px" },
+  { key: "bort",       label: "Борт №",        width: "80px"  },
+  { key: "telefon",    label: "Телефон",       width: "130px" },
+  { key: "inn",        label: "ИНН",           width: "120px" },
+  { key: "snils",      label: "СНИЛС",         width: "130px" },
   { key: "dataRozhd",  label: "Дата рождения", width: "110px" },
-  { key: "dataPriema", label: "Дата приёма",  width: "110px" },
-  { key: "status",     label: "Статус",       width: "90px"  },
+  { key: "dataPriema", label: "Дата приёма",   width: "110px" },
+  { key: "status",     label: "Статус",        width: "90px"  },
 ] as const;
 
 const StatusBadge = ({ value, onChange }: { value: "active" | "inactive"; onChange: (v: "active" | "inactive") => void }) => (
