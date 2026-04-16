@@ -32,29 +32,38 @@ const ExclSelect = ({
   bold,
 }: {
   value: string;
-  options: string[];      // только доступные (незанятые)
+  options: string[];
   placeholder: string;
   onChange: (v: string) => void;
   width: string;
   bold?: boolean;
 }) => (
   <td className="border border-gray-300 p-0" style={{ width }}>
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={`w-full h-7 px-1 text-xs bg-transparent outline-none border-0 cursor-pointer appearance-none
-        ${bold ? "font-semibold text-gray-900" : "text-gray-800"}`}
-      style={{ WebkitAppearance: "none" }}
-    >
-      <option value="">{placeholder}</option>
-      {/* текущее значение всегда показываем, даже если занято */}
-      {value && !options.includes(value) && (
-        <option value={value}>{value}</option>
+    <div className="flex items-center">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`flex-1 h-7 px-1 text-xs bg-transparent outline-none border-0 cursor-pointer appearance-none min-w-0
+          ${bold ? "font-semibold text-gray-900" : "text-gray-800"}`}
+        style={{ WebkitAppearance: "none" }}
+      >
+        <option value="">{placeholder}</option>
+        {value && !options.includes(value) && (
+          <option value={value}>{value}</option>
+        )}
+        {options.map((o) => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+      {value && (
+        <button
+          onClick={() => onChange("")}
+          className="px-1 text-gray-300 hover:text-red-400 flex-shrink-0"
+          tabIndex={-1}
+          title="Очистить"
+        >×</button>
       )}
-      {options.map((o) => (
-        <option key={o} value={o}>{o}</option>
-      ))}
-    </select>
+    </div>
   </td>
 );
 
@@ -227,31 +236,50 @@ const NaryadTable = ({
 
                   {/* ФИО водителя */}
                   <td className="border border-gray-300 p-0" style={{ width: "180px" }}>
-                    <input
-                      type="text"
-                      list={VOD_LIST}
-                      value={row.fio}
-                      onChange={(e) => onUpdateCell(row.id, "fio", e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(e, rowIdx, TEXT_COLS.length)}
-                      className="w-full h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors"
-                      placeholder=""
-                      autoComplete="off"
-                    />
+                    <div className="flex items-center group">
+                      <input
+                        type="text"
+                        list={VOD_LIST}
+                        value={row.fio}
+                        onChange={(e) => onUpdateCell(row.id, "fio", e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, rowIdx, TEXT_COLS.length)}
+                        className="flex-1 h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors min-w-0"
+                        placeholder=""
+                        autoComplete="off"
+                      />
+                      {row.fio && (
+                        <button
+                          onClick={() => onUpdateCell(row.id, "fio", "")}
+                          className="px-1 text-gray-300 hover:text-red-400 flex-shrink-0"
+                          tabIndex={-1}
+                          title="Очистить"
+                        >×</button>
+                      )}
+                    </div>
                   </td>
 
                   {/* ФИО кондуктора */}
                   <td className="border border-gray-300 p-0" style={{ width: "180px" }}>
-                    <input
-                      type="text"
-                      list={COND_LIST}
-                      value={row.fioKond}
-                      onChange={(e) => onUpdateCell(row.id, "fioKond", e.target.value)}
-                      onBlur={() => { if (!row.fioKond.trim()) onUpdateCell(row.id, "fioKond", "без"); }}
-                      onKeyDown={(e) => handleKeyDown(e, rowIdx, TEXT_COLS.length + 1)}
-                      className="w-full h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors"
-                      placeholder="без"
-                      autoComplete="off"
-                    />
+                    <div className="flex items-center">
+                      <input
+                        type="text"
+                        list={COND_LIST}
+                        value={row.fioKond}
+                        onChange={(e) => onUpdateCell(row.id, "fioKond", e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, rowIdx, TEXT_COLS.length + 1)}
+                        className="flex-1 h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors min-w-0"
+                        placeholder="без"
+                        autoComplete="off"
+                      />
+                      {row.fioKond && (
+                        <button
+                          onClick={() => onUpdateCell(row.id, "fioKond", "")}
+                          className="px-1 text-gray-300 hover:text-red-400 flex-shrink-0"
+                          tabIndex={-1}
+                          title="Очистить"
+                        >×</button>
+                      )}
+                    </div>
                   </td>
 
                   {/* Статус */}
