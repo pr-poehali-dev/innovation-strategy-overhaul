@@ -107,17 +107,53 @@ const INITIAL_VEHICLES: TsVehicle[] = [
 
 // ─── Организация ───────────────────────────────────────────────────────────
 export interface CompanySettings {
-  nazvanie: string;
+  // Основные реквизиты
+  nazvanie: string;         // полное наименование
+  kratkoeNazvanie: string;  // краткое наименование
   inn: string;
-  direktor: string;
+  kpp: string;
+  ogrn: string;             // ОГРН или ОГРНИП
+  okpo: string;             // код по ОКПО
+  okvad: string;            // основной ОКВЭД
+  direktor: string;         // ФИО руководителя
+  dolzhnostDir: string;     // должность руководителя
+  glavbuh: string;          // ФИО главного бухгалтера
+  // Адреса
+  adresYur: string;         // юридический адрес
+  adres: string;            // фактический/почтовый адрес
+  // Контакты
   telefon: string;
-  adres: string;
+  email: string;
+  // Банковские реквизиты
+  bank: string;             // наименование банка
+  bik: string;
+  raschetnySchet: string;   // расчётный счёт
+  korSchet: string;         // корреспондентский счёт
+  // Реквизиты для пассажирских перевозок
+  licenziya: string;        // номер лицензии на перевозки
+  licenziyaData: string;    // дата выдачи лицензии
+  licenziyaVydan: string;   // кем выдана лицензия
+  reestrNomer: string;      // реестровый номер в реестре перевозчиков
+  svidetelstvo: string;     // свидетельство об осуществлении перевозок
+  svidetelstvoData: string; // дата свидетельства
+  dogovorZakazchik: string; // № договора с заказчиком перевозок
+  zakazchik: string;        // наименование заказчика (мун. орган)
+  zakazchikInn: string;     // ИНН заказчика
 }
 
+const emptyCompany = (nazvanie = ""): CompanySettings => ({
+  nazvanie, kratkoeNazvanie: "", inn: "", kpp: "", ogrn: "", okpo: "", okvad: "49.31",
+  direktor: "", dolzhnostDir: "Директор", glavbuh: "",
+  adresYur: "", adres: "", telefon: "", email: "",
+  bank: "", bik: "", raschetnySchet: "", korSchet: "",
+  licenziya: "", licenziyaData: "", licenziyaVydan: "", reestrNomer: "",
+  svidetelstvo: "", svidetelstvoData: "", dogovorZakazchik: "", zakazchik: "", zakazchikInn: "",
+});
+
 export const INITIAL_COMPANIES: CompanySettings[] = [
-  { nazvanie: 'ООО "Дальавтотранс"',        inn: "", direktor: "", telefon: "", adres: "" },
-  { nazvanie: 'ООО "Техника и Технологии"', inn: "", direktor: "", telefon: "", adres: "" },
-  { nazvanie: 'ИП Герасимов',               inn: "", direktor: "", telefon: "", adres: "" },
+  { ...emptyCompany('ООО "Дальавтотранс"') },
+  { ...emptyCompany('ООО "Техника и Технологии"') },
+  { ...emptyCompany('ИП Герасимов') },
 ];
 
 // ─── Терминал ───────────────────────────────────────────────────────────────
