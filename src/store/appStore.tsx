@@ -147,6 +147,9 @@ export const INITIAL_ROUTES: Route[] = [
   { id: 105, nomer: "6",  nazvanie: "мкр. Индустриальный - ул. Уральская",nachalo: "мкр. Индустриальный",  konets: "ул. Уральская",      grafikov: 4,  intervalMin: "", rabochieChasy: "", companyIdx: 1 },
 ];
 
+// dateKey format: "YYYY-MM-DD"
+export type WeeklyNaryady = Record<string, NaryadRowStore[]>;
+
 // ─── Context ───────────────────────────────────────────────────────────────
 interface AppStore {
   vehicles: TsVehicle[];
@@ -157,6 +160,8 @@ interface AppStore {
   setNaryadRows: React.Dispatch<React.SetStateAction<NaryadRowStore[]>>;
   naryadSettings: NaryadSettingsStore;
   setNaryadSettings: React.Dispatch<React.SetStateAction<NaryadSettingsStore>>;
+  weeklyNaryady: WeeklyNaryady;
+  setWeeklyNaryady: React.Dispatch<React.SetStateAction<WeeklyNaryady>>;
   companies: CompanySettings[];
   setCompanies: React.Dispatch<React.SetStateAction<CompanySettings[]>>;
   activeCompanyIdx: number;
@@ -230,6 +235,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     makeEmptyNaryadRow(), makeEmptyNaryadRow(), makeEmptyNaryadRow(),
   ]);
   const [naryadSettings, setNaryadSettings] = useState<NaryadSettingsStore>(DEFAULT_NARAD_SETTINGS);
+  const [weeklyNaryady, setWeeklyNaryady] = useState<WeeklyNaryady>({});
   const [companies, setCompanies] = useState<CompanySettings[]>(INITIAL_COMPANIES);
   const [activeCompanyIdx, setActiveCompanyIdx] = useState(0);
   const [terminals, setTerminals] = useState<Terminal[]>([]);
@@ -242,6 +248,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       naryadEntries, setNaryadEntries,
       naryadRows, setNaryadRows,
       naryadSettings, setNaryadSettings,
+      weeklyNaryady, setWeeklyNaryady,
       companies, setCompanies,
       activeCompanyIdx, setActiveCompanyIdx,
       terminals, setTerminals,
