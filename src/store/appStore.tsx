@@ -188,6 +188,7 @@ export interface NaryadRowStore {
   terminal: string;
   podrabotka: boolean;
   biletov: string;
+  statusOtsutstviya: string;
 }
 
 export interface NaryadSettingsStore {
@@ -204,7 +205,7 @@ const makeEmptyNaryadRow = (): NaryadRowStore => ({
   id: Math.random() * 1e15 + performance.now(),
   vehicleId: null, bortovoy: "", gos: "", marka: "",
   marshrut: "", fio: "", fioKond: "",
-  putevoy: "", terminal: "", podrabotka: false, biletov: "",
+  putevoy: "", terminal: "", podrabotka: false, biletov: "", statusOtsutstviya: "",
 });
 
 const DEFAULT_NARAD_SETTINGS: NaryadSettingsStore = {

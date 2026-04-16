@@ -1,3 +1,13 @@
+export const STATUS_OTSUTSTVIYA = [
+  "Выходной",
+  "Больничный",
+  "Не прошёл медика",
+  "Запой",
+  "Алкотестер",
+] as const;
+
+export type StatusOtsutstviya = typeof STATUS_OTSUTSTVIYA[number] | "";
+
 export interface NaryadRow {
   id: number;
   vehicleId: number | null;
@@ -11,6 +21,7 @@ export interface NaryadRow {
   terminal: string;
   podrabotka: boolean;
   biletov: string;
+  statusOtsutstviya: StatusOtsutstviya;
 }
 
 export interface NormaSettings {
@@ -36,6 +47,7 @@ export const emptyRow = (): NaryadRow => ({
   terminal: "",
   podrabotka: false,
   biletov: "",
+  statusOtsutstviya: "",
 });
 
 export const DEFAULT_SETTINGS: NormaSettings = {

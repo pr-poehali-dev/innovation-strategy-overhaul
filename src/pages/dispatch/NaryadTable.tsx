@@ -6,6 +6,7 @@ import {
   NormaSettings,
   TEXT_COLS,
   calcPodrabotka,
+  STATUS_OTSUTSTVIYA,
 } from "./types";
 
 interface Props {
@@ -178,6 +179,7 @@ const NaryadTable = ({
               ))}
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "180px" }}>ФИО водителя</th>
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "180px" }}>ФИО кондуктора</th>
+              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "130px" }}>Статус отсутствия</th>
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "75px" }}>Подработка</th>
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "75px" }}>Путевой</th>
               <th className="border border-blue-900 px-1 py-2" style={{ width: "28px" }}></th>
@@ -283,6 +285,22 @@ const NaryadTable = ({
                     listId={COND_LIST}
                   />
 
+                  {/* Статус отсутствия */}
+                  <td className="border border-gray-300 p-0" style={{ width: "130px" }}>
+                    <select
+                      value={row.statusOtsutstviya}
+                      onChange={(e) => onUpdateCell(row.id, "statusOtsutstviya", e.target.value)}
+                      className={`w-full h-7 px-1 text-xs bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors cursor-pointer ${
+                        row.statusOtsutstviya ? "text-red-600 font-semibold" : "text-gray-400"
+                      }`}
+                    >
+                      <option value="">—</option>
+                      {STATUS_OTSUTSTVIYA.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </td>
+
                   {/* Подработка */}
                   <td className="border border-gray-300 text-center" style={{ width: "75px" }}>
                     <div className="flex flex-col items-center gap-0.5 py-0.5">
@@ -328,7 +346,7 @@ const NaryadTable = ({
           {podrabotkaRows.length > 0 && (
             <tfoot>
               <tr className="bg-gray-100 font-semibold text-xs">
-                <td colSpan={TEXT_COLS.length + 3} className="border border-gray-300 px-3 py-1.5 text-right text-gray-600">
+                <td colSpan={TEXT_COLS.length + 4} className="border border-gray-300 px-3 py-1.5 text-right text-gray-600">
                   Подработка: {podrabotkaRows.length} экипажей — суммы в Продажах
                 </td>
                 <td className="border border-gray-300" colSpan={2}></td>
