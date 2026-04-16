@@ -81,7 +81,7 @@ const VYP_COLS: { key: keyof Omit<VyplataRow, "id">; label: string; width: strin
 const toNum = (v: string) => parseFloat((v || "0").replace(",", ".")) || 0;
 
 const emptyRow = (type: KassaRow["type"] = "route"): KassaRow => ({
-  id: Date.now() + Math.random(),
+  id: Math.random() * 1e15 + performance.now(),
   type,
   mar: "", bort: "", fioVod: "", fioCond: "",
   prodBilety: "", kolBil: "", beznal: "", qr: "",
@@ -90,7 +90,7 @@ const emptyRow = (type: KassaRow["type"] = "route"): KassaRow => ({
 });
 
 const emptyVyp = (): VyplataRow => ({
-  id: Date.now() + Math.random(),
+  id: Math.random() * 1e15 + performance.now(),
   fio: "", vid: "", summa: "", kol: "", itogo: "",
 });
 
