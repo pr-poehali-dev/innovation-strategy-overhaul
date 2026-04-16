@@ -108,7 +108,7 @@ const JurnalVypusk = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
                   <td className="border border-gray-300 px-1 text-center font-semibold text-blue-900">{sched?.vypusk || ""}</td>
                   <td className="border border-gray-300"></td>
                   <td className="border border-gray-300"></td>
-                  <td className="border border-gray-300 text-center text-green-800 font-semibold">✓</td>
+                  <td className="border border-gray-300 px-1 text-center text-green-800 font-semibold text-[8px] leading-tight">пройден/<br/>исправен</td>
                   <td className="border border-gray-300"></td>
                   <td className="border border-gray-300 px-1 text-center font-semibold text-red-700">{sched?.zakhod || ""}</td>
                   <td className="border border-gray-300"></td>

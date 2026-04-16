@@ -8,6 +8,7 @@ import PutevoyModal from "./dispatch/PutevoyModal";
 import NaryadTable from "./dispatch/NaryadTable";
 import JurnalMed from "./dispatch/JurnalMed";
 import JurnalVypusk from "./dispatch/JurnalVypusk";
+import JurnalDisp from "./dispatch/JurnalDisp";
 
 // ─── Утилиты дат ────────────────────────────────────────────────────────────
 const toDateKey = (d: Date): string => {
@@ -62,7 +63,7 @@ const makeRowsFromRoutes = (routes: Route[]): NaryadRowStore[] => {
   return rows.length > 0 ? rows : [makeEmptyRow(), makeEmptyRow(), makeEmptyRow()];
 };
 
-type TabType = "narad" | "med" | "vypusk";
+type TabType = "narad" | "med" | "vypusk" | "disp";
 
 // ─── Панель дежурных ────────────────────────────────────────────────────────
 const DayMetaPanel = ({
@@ -264,9 +265,10 @@ const Dispatch = () => {
   const monthYear    = toMonthYear(selectedDate);
 
   const TABS: { key: TabType; label: string; icon: string }[] = [
-    { key: "narad",   label: "Наряд",                    icon: "ClipboardList" },
-    { key: "med",     label: "Журнал медосмотра",         icon: "Stethoscope"   },
-    { key: "vypusk",  label: "Журнал выпуска на линию",   icon: "Truck"         },
+    { key: "narad",  label: "Наряд",                  icon: "ClipboardList" },
+    { key: "med",    label: "Журнал медосмотра",       icon: "Stethoscope"   },
+    { key: "vypusk", label: "Журнал выпуска",          icon: "Truck"         },
+    { key: "disp",   label: "Журнал диспетчера",       icon: "RadioTower"    },
   ];
 
   return (
@@ -432,6 +434,15 @@ const Dispatch = () => {
 
           {activeTab === "vypusk" && (
             <JurnalVypusk
+              rows={currentRows}
+              dayMeta={dayMeta}
+              displayDate={displayDate}
+              monthYear={monthYear}
+            />
+          )}
+
+          {activeTab === "disp" && (
+            <JurnalDisp
               rows={currentRows}
               dayMeta={dayMeta}
               displayDate={displayDate}
