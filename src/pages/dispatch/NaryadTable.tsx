@@ -149,6 +149,31 @@ const NaryadTable = ({
   const allUsedBorts   = useMemo(() => new Set(rows.filter((r) => r.bortovoy).map((r) => r.bortovoy)), [rows]);
   const allUsedGrafiki = useMemo(() => new Set(rows.filter((r) => r.marshrut).map((r) => r.marshrut)), [rows]);
 
+  // Дубли водителей и кондукторов (fio встречается > 1 раза в наряде)
+  const dupFios = useMemo(() => {
+    const seen = new Set<string>();
+    const dups = new Set<string>();
+    rows.forEach((r) => {
+      if (!r.fio) return;
+      if (seen.has(r.fio)) dups.add(r.fio);
+      else seen.add(r.fio);
+    });
+    return dups;
+  }, [rows]);
+
+  const dupKonds = useMemo(() => {
+    const seen = new Set<string>();
+    const dups = new Set<string>();
+    rows.forEach((r) => {
+      if (!r.fioKond || r.fioKond === "без") return;
+      if (seen.has(r.fioKond)) dups.add(r.fioKond);
+      else seen.add(r.fioKond);
+    });
+    return dups;
+  }, [rows]);
+
+
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
     if (e.key === "Tab" || e.key === "Enter") {
       e.preventDefault();
@@ -172,7 +197,7 @@ const NaryadTable = ({
 
   return (
     <>
-      {/* Глобальные datalist для ФИО и терминала */}
+      {/* datalist — глобальные (полный список, фильтрация через динамические id на строку) */}
       <datalist id={VOD_LIST}>
         {driverFios.map((f) => <option key={f} value={f} />)}
       </datalist>
@@ -205,12 +230,29 @@ const NaryadTable = ({
           </thead>
           <tbody>
             {rows.map((row, rowIdx) => {
-              // Доступные: всё кроме занятых другими, плюс текущее значение строки
               const freeBorts   = allBorts.filter((b) => b === row.bortovoy || !allUsedBorts.has(b));
               const freeGrafiki = allGrafiki.filter((g) => g === row.marshrut || !allUsedGrafiki.has(g));
 
+              // Дубли для этой строки
+              const isDupFio  = !!(row.fio && dupFios.has(row.fio));
+              const isDupKond = !!(row.fioKond && row.fioKond !== "без" && dupKonds.has(row.fioKond));
+
+              // Уникальные datalist id для строки — исключаем уже занятых другими
+              const vodListId  = `dl-vod-${row.id}`;
+              const condListId = `dl-cond-${row.id}`;
+              const freeDriversForRow = driverFios.filter((f) => f === row.fio || !dupFios.has(f));
+              const freeCondsForRow   = condFios.filter((f)  => f === row.fioKond || !dupKonds.has(f));
+
               return (
                 <tr key={row.id} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50/40"}>
+                  {/* Per-row datalist — показывает только свободных */}
+                  <datalist id={vodListId}>
+                    {freeDriversForRow.map((f) => <option key={f} value={f} />)}
+                  </datalist>
+                  <datalist id={condListId}>
+                    <option value="без" />
+                    {freeCondsForRow.map((f) => <option key={f} value={f} />)}
+                  </datalist>
                   <td className="border border-gray-300 text-center text-gray-400 select-none" style={{ width: "28px" }}>
                     {rowIdx + 1}
                   </td>
@@ -235,49 +277,43 @@ const NaryadTable = ({
                   />
 
                   {/* ФИО водителя */}
-                  <td className="border border-gray-300 p-0" style={{ width: "180px" }}>
-                    <div className="flex items-center group">
+                  <td className={`border p-0 ${isDupFio ? "border-red-400 bg-red-50" : "border-gray-300"}`} style={{ width: "180px" }}>
+                    <div className="flex items-center">
                       <input
                         type="text"
-                        list={VOD_LIST}
+                        list={vodListId}
                         value={row.fio}
                         onChange={(e) => onUpdateCell(row.id, "fio", e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, rowIdx, TEXT_COLS.length)}
-                        className="flex-1 h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors min-w-0"
+                        className={`flex-1 h-7 px-2 text-xs bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors min-w-0 ${isDupFio ? "text-red-600 font-semibold" : "text-gray-800"}`}
                         placeholder=""
                         autoComplete="off"
+                        title={isDupFio ? "⚠ Этот водитель уже есть в наряде!" : ""}
                       />
                       {row.fio && (
-                        <button
-                          onClick={() => onUpdateCell(row.id, "fio", "")}
-                          className="px-1 text-gray-300 hover:text-red-400 flex-shrink-0"
-                          tabIndex={-1}
-                          title="Очистить"
-                        >×</button>
+                        <button onClick={() => onUpdateCell(row.id, "fio", "")}
+                          className="px-1 text-gray-300 hover:text-red-400 flex-shrink-0" tabIndex={-1} title="Очистить">×</button>
                       )}
                     </div>
                   </td>
 
                   {/* ФИО кондуктора */}
-                  <td className="border border-gray-300 p-0" style={{ width: "180px" }}>
+                  <td className={`border p-0 ${isDupKond ? "border-red-400 bg-red-50" : "border-gray-300"}`} style={{ width: "180px" }}>
                     <div className="flex items-center">
                       <input
                         type="text"
-                        list={COND_LIST}
+                        list={condListId}
                         value={row.fioKond}
                         onChange={(e) => onUpdateCell(row.id, "fioKond", e.target.value)}
                         onKeyDown={(e) => handleKeyDown(e, rowIdx, TEXT_COLS.length + 1)}
-                        className="flex-1 h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors min-w-0"
+                        className={`flex-1 h-7 px-2 text-xs bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors min-w-0 ${isDupKond ? "text-red-600 font-semibold" : "text-gray-800"}`}
                         placeholder="без"
                         autoComplete="off"
+                        title={isDupKond ? "⚠ Этот кондуктор уже есть в наряде!" : ""}
                       />
                       {row.fioKond && (
-                        <button
-                          onClick={() => onUpdateCell(row.id, "fioKond", "")}
-                          className="px-1 text-gray-300 hover:text-red-400 flex-shrink-0"
-                          tabIndex={-1}
-                          title="Очистить"
-                        >×</button>
+                        <button onClick={() => onUpdateCell(row.id, "fioKond", "")}
+                          className="px-1 text-gray-300 hover:text-red-400 flex-shrink-0" tabIndex={-1} title="Очистить">×</button>
                       )}
                     </div>
                   </td>
