@@ -38,7 +38,6 @@ const Dispatch = () => {
         bortovoy:       r.bortovoy,
         gos:            r.gos,
         marka:          r.marka,
-        garazhny:       r.garazhny,
         marshrut:       r.marshrut,
         fioVod:         r.fio,
         fioKond:        r.fioKond,

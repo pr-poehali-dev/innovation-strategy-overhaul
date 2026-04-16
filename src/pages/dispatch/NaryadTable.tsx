@@ -8,33 +8,30 @@ import {
   fmt,
 } from "./types";
 
-// SelectCell — определён вне NaryadTable (правила хуков)
-const SelectCell = ({
+// InputCell с datalist — datalist рендерится глобально, здесь только input
+const DatalistCell = ({
   value,
-  options,
+  listId,
   placeholder,
   onChange,
   width,
-  listId,
+  bold,
 }: {
   value: string;
-  options: string[];
-  placeholder: string;
+  listId: string;
+  placeholder?: string;
   onChange: (v: string) => void;
   width: string;
-  listId: string;
+  bold?: boolean;
 }) => (
   <td className="border border-gray-300 p-0" style={{ width }}>
-    <datalist id={listId}>
-      {options.map((o) => <option key={o} value={o} />)}
-    </datalist>
     <input
       type="text"
       list={listId}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="w-full h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors"
+      placeholder={placeholder ?? ""}
+      className={`w-full h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors ${bold ? "font-semibold" : ""}`}
     />
   </td>
 );
@@ -68,16 +65,14 @@ const NaryadTable = ({
   const condFios        = employees.filter((e) => e.dolzhnost === "Кондуктор" && e.status === "active").map((e) => e.fio);
   const activeTerminals = terminals.filter((t) => t.status === "active");
   const allGrafiki      = routes.flatMap((r) => getGrafiki(r));
+  const bortOptions     = [...new Set(vehicles.map((v) => v.bortovoy).filter(Boolean))].sort((a, b) => Number(a) - Number(b));
 
-  // Гаражные номера из ТС (уникальные)
-  const garazhnyOptions = [...new Set(vehicles.map((v) => v.garazhny).filter(Boolean))].sort();
-
-  // Стабильные id для datalist
-  const vodListId    = "narad-vod-datalist";
-  const condListId   = "narad-cond-datalist";
-  const grafikListId = "narad-grafik-datalist";
-  const termListId   = "narad-term-datalist";
-  const garazhListId = "narad-garazh-datalist";
+  // Глобальные id для datalist (уникальные на странице)
+  const VOD_LIST    = "dl-narad-vod";
+  const COND_LIST   = "dl-narad-cond";
+  const GRAFIK_LIST = "dl-narad-grafik";
+  const TERM_LIST   = "dl-narad-term";
+  const BORT_LIST   = "dl-narad-bort";
 
   const handleKeyDown = (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
     if (e.key === "Tab" || e.key === "Enter") {
@@ -99,22 +94,24 @@ const NaryadTable = ({
 
   return (
     <>
-      {/* Глобальные datalist */}
-      <datalist id={vodListId}>
+      {/* ── Глобальные datalist — вне таблицы, один экземпляр каждого ── */}
+      <datalist id={VOD_LIST}>
         {driverFios.map((f) => <option key={f} value={f} />)}
       </datalist>
-      <datalist id={condListId}>
+      <datalist id={COND_LIST}>
         <option value="без" />
         {condFios.map((f) => <option key={f} value={f} />)}
       </datalist>
-      <datalist id={grafikListId}>
+      <datalist id={GRAFIK_LIST}>
         {allGrafiki.map((g) => <option key={g} value={g} />)}
       </datalist>
-      <datalist id={termListId}>
-        {activeTerminals.map((t) => <option key={t.id} value={t.nomer}>{t.nomer}{t.model ? ` (${t.model})` : ""}</option>)}
+      <datalist id={TERM_LIST}>
+        {activeTerminals.map((t) => (
+          <option key={t.id} value={t.nomer} />
+        ))}
       </datalist>
-      <datalist id={garazhListId}>
-        {garazhnyOptions.map((g) => <option key={g} value={g} />)}
+      <datalist id={BORT_LIST}>
+        {bortOptions.map((b) => <option key={b} value={b} />)}
       </datalist>
 
       <div className="overflow-x-auto">
@@ -122,7 +119,6 @@ const NaryadTable = ({
           <thead>
             <tr style={{ backgroundColor: "#1a3a6b" }}>
               <th className="border border-blue-900 px-1 py-2 text-white text-center" style={{ width: "28px" }}>№</th>
-              {/* TEXT_COLS: Гаражный, Маршрут, Терминал, Путевой */}
               {TEXT_COLS.map((col) => (
                 <th key={col.key} className="border border-blue-900 px-2 py-2 text-white font-semibold text-left"
                   style={{ width: col.width, minWidth: col.width }}>
@@ -137,140 +133,127 @@ const NaryadTable = ({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, rowIdx) => {
-              const hasPodrabotka = row.podrabotka && !!row.biletov;
-              return (
-                <tr key={row.id} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50/40"}>
-                  <td className="border border-gray-300 text-center text-gray-400 select-none" style={{ width: "28px" }}>
-                    {rowIdx + 1}
-                  </td>
+            {rows.map((row, rowIdx) => (
+              <tr key={row.id} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50/40"}>
+                <td className="border border-gray-300 text-center text-gray-400 select-none" style={{ width: "28px" }}>
+                  {rowIdx + 1}
+                </td>
 
-                  {/* TEXT_COLS: Гаражный, Маршрут, Терминал, Путевой */}
-                  {TEXT_COLS.map((col, colIdx) => {
-                    const isActive = activeCell?.rowId === row.id && activeCell?.col === col.key;
+                {/* TEXT_COLS: Борт №, Маршрут, Терминал, Путевой */}
+                {TEXT_COLS.map((col, colIdx) => {
+                  const isActive = activeCell?.rowId === row.id && activeCell?.col === col.key;
 
-                    // Гаражный № — datalist из списка ТС
-                    if (col.key === "garazhny") {
-                      return (
-                        <SelectCell
-                          key={col.key}
-                          value={row.garazhny}
-                          options={garazhnyOptions}
-                          placeholder=""
-                          onChange={(v) => onUpdateCell(row.id, "garazhny", v)}
-                          width={col.width}
-                          listId={garazhListId}
-                        />
-                      );
-                    }
-                    // Маршрут — datalist с графиками
-                    if (col.key === "marshrut") {
-                      return (
-                        <SelectCell
-                          key={col.key}
-                          value={row.marshrut}
-                          options={allGrafiki}
-                          placeholder=""
-                          onChange={(v) => onUpdateCell(row.id, "marshrut", v)}
-                          width={col.width}
-                          listId={grafikListId}
-                        />
-                      );
-                    }
-                    // Терминал — datalist
-                    if (col.key === "terminal") {
-                      return (
-                        <SelectCell
-                          key={col.key}
-                          value={row.terminal}
-                          options={activeTerminals.map((t) => t.nomer)}
-                          placeholder=""
-                          onChange={(v) => onUpdateCell(row.id, "terminal", v)}
-                          width={col.width}
-                          listId={termListId}
-                        />
-                      );
-                    }
-                    // Остальные — обычный ввод
+                  if (col.key === "bortovoy") {
                     return (
-                      <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
-                        <input
-                          type="text"
-                          value={row[col.key as keyof NaryadRow] as string}
-                          onChange={(e) => onUpdateCell(row.id, col.key as keyof NaryadRow, e.target.value)}
-                          onFocus={() => onSetActiveCell({ rowId: row.id, col: col.key })}
-                          onBlur={() => onSetActiveCell(null)}
-                          onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
-                          autoFocus={isActive}
-                          className={`w-full h-7 px-2 text-gray-800 bg-transparent outline-none border-2 ${
-                            isActive ? "border-blue-500 bg-blue-50" : "border-transparent"
-                          } transition-colors`}
-                          placeholder=""
-                        />
-                      </td>
-                    );
-                  })}
-
-                  {/* ФИО водителя */}
-                  <SelectCell
-                    value={row.fio}
-                    options={driverFios}
-                    placeholder="— водитель —"
-                    onChange={(v) => onUpdateCell(row.id, "fio", v)}
-                    width="180px"
-                    listId={vodListId}
-                  />
-
-                  {/* ФИО кондуктора */}
-                  <SelectCell
-                    value={row.fioKond}
-                    options={condFios}
-                    placeholder="без"
-                    onChange={(v) => onUpdateCell(row.id, "fioKond", v)}
-                    width="180px"
-                    listId={condListId}
-                  />
-
-                  {/* Подработка */}
-                  <td className="border border-gray-300 text-center" style={{ width: "75px" }}>
-                    <div className="flex flex-col items-center gap-0.5 py-0.5">
-                      <input
-                        type="checkbox"
-                        checked={row.podrabotka}
-                        onChange={(e) => onUpdateCell(row.id, "podrabotka", e.target.checked)}
-                        className="w-4 h-4 accent-blue-600 cursor-pointer"
+                      <DatalistCell
+                        key={col.key}
+                        value={row.bortovoy}
+                        listId={BORT_LIST}
+                        onChange={(v) => onUpdateCell(row.id, "bortovoy", v)}
+                        width={col.width}
+                        bold
                       />
-                      {row.podrabotka && (
-                        <input
-                          type="text"
-                          value={row.biletov}
-                          onChange={(e) => onUpdateCell(row.id, "biletov", e.target.value)}
-                          className="w-12 h-5 px-1 text-xs text-center text-gray-800 bg-white border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                          placeholder="бил"
-                        />
-                      )}
-                    </div>
-                  </td>
+                    );
+                  }
+                  if (col.key === "marshrut") {
+                    return (
+                      <DatalistCell
+                        key={col.key}
+                        value={row.marshrut}
+                        listId={GRAFIK_LIST}
+                        onChange={(v) => onUpdateCell(row.id, "marshrut", v)}
+                        width={col.width}
+                      />
+                    );
+                  }
+                  if (col.key === "terminal") {
+                    return (
+                      <DatalistCell
+                        key={col.key}
+                        value={row.terminal}
+                        listId={TERM_LIST}
+                        onChange={(v) => onUpdateCell(row.id, "terminal", v)}
+                        width={col.width}
+                      />
+                    );
+                  }
+                  // putevoy — обычный ввод
+                  return (
+                    <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
+                      <input
+                        type="text"
+                        value={row[col.key as keyof NaryadRow] as string}
+                        onChange={(e) => onUpdateCell(row.id, col.key as keyof NaryadRow, e.target.value)}
+                        onFocus={() => onSetActiveCell({ rowId: row.id, col: col.key })}
+                        onBlur={() => onSetActiveCell(null)}
+                        onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
+                        autoFocus={isActive}
+                        className={`w-full h-7 px-2 text-gray-800 bg-transparent outline-none border-2 ${
+                          isActive ? "border-blue-500 bg-blue-50" : "border-transparent"
+                        } transition-colors`}
+                        placeholder=""
+                      />
+                    </td>
+                  );
+                })}
 
-                  {/* Путевой лист */}
-                  <td className="border border-gray-300 text-center" style={{ width: "75px" }}>
-                    <button
-                      onClick={() => onOpenPutevoy(row)}
-                      className="flex items-center gap-1 mx-auto px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded border border-blue-200 hover:bg-blue-100 transition-colors"
-                    >
-                      <Icon name="FileText" size={11} />
-                      Лист
-                    </button>
-                  </td>
+                {/* ФИО водителя */}
+                <DatalistCell
+                  value={row.fio}
+                  listId={VOD_LIST}
+                  placeholder="— водитель —"
+                  onChange={(v) => onUpdateCell(row.id, "fio", v)}
+                  width="180px"
+                />
 
-                  <td className="border border-gray-300 text-center" style={{ width: "28px" }}>
-                    <button onClick={() => onDeleteRow(row.id)} className="text-gray-300 hover:text-red-500 transition-colors p-0.5">
-                      <Icon name="X" size={12} />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+                {/* ФИО кондуктора */}
+                <DatalistCell
+                  value={row.fioKond}
+                  listId={COND_LIST}
+                  placeholder="без"
+                  onChange={(v) => onUpdateCell(row.id, "fioKond", v)}
+                  width="180px"
+                />
+
+                {/* Подработка */}
+                <td className="border border-gray-300 text-center" style={{ width: "75px" }}>
+                  <div className="flex flex-col items-center gap-0.5 py-0.5">
+                    <input
+                      type="checkbox"
+                      checked={row.podrabotka}
+                      onChange={(e) => onUpdateCell(row.id, "podrabotka", e.target.checked)}
+                      className="w-4 h-4 accent-blue-600 cursor-pointer"
+                    />
+                    {row.podrabotka && (
+                      <input
+                        type="text"
+                        value={row.biletov}
+                        onChange={(e) => onUpdateCell(row.id, "biletov", e.target.value)}
+                        className="w-12 h-5 px-1 text-xs text-center text-gray-800 bg-white border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                        placeholder="бил"
+                      />
+                    )}
+                  </div>
+                </td>
+
+                {/* Путевой лист */}
+                <td className="border border-gray-300 text-center" style={{ width: "75px" }}>
+                  <button
+                    onClick={() => onOpenPutevoy(row)}
+                    className="flex items-center gap-1 mx-auto px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded border border-blue-200 hover:bg-blue-100 transition-colors"
+                  >
+                    <Icon name="FileText" size={11} />
+                    Лист
+                  </button>
+                </td>
+
+                <td className="border border-gray-300 text-center" style={{ width: "28px" }}>
+                  <button onClick={() => onDeleteRow(row.id)} className="text-gray-300 hover:text-red-500 transition-colors p-0.5">
+                    <Icon name="X" size={12} />
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
 
           {podrabotkaRows.length > 0 && (

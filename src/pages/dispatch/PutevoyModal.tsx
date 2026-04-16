@@ -56,7 +56,7 @@ const PutevoyModal = ({ row, today, onClose }: Props) => {
     marka:             extra.marka           ?? "",
     gos:               extra.gos             ?? "",
     bortovoy:          row.bortovoy,
-    garazhny:          row.garazhny,
+    garazhny:          row.bortovoy,
     marshrut:          extra.marshrut        ?? "",
     vodFio:            row.fio,
     vodUdostVerenie:   extra.vodUdostVerenie ?? "",

@@ -29,7 +29,6 @@ export interface NaryadEntry {
   bortovoy: string;
   gos: string;
   marka: string;
-  garazhny: string;
   marshrut: string;
   fioVod: string;
   fioKond: string;
@@ -177,7 +176,6 @@ export interface NaryadRowStore {
   bortovoy: string;
   gos: string;
   marka: string;
-  garazhny: string;
   marshrut: string;
   fio: string;
   fioKond: string;
@@ -199,7 +197,7 @@ export interface NaryadSettingsStore {
 const makeEmptyNaryadRow = (): NaryadRowStore => ({
   id: Date.now() + Math.random(),
   vehicleId: null, bortovoy: "", gos: "", marka: "",
-  garazhny: "", marshrut: "", fio: "", fioKond: "",
+  marshrut: "", fio: "", fioKond: "",
   putevoy: "", terminal: "", podrabotka: false, biletov: "",
 });
 
