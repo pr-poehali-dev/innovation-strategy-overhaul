@@ -262,6 +262,7 @@ const Kassa = () => {
                         {col.label}
                       </th>
                     ))}
+                    <th className="border border-blue-900 px-1 py-1 text-white font-semibold text-center" style={{ width: "36px" }} title="Право на подработку">Подр.</th>
                     <th className="border border-blue-900 px-1 py-1 print:hidden" style={{ width: "22px" }}></th>
                   </tr>
                 </thead>
@@ -269,12 +270,30 @@ const Kassa = () => {
                   {/* Маршрутные строки */}
                   {routeRows.map((row, rowIdx) => {
                     const bg = row.mar ? getRouteColor(row.mar) : rowIdx % 2 === 0 ? "#fff" : "#f5f8ff";
+                    const hasPodrVod  = toNum(row.podrVod)  > 0;
+                    const hasPodrCond = toNum(row.podrCond) > 0;
+                    const hasPodr = hasPodrVod || hasPodrCond;
                     return (
-                      <tr key={row.id} style={{ backgroundColor: bg }}>
+                      <tr key={row.id} style={{ backgroundColor: bg, outline: hasPodr ? "2px solid #f97316" : undefined, outlineOffset: "-1px" }}>
                         <td className="border border-gray-300 text-center text-gray-400 select-none text-xs" style={{ width: "24px" }}>
                           {rowIdx + 1}
                         </td>
                         {MAIN_COLS.map((col, colIdx) => renderCell(row, col, rowIdx, colIdx))}
+                        {/* Индикатор подработки */}
+                        <td className="border border-gray-300 text-center" style={{ width: "36px" }}>
+                          {hasPodr ? (
+                            <div className="flex flex-col items-center gap-0.5 py-0.5">
+                              {hasPodrVod && (
+                                <span className="text-xs font-bold text-green-700 leading-none" title="Водитель может получить подработку">В</span>
+                              )}
+                              {hasPodrCond && (
+                                <span className="text-xs font-bold text-blue-700 leading-none" title="Кондуктор может получить подработку">К</span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-200 text-xs">—</span>
+                          )}
+                        </td>
                         <td className="border border-gray-300 text-center print:hidden" style={{ width: "22px" }}>
                           <button onClick={() => deleteRow(row.id)} className="text-gray-300 hover:text-red-500 p-0.5">
                             <Icon name="X" size={11} />
@@ -317,6 +336,9 @@ const Kassa = () => {
                         {col.numeric ? (() => { const s = getSum(col.key); return s !== 0 ? s.toLocaleString("ru-RU") : ""; })() : ""}
                       </td>
                     ))}
+                    <td className="border border-orange-400 text-center text-white font-bold text-xs" style={{ width: "36px" }}>
+                      {routeRows.filter((r) => toNum(r.podrVod) > 0 || toNum(r.podrCond) > 0).length || ""}
+                    </td>
                     <td className="border border-orange-400 print:hidden" style={{ width: "22px" }}></td>
                   </tr>
                 </tbody>
