@@ -40,15 +40,22 @@ const KassaOtchet = ({
   const vypItogo = vyplaty.reduce((s, v) => s + toNum(v.itogo), 0);
 
   const renderCell = (row: KassaRow, col: typeof MAIN_COLS[number], rowIdx: number, colIdx: number) => {
-    const isActive   = activeCell?.rowId === row.id && activeCell?.col === col.key;
-    const isPodr     = col.key === "podrVod" || col.key === "podrCond" || col.key === "rashodDt";
-    const isViruchka = col.key === "viruchka";
+    const isActive     = activeCell?.rowId === row.id && activeCell?.col === col.key;
+    const isPodr       = col.key === "podrVod" || col.key === "podrCond" || col.key === "rashodDt";
+    const isViruchka   = col.key === "viruchka";
+    const isProdBilety = col.key === "prodBilety";
+    const calcBg       = isViruchka ? "#f0fdf4" : isProdBilety ? "#eff6ff" : undefined;
+    const calcTitle    = isViruchka
+      ? "Авто: Кол.бил × Стоимость проезда + Безнал + QR"
+      : isProdBilety
+        ? "Авто: Выручка ÷ Стоимость проезда"
+        : undefined;
     return (
       <td
         key={col.key}
         className="border border-gray-300 p-0"
-        style={{ width: col.width, backgroundColor: isViruchka ? "#f0fdf4" : undefined }}
-        title={isViruchka ? "Кол.бил × Стоимость проезда + Безнал + QR (авто)" : undefined}
+        style={{ width: col.width, backgroundColor: calcBg }}
+        title={calcTitle}
       >
         <input
           type="text"
@@ -61,9 +68,10 @@ const KassaOtchet = ({
           className={[
             "w-full h-6 px-1 bg-transparent outline-none border-2 transition-colors text-center",
             isActive ? "border-blue-500 bg-blue-50" : "border-transparent",
-            isPodr     ? "text-orange-700 text-gray-800" : "",
-            isViruchka ? "text-green-800 font-semibold" : "text-gray-800",
-            col.key === "itogo" ? "font-bold" : "",
+            isPodr       ? "text-orange-700" : "",
+            isViruchka   ? "text-green-800 font-semibold" : "",
+            isProdBilety ? "text-blue-700 font-semibold" : "",
+            col.key === "itogo" ? "font-bold text-gray-800" : "text-gray-800",
           ].join(" ")}
           placeholder=""
         />
@@ -87,11 +95,18 @@ const KassaOtchet = ({
                     className="border border-blue-900 px-1 py-1 text-white font-semibold text-center leading-tight"
                     style={{
                       width: col.width, minWidth: col.width,
-                      backgroundColor: col.key === "viruchka" ? "#166534" : undefined,
+                      backgroundColor: col.key === "viruchka"
+                        ? "#166534"
+                        : col.key === "prodBilety"
+                          ? "#1e3a5f"
+                          : undefined,
                     }}
-                    title={col.key === "viruchka" ? "Авторасчёт: Кол.бил × Стоимость проезда + Безнал + QR" : undefined}
+                    title={
+                      col.key === "viruchka"   ? "Авто: Кол.бил × Стоимость проезда + Безнал + QR" :
+                      col.key === "prodBilety" ? "Авто: Выручка ÷ Стоимость проезда" : undefined
+                    }
                   >
-                    {col.label}{col.key === "viruchka" ? " ⟳" : ""}
+                    {col.label}{col.key === "viruchka" || col.key === "prodBilety" ? " ⟳" : ""}
                   </th>
                 ))}
                 <th className="border border-blue-900 px-1 py-1 text-white font-semibold text-center" style={{ width: "36px" }} title="Право на подработку">Подр.</th>

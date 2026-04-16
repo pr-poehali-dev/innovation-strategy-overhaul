@@ -199,16 +199,18 @@ const Settings = () => {
   };
   const [routeActiveCell, setRouteActiveCell] = useState<{ rowId: number; col: string } | null>(null);
 
-  // Фиксированные одиночные значения
-  const [stoimostProezda,  setStoimostProezda]  = useState("");
-  const [stoimostTopliva,  setStoimostTopliva]  = useState("");
-  const [zpVodDezhurki,    setZpVodDezhurki]    = useState("");
-  const [dezhDt,           setDezhDt]           = useState("");
-  const [hozNuzhdyGarazh,  setHozNuzhdyGarazh]  = useState("");
+  // Все числовые настройки — напрямую из naryadSettings (сохраняются через usePersist)
+  const upd = (key: keyof typeof naryadSettings, v: string) => {
+    setNaryadSettings((prev) => ({ ...prev, [key]: v }));
+    setSaved(false);
+  };
 
-  // Фиксированная оплата: маршрут №6 — из appStore
-  const fixedRoute6 = naryadSettings.fixedRoute6;
-  const setFixedRoute6 = (v: string) => setNaryadSettings({ ...naryadSettings, fixedRoute6: v });
+  const stoimostProezda  = naryadSettings.stoimostProezda;
+  const stoimostTopliva  = naryadSettings.stoimostTopliva;
+  const zpVodDezhurki    = naryadSettings.zpVodDezhurki;
+  const dezhDt           = naryadSettings.dezhDt;
+  const hozNuzhdyGarazh  = naryadSettings.hozNuzhdyGarazh;
+  const fixedRoute6      = naryadSettings.fixedRoute6;
 
   // Процентные таблицы (наименование + значение)
   const [procentVodBezCond, setProcentVodBezCond] = useState<SimpleRow[]>([emptySimpleRow()]);
@@ -499,19 +501,19 @@ const Settings = () => {
 
           {/* Фиксированные вкладки */}
           {tab === "stoimostProezda" && (
-            <FixedValueTab label="Стоимость проезда" unit="₽" value={stoimostProezda} onChange={(v) => { setStoimostProezda(v); setSaved(false); }} />
+            <FixedValueTab label="Стоимость проезда" unit="₽" value={stoimostProezda} onChange={(v) => upd("stoimostProezda", v)} />
           )}
           {tab === "stoimostTopliva" && (
-            <FixedValueTab label="Стоимость топлива" unit="₽/л" value={stoimostTopliva} onChange={(v) => { setStoimostTopliva(v); setSaved(false); }} />
+            <FixedValueTab label="Стоимость топлива" unit="₽/л" value={stoimostTopliva} onChange={(v) => upd("stoimostTopliva", v)} />
           )}
           {tab === "zpVodDezhurki" && (
-            <FixedValueTab label="ЗП водителя дежурки" unit="₽" value={zpVodDezhurki} onChange={(v) => { setZpVodDezhurki(v); setSaved(false); }} />
+            <FixedValueTab label="ЗП водителя дежурки" unit="₽" value={zpVodDezhurki} onChange={(v) => upd("zpVodDezhurki", v)} />
           )}
           {tab === "dezhDt" && (
-            <FixedValueTab label="Дежурка ДТ" unit="л" value={dezhDt} onChange={(v) => { setDezhDt(v); setSaved(false); }} />
+            <FixedValueTab label="Дежурка ДТ" unit="л" value={dezhDt} onChange={(v) => upd("dezhDt", v)} />
           )}
           {tab === "hozNuzhdyGarazh" && (
-            <FixedValueTab label="Хоз. нужды гараж" unit="₽" value={hozNuzhdyGarazh} onChange={(v) => { setHozNuzhdyGarazh(v); setSaved(false); }} />
+            <FixedValueTab label="Хоз. нужды гараж" unit="₽" value={hozNuzhdyGarazh} onChange={(v) => upd("hozNuzhdyGarazh", v)} />
           )}
 
           {/* Обеды */}
@@ -534,7 +536,7 @@ const Settings = () => {
                     <input
                       type="text"
                       value={naryadSettings.obedVod}
-                      onChange={(e) => { setNaryadSettings({ ...naryadSettings, obedVod: e.target.value }); setSaved(false); }}
+                      onChange={(e) => upd("obedVod", e.target.value)}
                       className="w-24 h-8 px-2 text-sm font-semibold text-gray-800 border border-gray-300 rounded outline-none focus:border-blue-500 focus:bg-blue-50 text-right"
                     />
                     <span className="text-xs text-gray-500">₽</span>
@@ -549,7 +551,7 @@ const Settings = () => {
                     <input
                       type="text"
                       value={naryadSettings.obedVodKond}
-                      onChange={(e) => { setNaryadSettings({ ...naryadSettings, obedVodKond: e.target.value }); setSaved(false); }}
+                      onChange={(e) => upd("obedVodKond", e.target.value)}
                       className="w-24 h-8 px-2 text-sm font-semibold text-gray-800 border border-gray-300 rounded outline-none focus:border-blue-500 focus:bg-blue-50 text-right"
                     />
                     <span className="text-xs text-gray-500">₽</span>
@@ -569,7 +571,7 @@ const Settings = () => {
                   <input
                     type="text"
                     value={fixedRoute6}
-                    onChange={(e) => { setFixedRoute6(e.target.value); setSaved(false); }}
+                    onChange={(e) => upd("fixedRoute6", e.target.value)}
                     className="w-24 h-7 px-2 text-xs text-gray-800 border border-gray-300 rounded outline-none focus:border-blue-500 focus:bg-blue-50 transition-colors text-right"
                   />
                   <span className="text-xs text-gray-500">₽</span>

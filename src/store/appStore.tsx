@@ -358,8 +358,12 @@ export interface NaryadSettingsStore {
   procentVodS: string;
   procentCondS: string;
   fixedRoute6: string;
-  obedVod: string;      // обед водителя (без кондуктора), ₽
-  obedVodKond: string;  // обед водителя + кондуктора (пара), ₽
+  obedVod: string;
+  obedVodKond: string;
+  stoimostProezda: string;   // стоимость проезда (для расчёта выручки в кассе)
+  zpVodDezhurki: string;
+  dezhDt: string;
+  hozNuzhdyGarazh: string;
 }
 
 
@@ -369,6 +373,10 @@ const DEFAULT_NARAD_SETTINGS: NaryadSettingsStore = {
   fixedRoute6: "7000",
   obedVod: "150",
   obedVodKond: "300",
+  stoimostProezda: "40",
+  zpVodDezhurki: "",
+  dezhDt: "",
+  hozNuzhdyGarazh: "",
 };
 
 const AppContext = createContext<AppStore | null>(null);

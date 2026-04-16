@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 import { useAppStore } from "@/store/appStore";
@@ -41,8 +41,6 @@ const toDateKey = (d: Date): string => {
 const Kassa = () => {
   const { weeklyNaryady, naryadSettings, employees } = useAppStore();
 
-  const [allData, setAllData] = useState<Record<string, { rows: KassaRow[]; vyplaty: VyplataRow[] }>>(() => loadKassa());
-
   const [tab, setTab] = useState<"kassa" | "chast" | "monthly">("kassa");
   const [selectedKey, setSelectedKey] = useState(() => toDateKey(new Date()));
   const [monthKey, setMonthKey] = useState(() => {
@@ -60,22 +58,26 @@ const Kassa = () => {
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
   const [activeVyp, setActiveVyp] = useState<{ rowId: number; col: string } | null>(null);
 
+  // Флаг: идёт смена даты, не сохранять в этом цикле
+  const isDateChangingRef = useRef(false);
 
   // При смене даты — загружаем сохранённые данные
   useEffect(() => {
-    const saved = allData[selectedKey];
+    isDateChangingRef.current = true;
+    const saved = loadKassa()[selectedKey];
     setRows(saved?.rows ?? Array.from({ length: 12 }, () => emptyRow()));
     setVyplaty(saved?.vyplaty ?? Array.from({ length: 10 }, emptyVyp));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Сбрасываем флаг после следующего рендера
+    setTimeout(() => { isDateChangingRef.current = false; }, 0);
+   
   }, [selectedKey]);
 
-  // Сохранение при каждом изменении
+  // Сохранение при изменении данных (не при смене даты)
   useEffect(() => {
-    setAllData((prev) => {
-      const updated = { ...prev, [selectedKey]: { rows, vyplaty } };
-      saveKassa(updated);
-      return updated;
-    });
+    if (isDateChangingRef.current) return;
+    const data = loadKassa();
+    data[selectedKey] = { rows, vyplaty };
+    saveKassa(data);
   }, [rows, vyplaty, selectedKey]);
 
   const [chastRows, setChastRows] = useState<ChastRow[]>(() =>
@@ -108,22 +110,26 @@ const Kassa = () => {
         const newKolBil = r.biletov;
         const existingRow = existing ?? emptyRow();
         // Пересчитываем выручку если есть данные из наряда
-        const cena = parseFloat(naryadSettings.stoimostBileta) || 0;
+        const cena = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
         const kol  = parseFloat(newKolBil) || 0;
         const bez  = toNum(existingRow.beznal);
         const qrV  = toNum(existingRow.qr);
         const viruchkaAuto = (kol || bez || qrV)
           ? String(Math.round(kol * cena + bez + qrV))
           : existingRow.viruchka;
+        const prodBiletyAuto = viruchkaAuto && cena
+          ? String(Math.round(toNum(viruchkaAuto) / cena))
+          : existingRow.prodBilety;
         return {
           ...existingRow,
-          type:     "route" as const,
-          mar:      r.marshrut,
-          bort:     r.bortovoy,
-          fioVod:   r.fio,
-          fioCond:  r.fioKond || "без",
-          kolBil:   newKolBil,
-          viruchka: viruchkaAuto,
+          type:       "route" as const,
+          mar:        r.marshrut,
+          bort:       r.bortovoy,
+          fioVod:     r.fio,
+          fioCond:    r.fioKond || "без",
+          kolBil:     newKolBil,
+          viruchka:   viruchkaAuto,
+          prodBilety: prodBiletyAuto,
           obed:     obedAuto || (existingRow.obed ?? ""),
           podrVod:  calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : (existingRow.podrVod  ?? ""),
           podrCond: calc && calc.cond > 0 ? String(Math.round(calc.cond)) : (existingRow.podrCond ?? ""),
@@ -134,15 +140,24 @@ const Kassa = () => {
     });
   }, [naryadRows, naryadSettings, selectedKey]);
 
-  // ─── Пересчёт выручки: Кол.бил × стоимость + Безнал + QR ───────────────
+  // ─── Расчётные поля ──────────────────────────────────────────────────────
+  // Выручка = Кол.бил × стоимость проезда + Безнал + QR
   const calcViruchka = (r: KassaRow, overrides: Partial<KassaRow> = {}): string => {
-    const row = { ...r, ...overrides };
-    const kol     = toNum(row.kolBil);
-    const beznal  = toNum(row.beznal);
-    const qr      = toNum(row.qr);
-    const cena    = parseFloat(naryadSettings.stoimostBileta) || 0;
+    const row    = { ...r, ...overrides };
+    const kol    = toNum(row.kolBil);
+    const beznal = toNum(row.beznal);
+    const qr     = toNum(row.qr);
+    const cena   = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
     if (!kol && !beznal && !qr) return "";
     return String(Math.round(kol * cena + beznal + qr));
+  };
+
+  // Проданные билеты = Выручка / стоимость проезда
+  const calcProdBilety = (viruchka: string): string => {
+    const v    = toNum(viruchka);
+    const cena = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
+    if (!v || !cena) return "";
+    return String(Math.round(v / cena));
   };
 
   // ─── Обработчики кассы ───────────────────────────────────────────────────
@@ -150,9 +165,13 @@ const Kassa = () => {
     setRows((prev) => prev.map((r) => {
       if (r.id !== id) return r;
       const updated: KassaRow = { ...r, [col]: value };
-      // Пересчитываем выручку при изменении любого из трёх полей
+      // При изменении kolBil / beznal / qr — пересчитываем выручку
       if (col === "kolBil" || col === "beznal" || col === "qr") {
         updated.viruchka = calcViruchka(r, { [col]: value });
+      }
+      // При изменении выручки — пересчитываем проданные билеты
+      if (col === "viruchka") {
+        updated.prodBilety = calcProdBilety(value);
       }
       return updated;
     }));
