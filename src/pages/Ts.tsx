@@ -197,11 +197,15 @@ const VehicleCard = ({
         <div className="p-4 space-y-4">
           {/* Поля ТС */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            <Field label="Бортовой №" field="bortovoy" placeholder="001" />
-            <Field label="Гос. знак" field="gos" placeholder="А 000 АА 000" />
-            <Field label="Марка / Модель" field="marka" placeholder="ПАЗ 3205" />
-            <Field label="Год выпуска" field="god" placeholder="2020" />
-            <Field label="Гаражный №" field="garazhny" placeholder="101" />
+            <Field label="Бортовой №"   field="bortovoy"    placeholder="502" />
+            <Field label="Гаражный №"   field="garazhny"    placeholder="502" />
+            <Field label="Гос. знак"    field="gos"         placeholder="А000АА27" />
+            <Field label="Марка / Модель" field="marka"     placeholder="DAEWOO BS 106" />
+            <Field label="Год выпуска"  field="god"         placeholder="2021" />
+            <Field label="Собственник"  field="sobstvennik" placeholder="ДАТ" />
+            <Field label="VIN"          field="vin"         placeholder="KL5UM52PD7P025174" />
+            <Field label="Реестр РОСАВТОДОРА" field="reestr" placeholder="АТТ0202852" />
+            <Field label="Эк. класс"    field="ekKlass"     placeholder="4" />
           </div>
 
           {/* Документы */}
@@ -344,18 +348,18 @@ const Ts = () => {
           {/* Сводная таблица */}
           {vehicles.length > 0 && (
             <div className="overflow-x-auto">
-              <table className="border-collapse text-xs w-full">
+              <table className="border-collapse text-xs" style={{ minWidth: "1000px" }}>
                 <thead>
                   <tr style={{ backgroundColor: "#1a3a6b" }}>
-                    {["Борт №", "Гос. знак", "Марка/Модель", "Год", "Гар. №", "ОСАГО", "ОСГОП", "Аренда/Лизинг", "Прочее"].map((h) => (
-                      <th key={h} className="border border-blue-900 px-2 py-1.5 text-white font-semibold text-center">{h}</th>
+                    {["Борт №", "Гос. знак", "Марка / Модель", "Год", "Собственник", "VIN", "Реестр", "Эк.кл", "ОСАГО", "ОСГОП", "Аренда/Лизинг"].map((h) => (
+                      <th key={h} className="border border-blue-900 px-2 py-1.5 text-white font-semibold text-center whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {vehicles.map((v, i) => {
                     const getDocStatus = (type: string) => {
-                      const doc = v.docs.find((d) => d.key === type || d.type === type);
+                      const doc = v.docs.find((d) => d.type === type);
                       if (!doc) return <span className="text-gray-300">—</span>;
                       if (!doc.expiry) return <span className="text-green-600">✓</span>;
                       const parts = doc.expiry.split(".");
@@ -367,21 +371,31 @@ const Ts = () => {
                       return <span className="text-green-600">до {doc.expiry}</span>;
                     };
                     const hasArenda = v.docs.some((d) => d.type === "arenda" || d.type === "lizing");
-                    const hasOther  = v.docs.some((d) => d.type === "other");
                     return (
                       <tr key={v.id} className={i % 2 === 0 ? "bg-white" : "bg-blue-50"}>
-                        <td className="border border-gray-300 px-2 py-1 text-center font-semibold">{v.bortovoy || "—"}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-center font-bold text-blue-800">{v.bortovoy || "—"}</td>
                         <td className="border border-gray-300 px-2 py-1 text-center">{v.gos || "—"}</td>
                         <td className="border border-gray-300 px-2 py-1">{v.marka || "—"}</td>
                         <td className="border border-gray-300 px-2 py-1 text-center">{v.god || "—"}</td>
-                        <td className="border border-gray-300 px-2 py-1 text-center">{v.garazhny || "—"}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-center">
+                          <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-700">{v.sobstvennik || "—"}</span>
+                        </td>
+                        <td className="border border-gray-300 px-2 py-1 font-mono text-gray-500 text-xs">{v.vin || "—"}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-center text-gray-600">{v.reestr || "—"}</td>
+                        <td className="border border-gray-300 px-2 py-1 text-center">
+                          {v.ekKlass ? (
+                            <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
+                              v.ekKlass === "5" ? "bg-green-100 text-green-700" :
+                              v.ekKlass === "4" ? "bg-blue-100 text-blue-700" :
+                              v.ekKlass === "2" ? "bg-amber-100 text-amber-700" :
+                              "bg-gray-100 text-gray-500"
+                            }`}>{v.ekKlass}</span>
+                          ) : "—"}
+                        </td>
                         <td className="border border-gray-300 px-2 py-1 text-center">{getDocStatus("osago")}</td>
                         <td className="border border-gray-300 px-2 py-1 text-center">{getDocStatus("osgop")}</td>
                         <td className="border border-gray-300 px-2 py-1 text-center">
                           {hasArenda ? <span className="text-green-600">✓</span> : <span className="text-gray-300">—</span>}
-                        </td>
-                        <td className="border border-gray-300 px-2 py-1 text-center">
-                          {hasOther ? <span className="text-green-600">✓</span> : <span className="text-gray-300">—</span>}
                         </td>
                       </tr>
                     );
