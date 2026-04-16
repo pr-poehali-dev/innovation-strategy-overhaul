@@ -1,4 +1,31 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+
+// ─── localStorage persist ────────────────────────────────────────────────────
+const LS_KEY = "dat_app_store_v1";
+
+function loadFromLS<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(`${LS_KEY}:${key}`);
+    if (raw === null) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveToLS<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(`${LS_KEY}:${key}`, JSON.stringify(value));
+  } catch (e) {
+    console.warn("localStorage write failed", e);
+  }
+}
+
+function usePersist<T>(key: string, initial: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const [state, setState] = useState<T>(() => loadFromLS(key, initial));
+  useEffect(() => { saveToLS(key, state); }, [key, state]);
+  return [state, setState];
+}
 
 // ─── ТС ────────────────────────────────────────────────────────────────────
 export interface TsDoc {
@@ -145,8 +172,8 @@ export const INITIAL_ROUTES: Route[] = [
   { id: 102, nomer: "15", nazvanie: "мкр. Амурлитмаш — мкр. Хорпинский", nachalo: "мкр. Амурлитмаш",     konets: "мкр. Хорпинский",    grafikov: 4,  intervalMin: "", rabochieChasy: "", companyIdx: 0 },
   // ДАТ — маршрут №24, 6 графиков
   { id: 103, nomer: "24", nazvanie: "ул. Уральская - мкр. Амурлитмаш",   nachalo: "ул. Уральская",         konets: "мкр. Амурлитмаш",   grafikov: 6,  intervalMin: "", rabochieChasy: "", companyIdx: 0 },
-  // ИП Герасимов — маршрут №3, 11 графиков
-  { id: 104, nomer: "3",  nazvanie: "ул. Юбилейная - ул. Уральская",      nachalo: "ул. Юбилейная",         konets: "ул. Уральская",      grafikov: 11, intervalMin: "", rabochieChasy: "", companyIdx: 2 },
+  // ТиТ — маршрут №3, 11 графиков
+  { id: 104, nomer: "3",  nazvanie: "ул. Юбилейная - ул. Уральская",      nachalo: "ул. Юбилейная",         konets: "ул. Уральская",      grafikov: 11, intervalMin: "", rabochieChasy: "", companyIdx: 1 },
   // ТиТ — маршрут №6, 4 графика
   { id: 105, nomer: "6",  nazvanie: "мкр. Индустриальный - ул. Уральская",nachalo: "мкр. Индустриальный",  konets: "ул. Уральская",      grafikov: 4,  intervalMin: "", rabochieChasy: "", companyIdx: 1 },
 ];
@@ -316,25 +343,27 @@ const INITIAL_EMPLOYEES: Employee[] = [
   { id: 1062, tabNum: "", fio: "Ершова М.А.",         dolzhnost: "Кондуктор", bort: "",    kategoriya: "",  telefon: "", dataRozhd: "20.03.1959", dataPriema: "", status: "active", inn: "270303549400",  snils: "034-551-442 32", udostoverenie: "" },
 ];
 
+const INITIAL_TERMINALS: Terminal[] = [
+  { id: 301, nomer: "Терминал-1 (ИП Герасимов)", serial: "", model: "", companyIdx: 2, status: "active", primechanie: "Маршрут №3" },
+  { id: 302, nomer: "Терминал-2 (ИП Герасимов)", serial: "", model: "", companyIdx: 2, status: "active", primechanie: "Маршрут №3" },
+  { id: 303, nomer: "Терминал-3 (ИП Герасимов)", serial: "", model: "", companyIdx: 2, status: "active", primechanie: "Маршрут №3" },
+];
+
 export const AppProvider = ({ children }: { children: ReactNode }) => {
-  const [vehicles, setVehicles] = useState<TsVehicle[]>(INITIAL_VEHICLES);
-  const [naryadEntries, setNaryadEntries] = useState<NaryadEntry[]>([]);
-  const [naryadRows, setNaryadRows] = useState<NaryadRowStore[]>([
+  const [vehicles,        setVehicles]        = usePersist<TsVehicle[]>           ("vehicles",        INITIAL_VEHICLES);
+  const [naryadEntries,   setNaryadEntries]   = useState<NaryadEntry[]>([]);
+  const [naryadRows,      setNaryadRows]      = useState<NaryadRowStore[]>([
     makeEmptyNaryadRow(), makeEmptyNaryadRow(), makeEmptyNaryadRow(),
   ]);
-  const [naryadSettings, setNaryadSettings] = useState<NaryadSettingsStore>(DEFAULT_NARAD_SETTINGS);
-  const [weeklyNaryady, setWeeklyNaryady] = useState<WeeklyNaryady>({});
-  const [companies, setCompanies] = useState<CompanySettings[]>(INITIAL_COMPANIES);
-  const [activeCompanyIdx, setActiveCompanyIdx] = useState(0);
-  const [terminals, setTerminals] = useState<Terminal[]>([
-    { id: 301, nomer: "Терминал-1 (ИП Герасимов)", serial: "", model: "", companyIdx: 2, status: "active", primechanie: "Маршрут №3" },
-    { id: 302, nomer: "Терминал-2 (ИП Герасимов)", serial: "", model: "", companyIdx: 2, status: "active", primechanie: "Маршрут №3" },
-    { id: 303, nomer: "Терминал-3 (ИП Герасимов)", serial: "", model: "", companyIdx: 2, status: "active", primechanie: "Маршрут №3" },
-  ]);
-  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
-  const [routes, setRoutes] = useState<Route[]>(INITIAL_ROUTES);
-  const [dtpRecords, setDtpRecords] = useState<DtpRecord[]>([]);
-  const [weeklyDayMeta, setWeeklyDayMeta] = useState<WeeklyDayMeta>({});
+  const [naryadSettings,  setNaryadSettings]  = usePersist<NaryadSettingsStore>   ("naryadSettings",  DEFAULT_NARAD_SETTINGS);
+  const [weeklyNaryady,   setWeeklyNaryady]   = usePersist<WeeklyNaryady>         ("weeklyNaryady",   {});
+  const [companies,       setCompanies]       = usePersist<CompanySettings[]>     ("companies",       INITIAL_COMPANIES);
+  const [activeCompanyIdx,setActiveCompanyIdx]= usePersist<number>                ("activeCompanyIdx",0);
+  const [terminals,       setTerminals]       = usePersist<Terminal[]>            ("terminals",       INITIAL_TERMINALS);
+  const [employees,       setEmployees]       = usePersist<Employee[]>            ("employees",       INITIAL_EMPLOYEES);
+  const [routes,          setRoutes]          = usePersist<Route[]>               ("routes",          INITIAL_ROUTES);
+  const [dtpRecords,      setDtpRecords]      = usePersist<DtpRecord[]>           ("dtpRecords",      []);
+  const [weeklyDayMeta,   setWeeklyDayMeta]   = usePersist<WeeklyDayMeta>         ("weeklyDayMeta",   {});
 
   return (
     <AppContext.Provider value={{

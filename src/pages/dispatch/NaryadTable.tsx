@@ -121,12 +121,14 @@ const NaryadTable = ({
   );
   const activeTerminals = useMemo(() => terminals.filter((t) => t.status === "active"), [terminals]);
 
-  // Терминалы только той организации, которой принадлежит маршрут строки
+  // Терминалы организации маршрута + ИП Герасимов (companyIdx:2) для маршрута №3
   const getRowTerminals = useCallback((marshrut: string) => {
     const routeNum = marshrut.split("/")[0].trim();
     const route = routes.find((r) => r.nomer === routeNum);
-    if (!route) return activeTerminals; // маршрут не найден — показать все
-    return activeTerminals.filter((t) => t.companyIdx === route.companyIdx);
+    if (!route) return activeTerminals;
+    const allowed = new Set([route.companyIdx]);
+    if (routeNum === "3") allowed.add(2); // ИП Герасимов обслуживает маршрут №3
+    return activeTerminals.filter((t) => allowed.has(t.companyIdx));
   }, [activeTerminals, routes]);
   const allGrafiki      = useMemo(() => routes.flatMap((r) => getGrafiki(r)), [routes]);
   const allBorts        = useMemo(
