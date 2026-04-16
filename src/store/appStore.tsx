@@ -153,6 +153,16 @@ export const INITIAL_ROUTES: Route[] = [
 // dateKey format: "YYYY-MM-DD"
 export type WeeklyNaryady = Record<string, NaryadRowStore[]>;
 
+// Дежурный персонал на день (диспетчер, механик по выпуску)
+export interface DayMeta {
+  dispFio: string;
+  mekhFio: string;
+  medFio:  string;   // медик (для журнала)
+  nachGarFio: string;
+}
+export type WeeklyDayMeta = Record<string, DayMeta>;
+export const emptyDayMeta = (): DayMeta => ({ dispFio: "", mekhFio: "", medFio: "", nachGarFio: "" });
+
 // ─── Context ───────────────────────────────────────────────────────────────
 interface AppStore {
   vehicles: TsVehicle[];
@@ -177,6 +187,8 @@ interface AppStore {
   setRoutes: React.Dispatch<React.SetStateAction<Route[]>>;
   dtpRecords: DtpRecord[];
   setDtpRecords: React.Dispatch<React.SetStateAction<DtpRecord[]>>;
+  weeklyDayMeta: WeeklyDayMeta;
+  setWeeklyDayMeta: React.Dispatch<React.SetStateAction<WeeklyDayMeta>>;
 }
 
 // ─── ДТП ────────────────────────────────────────────────────────────────────
@@ -317,6 +329,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
   const [routes, setRoutes] = useState<Route[]>(INITIAL_ROUTES);
   const [dtpRecords, setDtpRecords] = useState<DtpRecord[]>([]);
+  const [weeklyDayMeta, setWeeklyDayMeta] = useState<WeeklyDayMeta>({});
 
   return (
     <AppContext.Provider value={{
@@ -331,6 +344,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       employees, setEmployees,
       routes, setRoutes,
       dtpRecords, setDtpRecords,
+      weeklyDayMeta, setWeeklyDayMeta,
     }}>
       {children}
     </AppContext.Provider>

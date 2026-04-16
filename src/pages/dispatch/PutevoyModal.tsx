@@ -1,16 +1,17 @@
 import { useState, useMemo } from "react";
 import Icon from "@/components/ui/icon";
 import PutevoyList, { PutevoyData } from "@/components/PutevoyList";
-import { useAppStore } from "@/store/appStore";
+import { useAppStore, DayMeta } from "@/store/appStore";
 import { NaryadRow } from "./types";
 
 interface Props {
   row: NaryadRow;
   today: string;
+  dayMeta: DayMeta;
   onClose: () => void;
 }
 
-const PutevoyModal = ({ row, today, onClose }: Props) => {
+const PutevoyModal = ({ row, today, dayMeta, onClose }: Props) => {
   const { companies, employees, routes, vehicles } = useAppStore();
 
   // Определяем организацию по маршруту
@@ -18,17 +19,17 @@ const PutevoyModal = ({ row, today, onClose }: Props) => {
   const matchedRoute = routes.find((r) => r.nomer === routeNum);
   const routeCompany = matchedRoute !== undefined ? companies[matchedRoute.companyIdx] : companies[0];
 
-  // ИТР — ищем дежурных по должности
-  const itrByDolzhnost = useMemo(() => {
+  // Дежурные: сначала из DayMeta, затем из ИТР-справочника
+  const itr = useMemo(() => {
     const active = employees.filter((e) => e.status === "active");
     const find = (d: string) => active.find((e) => e.dolzhnost === d)?.fio ?? "";
     return {
-      medik:    find("Медик"),
-      mekh:     find("Механик по выпуску"),
-      disp:     find("Диспетчер"),
-      nachGar:  find("Нач. гаража"),
+      medik:   dayMeta.medFio     || find("Медик"),
+      mekh:    dayMeta.mekhFio    || find("Механик по выпуску"),
+      disp:    dayMeta.dispFio    || find("Диспетчер"),
+      nachGar: dayMeta.nachGarFio || find("Нач. гаража"),
     };
-  }, [employees]);
+  }, [employees, dayMeta]);
 
   // ТС из справочника по борту
   const vehicleInfo = useMemo(
@@ -36,9 +37,9 @@ const PutevoyModal = ({ row, today, onClose }: Props) => {
     [vehicles, row.bortovoy]
   );
 
-  // Водитель из сотрудников (ищем по ФИО для получения номера удостоверения)
+  // Водитель из Кадров
   const vodInfo = useMemo(
-    () => employees.find((e) => e.fio === row.fio || row.fio.startsWith(e.fio.split(" ")[0])),
+    () => employees.find((e) => e.fio === row.fio || (row.fio && row.fio.startsWith(e.fio.split(" ")[0]))),
     [employees, row.fio]
   );
 
@@ -49,7 +50,7 @@ const PutevoyModal = ({ row, today, onClose }: Props) => {
     orgInn:          routeCompany.inn,
     marka:           vehicleInfo?.marka ?? "",
     gos:             vehicleInfo?.gos   ?? "",
-    marshrut:        matchedRoute ? `№${matchedRoute.nomer} ${matchedRoute.nazvanie}` : "",
+    marshrut:        matchedRoute ? `№${matchedRoute.nomer} ${matchedRoute.nazvanie}` : row.marshrut,
     vodUdostVerenie: vodInfo?.udostoverenie ?? "",
     vodKategoria:    vodInfo?.kategoriya  || "D",
     odometrVyezd:    "",
@@ -63,11 +64,11 @@ const PutevoyModal = ({ row, today, onClose }: Props) => {
     vremyaVyezdFakt: "",
     vremyaVozvFakt:  "",
     medDopusk:       "",
-    medPodpis:       itrByDolzhnost.medik,
+    medPodpis:       itr.medik,
     tehDopusk:       "",
-    tehPodpis:       itrByDolzhnost.mekh,
-    dispFio:         itrByDolzhnost.disp,
-    dispPodpis:      itrByDolzhnost.disp,
+    tehPodpis:       itr.mekh,
+    dispFio:         itr.disp,
+    dispPodpis:      itr.disp,
   });
   const [showPrint, setShowPrint] = useState(false);
 
@@ -101,11 +102,11 @@ const PutevoyModal = ({ row, today, onClose }: Props) => {
     vremyaVyezdFakt:   extra.vremyaVyezdFakt ?? "",
     vremyaVozvFakt:    extra.vremyaVozvFakt  ?? "",
     medDopusk:         extra.medDopusk       ?? "",
-    medPodpis:         extra.medPodpis       ?? itrByDolzhnost.medik,
+    medPodpis:         extra.medPodpis       ?? itr.medik,
     tehDopusk:         extra.tehDopusk       ?? "",
-    tehPodpis:         extra.tehPodpis       ?? itrByDolzhnost.mekh,
-    dispFio:           extra.dispFio         ?? itrByDolzhnost.disp,
-    dispPodpis:        extra.dispPodpis      ?? itrByDolzhnost.disp,
+    tehPodpis:         extra.tehPodpis       ?? itr.mekh,
+    dispFio:           extra.dispFio         ?? itr.disp,
+    dispPodpis:        extra.dispPodpis      ?? itr.disp,
   };
 
   if (showPrint) {
@@ -151,13 +152,14 @@ const PutevoyModal = ({ row, today, onClose }: Props) => {
             <div>Организация: <b>{routeCompany.nazvanie}</b></div>
           </div>
 
-          {/* Автозаполненные ИТР */}
-          {(itrByDolzhnost.medik || itrByDolzhnost.mekh || itrByDolzhnost.disp) && (
+          {/* Автозаполненные дежурные */}
+          {(itr.medik || itr.mekh || itr.disp) && (
             <div className="bg-green-50 border border-green-200 rounded p-2 text-xs text-green-700">
-              <b>Автозаполнено из ИТР:</b>
-              {itrByDolzhnost.medik && <span className="ml-2">Медик: {itrByDolzhnost.medik}</span>}
-              {itrByDolzhnost.mekh  && <span className="ml-2">· Механик: {itrByDolzhnost.mekh}</span>}
-              {itrByDolzhnost.disp  && <span className="ml-2">· Диспетчер: {itrByDolzhnost.disp}</span>}
+              <b>Автозаполнено из дежурных:</b>
+              {itr.medik && <span className="ml-2">Медик: {itr.medik}</span>}
+              {itr.mekh  && <span className="ml-2">· Механик: {itr.mekh}</span>}
+              {itr.disp  && <span className="ml-2">· Диспетчер: {itr.disp}</span>}
+              {vodInfo?.udostoverenie && <span className="ml-2">· Уд-ие вод.: {vodInfo.udostoverenie}</span>}
             </div>
           )}
 
