@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import Icon from "@/components/ui/icon";
+import { useAppStore } from "@/store/appStore";
 
 const LINKS = [
   { to: "/",         label: "Главная",    icon: "Home"          },
@@ -20,6 +21,8 @@ interface NavBarProps {
 
 const NavBar = ({ title }: NavBarProps) => {
   const { pathname } = useLocation();
+  const { companies, activeCompanyIdx } = useAppStore();
+  const companyName = companies[activeCompanyIdx]?.nazvanie || "Дальавтотранс";
 
   const today = new Date().toLocaleDateString("ru-RU", {
     day: "2-digit", month: "2-digit", year: "numeric",
@@ -29,7 +32,7 @@ const NavBar = ({ title }: NavBarProps) => {
     <div className="bg-gray-800 text-white shadow print:hidden">
       <div className="px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <span className="font-bold text-base tracking-tight whitespace-nowrap">Дальавтотранс</span>
+          <span className="font-bold text-base tracking-tight whitespace-nowrap">{companyName}</span>
           {title && (
             <>
               <span className="text-gray-500 text-sm">|</span>

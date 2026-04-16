@@ -1,7 +1,9 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
-import { useAppStore, DtpRecord } from "@/store/appStore";
+import { useAppStore, DtpRecord, CompanySettings } from "@/store/appStore";
+
+const EMPTY_COMPANY: CompanySettings = { nazvanie: "—", inn: "", direktor: "", telefon: "", adres: "" };
 
 const STATUS_LABELS: Record<DtpRecord["status"], string> = {
   new:          "Новое",
@@ -19,8 +21,8 @@ const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2
 
 // ─── Печать документа ДТП ──────────────────────────────────────────────────
 const DtpDocPrint = ({ rec, onClose }: { rec: DtpRecord; onClose: () => void }) => {
-  const { companies, employees } = useAppStore();
-  const company = companies[0];
+  const { companies, activeCompanyIdx, employees } = useAppStore();
+  const company = companies[activeCompanyIdx] ?? EMPTY_COMPANY;
   const nachGar = employees.find((e) => e.dolzhnost === "Нач. гаража")?.fio ?? "_______________";
 
   return (
@@ -77,7 +79,7 @@ const DtpDocPrint = ({ rec, onClose }: { rec: DtpRecord; onClose: () => void }) 
           <div className="mb-3">
             <div className="font-bold mb-1">Пострадавшие / ущерб:</div>
             <div className="border-b border-gray-400 min-h-[24px] mb-1">{rec.postradavshie || "нет"}</div>
-            <div>Материальный ущерб: <b>{rec.ushcherb ? rec.ushcherb + " ₽" : "устанавливается"}</b></div>
+            <div>Материальный ущерб: <b>{rec.ushcherb && rec.ushcherb !== "0" ? rec.ushcherb + " ₽" : "устанавливается"}</b></div>
           </div>
 
           <div className="mb-6">

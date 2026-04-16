@@ -28,19 +28,21 @@ const emptyEmployee = (dolzhnost: string): Employee => ({
   status: "active",
   inn: "",
   snils: "",
+  udostoverenie: "",
 });
 
 const VOD_COLUMNS = [
-  { key: "tabNum",     label: "Таб. №",        width: "70px"  },
-  { key: "fio",        label: "ФИО",           width: "200px" },
-  { key: "bort",       label: "Борт №",        width: "80px"  },
-  { key: "kategoriya", label: "Категория",     width: "90px"  },
-  { key: "telefon",    label: "Телефон",       width: "130px" },
-  { key: "inn",        label: "ИНН",           width: "120px" },
-  { key: "snils",      label: "СНИЛС",         width: "130px" },
-  { key: "dataRozhd",  label: "Дата рождения", width: "110px" },
-  { key: "dataPriema", label: "Дата приёма",   width: "110px" },
-  { key: "status",     label: "Статус",        width: "90px"  },
+  { key: "tabNum",        label: "Таб. №",           width: "70px"  },
+  { key: "fio",           label: "ФИО",              width: "200px" },
+  { key: "bort",          label: "Борт №",           width: "80px"  },
+  { key: "kategoriya",    label: "Категория",        width: "90px"  },
+  { key: "udostoverenie", label: "Уд-ие вод. №",     width: "120px" },
+  { key: "telefon",       label: "Телефон",          width: "130px" },
+  { key: "inn",           label: "ИНН",              width: "120px" },
+  { key: "snils",         label: "СНИЛС",            width: "130px" },
+  { key: "dataRozhd",     label: "Дата рождения",    width: "110px" },
+  { key: "dataPriema",    label: "Дата приёма",      width: "110px" },
+  { key: "status",        label: "Статус",           width: "90px"  },
 ] as const;
 
 const COND_COLUMNS = [
@@ -114,9 +116,8 @@ const Kadry = () => {
     if (e.key === "Tab" || e.key === "Enter") {
       e.preventDefault();
       const editableCols = columns.filter((c) => c.key !== "status");
-      const editableIdx = editableCols.findIndex((_, i) => i === colIdx);
-      if (editableIdx + 1 < editableCols.length) {
-        setActiveCell({ rowId: rows[rowIdx].id, col: editableCols[editableIdx + 1].key });
+      if (colIdx + 1 < editableCols.length) {
+        setActiveCell({ rowId: rows[rowIdx].id, col: editableCols[colIdx + 1].key });
       } else if (rowIdx + 1 < rows.length) {
         setActiveCell({ rowId: rows[rowIdx + 1].id, col: editableCols[0].key });
       }

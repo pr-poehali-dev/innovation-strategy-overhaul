@@ -140,11 +140,15 @@ const PutevoyListPrint = ({ data }: { data: PutevoyData }) => (
       <Line label="при возврате в гараж (км)" value={data.odometrVozv} />
       <Line
         label="пробег за смену (км)"
-        value={
-          data.odometrVyezd && data.odometrVozv
-            ? String(Math.abs(parseFloat(data.odometrVozv) - parseFloat(data.odometrVyezd)) || "")
-            : ""
-        }
+        value={(() => {
+          const v = parseFloat(data.odometrVyezd);
+          const r = parseFloat(data.odometrVozv);
+          if (!isNaN(v) && !isNaN(r) && data.odometrVyezd && data.odometrVozv) {
+            const diff = Math.abs(r - v);
+            return diff > 0 ? String(diff) : "";
+          }
+          return "";
+        })()}
       />
     </div>
 

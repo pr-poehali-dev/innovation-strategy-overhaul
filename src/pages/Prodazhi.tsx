@@ -42,7 +42,8 @@ const emptyRow = (): ProdazhiRow => ({
   podVod: "", podCond: "",
 });
 
-const toNum = (v: string) => parseFloat((v || "0").replace(",", ".")) || 0;
+const OFF_STATUSES = ["вых", "отп", "рем"];
+const toNum = (v: string) => parseFloat((v || "0").trim().replace(",", ".")) || 0;
 
 const today = new Date().toLocaleDateString("ru-RU", {
   day: "2-digit", month: "2-digit", year: "numeric",
@@ -112,8 +113,8 @@ const Prodazhi = () => {
     rows.reduce((acc, r) => acc + toNum(r[col] as string), 0);
 
   // Статистика
-  const vsegoVyshlo = rows.filter((r) => r.fioVod && r.fioVod !== "0" && r.marGr && r.marGr !== "вых" && r.marGr !== "отп" && r.marGr !== "рем").length;
-  const vsegoVykhod = rows.filter((r) => r.marGr === "вых" || r.marGr === "отп" || r.marGr === "рем").length;
+  const vsegoVyshlo = rows.filter((r) => r.fioVod && !OFF_STATUSES.includes(r.marGr)).length;
+  const vsegoVykhod = rows.filter((r) => OFF_STATUSES.includes(r.marGr)).length;
 
   // datalist ids
   const vodFioList  = "vod-fio-list";
@@ -123,7 +124,7 @@ const Prodazhi = () => {
 
   const renderCell = (row: ProdazhiRow, col: typeof COLUMNS[number], rowIdx: number, colIdx: number) => {
     const isActive = activeCell?.rowId === row.id && activeCell?.col === col.key;
-    const isOff = row.marGr === "вых" || row.marGr === "отп" || row.marGr === "рем";
+    const isOff = OFF_STATUSES.includes(row.marGr);
 
     // ФИО водителя — с datalist
     if (col.key === "fioVod") {
@@ -302,7 +303,7 @@ const Prodazhi = () => {
               </thead>
               <tbody>
                 {rows.map((row, rowIdx) => {
-                  const isOff = row.marGr === "вых" || row.marGr === "отп" || row.marGr === "рем";
+                  const isOff = OFF_STATUSES.includes(row.marGr);
                   const rowBg = isOff
                     ? "#f5f5f0"
                     : rowIdx % 2 === 0 ? "#ffffff" : "#eff6ff";
