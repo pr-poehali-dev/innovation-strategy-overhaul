@@ -78,12 +78,30 @@ const INITIAL_VEHICLES: TsVehicle[] = [
   { id: 35, bortovoy: "550", gos: "Н218НМ27",  marka: "ПАЗ 4235",                  god: "",     garazhny: "550", sobstvennik: "ДО",  vin: "X1M4234K0C0000279",  reestr: "АТТ0261258", ekKlass: "4", docs: [] },
 ];
 
+// ─── Организация ───────────────────────────────────────────────────────────
+export interface CompanySettings {
+  nazvanie: string;
+  inn: string;
+  direktor: string;
+  telefon: string;
+  adres: string;
+}
+
+export const INITIAL_COMPANIES: CompanySettings[] = [
+  { nazvanie: 'ООО "Дальавтотранс"',        inn: "", direktor: "", telefon: "", adres: "" },
+  { nazvanie: 'ООО "Техника и Технологии"', inn: "", direktor: "", telefon: "", adres: "" },
+];
+
 // ─── Context ───────────────────────────────────────────────────────────────
 interface AppStore {
   vehicles: TsVehicle[];
   setVehicles: React.Dispatch<React.SetStateAction<TsVehicle[]>>;
   naryadEntries: NaryadEntry[];
   setNaryadEntries: React.Dispatch<React.SetStateAction<NaryadEntry[]>>;
+  companies: CompanySettings[];
+  setCompanies: React.Dispatch<React.SetStateAction<CompanySettings[]>>;
+  activeCompanyIdx: number;
+  setActiveCompanyIdx: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const AppContext = createContext<AppStore | null>(null);
@@ -91,9 +109,16 @@ const AppContext = createContext<AppStore | null>(null);
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [vehicles, setVehicles] = useState<TsVehicle[]>(INITIAL_VEHICLES);
   const [naryadEntries, setNaryadEntries] = useState<NaryadEntry[]>([]);
+  const [companies, setCompanies] = useState<CompanySettings[]>(INITIAL_COMPANIES);
+  const [activeCompanyIdx, setActiveCompanyIdx] = useState(0);
 
   return (
-    <AppContext.Provider value={{ vehicles, setVehicles, naryadEntries, setNaryadEntries }}>
+    <AppContext.Provider value={{
+      vehicles, setVehicles,
+      naryadEntries, setNaryadEntries,
+      companies, setCompanies,
+      activeCompanyIdx, setActiveCompanyIdx,
+    }}>
       {children}
     </AppContext.Provider>
   );

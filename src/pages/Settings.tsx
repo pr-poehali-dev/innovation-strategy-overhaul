@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
+import { useAppStore } from "@/store/appStore";
 
 interface Route {
   id: number;
@@ -10,14 +11,6 @@ interface Route {
   konets: string;
   intervalMin: string;
   rabochieChasy: string;
-}
-
-interface CompanySettings {
-  nazvanie: string;
-  inn: string;
-  direktor: string;
-  telefon: string;
-  adres: string;
 }
 
 interface SimpleRow {
@@ -194,21 +187,15 @@ const PercentTable = ({
   );
 };
 
-const COMPANIES: CompanySettings[] = [
-  { nazvanie: 'ООО "Дальавтотранс"',          inn: "", direktor: "", telefon: "", adres: "" },
-  { nazvanie: 'ООО "Техника и Технологии"',   inn: "", direktor: "", telefon: "", adres: "" },
-];
-
 const Settings = () => {
   const [tab, setTab] = useState<TabType>("company");
   const [saved, setSaved] = useState(false);
-  const [companyIdx, setCompanyIdx] = useState(0);
 
-  const [companies, setCompanies] = useState<CompanySettings[]>(COMPANIES);
-  const company = companies[companyIdx];
+  const { companies, setCompanies, activeCompanyIdx, setActiveCompanyIdx } = useAppStore();
+  const company = companies[activeCompanyIdx];
 
-  const updateCompany = (key: keyof CompanySettings, value: string) => {
-    setCompanies((prev) => prev.map((c, i) => i === companyIdx ? { ...c, [key]: value } : c));
+  const updateCompany = (key: keyof typeof company, value: string) => {
+    setCompanies((prev) => prev.map((c, i) => i === activeCompanyIdx ? { ...c, [key]: value } : c));
     setSaved(false);
   };
   const [routes, setRoutes] = useState<Route[]>([emptyRoute(), emptyRoute()]);
@@ -316,9 +303,9 @@ const Settings = () => {
                 {companies.map((c, i) => (
                   <button
                     key={i}
-                    onClick={() => setCompanyIdx(i)}
+                    onClick={() => setActiveCompanyIdx(i)}
                     className={`px-4 py-2 text-sm rounded-lg border-2 transition-colors font-semibold ${
-                      companyIdx === i
+                      activeCompanyIdx === i
                         ? "border-blue-600 bg-blue-600 text-white"
                         : "border-gray-300 text-gray-600 hover:border-blue-400 hover:text-blue-600"
                     }`}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import PutevoyList, { PutevoyData } from "@/components/PutevoyList";
+import { useAppStore } from "@/store/appStore";
 import { NaryadRow } from "./types";
 
 interface Props {
@@ -9,46 +10,47 @@ interface Props {
   onClose: () => void;
 }
 
-const emptyPutevoyExtra = (): Partial<PutevoyData> => ({
-  orgNazvanie: "ООО «Дальавтотранс»",
-  orgAdres: "",
-  orgTelefon: "",
-  orgInn: "",
-  marka: "",
-  gos: "",
-  marshrut: "",
-  vodUdostVerenie: "",
-  vodKategoria: "D",
-  odometrVyezd: "",
-  odometrVozv: "",
-  toplivoMarka: "ДТ",
-  toplivoVydano: "",
-  toplivoOstVyezd: "",
-  toplivoOstVozv: "",
-  vremyaVyezdPlan: "",
-  vremyaVozvPlan: "",
-  vremyaVyezdFakt: "",
-  vremyaVozvFakt: "",
-  medDopusk: "",
-  medPodpis: "",
-  tehDopusk: "",
-  tehPodpis: "",
-  dispFio: "",
-  dispPodpis: "",
-});
-
 const PutevoyModal = ({ row, today, onClose }: Props) => {
-  const [extra, setExtra] = useState<Partial<PutevoyData>>(emptyPutevoyExtra());
+  const { companies, activeCompanyIdx } = useAppStore();
+  const activeCompany = companies[activeCompanyIdx];
+
+  const [extra, setExtra] = useState<Partial<PutevoyData>>({
+    orgNazvanie: activeCompany.nazvanie,
+    orgAdres:    activeCompany.adres,
+    orgTelefon:  activeCompany.telefon,
+    orgInn:      activeCompany.inn,
+    marka: "",
+    gos: "",
+    marshrut: "",
+    vodUdostVerenie: "",
+    vodKategoria: "D",
+    odometrVyezd: "",
+    odometrVozv: "",
+    toplivoMarka: "ДТ",
+    toplivoVydano: "",
+    toplivoOstVyezd: "",
+    toplivoOstVozv: "",
+    vremyaVyezdPlan: "",
+    vremyaVozvPlan: "",
+    vremyaVyezdFakt: "",
+    vremyaVozvFakt: "",
+    medDopusk: "",
+    medPodpis: "",
+    tehDopusk: "",
+    tehPodpis: "",
+    dispFio: "",
+    dispPodpis: "",
+  });
   const [showPrint, setShowPrint] = useState(false);
 
   const set = (key: keyof PutevoyData, val: string) =>
     setExtra((prev) => ({ ...prev, [key]: val }));
 
   const putevoyData: PutevoyData = {
-    orgNazvanie:       extra.orgNazvanie     ?? "ООО «Дальавтотранс»",
-    orgAdres:          extra.orgAdres        ?? "",
-    orgTelefon:        extra.orgTelefon      ?? "",
-    orgInn:            extra.orgInn          ?? "",
+    orgNazvanie:       extra.orgNazvanie     ?? activeCompany.nazvanie,
+    orgAdres:          extra.orgAdres        ?? activeCompany.adres,
+    orgTelefon:        extra.orgTelefon      ?? activeCompany.telefon,
+    orgInn:            extra.orgInn          ?? activeCompany.inn,
     nomer:             row.putevoy           || row.id.toString().slice(-4),
     data:              today,
     marka:             extra.marka           ?? "",
