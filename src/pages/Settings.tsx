@@ -24,7 +24,6 @@ interface SimpleRow {
   id: number;
   nazvanie: string;
   znachenie: string;
-  primechanie: string;
 }
 
 const emptyRoute = (): Route => ({
@@ -34,7 +33,7 @@ const emptyRoute = (): Route => ({
 
 const emptySimpleRow = (): SimpleRow => ({
   id: Date.now() + Math.random(),
-  nazvanie: "", znachenie: "", primechanie: "",
+  nazvanie: "", znachenie: "",
 });
 
 const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -73,8 +72,37 @@ const ROUTE_COLS: { key: keyof Omit<Route, "id">; label: string; width: string }
   { key: "rabochieChasy", label: "Часы работы",    width: "130px" },
 ];
 
-// Simple editable table for single-value settings
-const SimpleSettingsTable = ({
+// Фиксированное одиночное значение
+const FixedValueTab = ({
+  label,
+  unit,
+  value,
+  onChange,
+}: {
+  label: string;
+  unit?: string;
+  value: string;
+  onChange: (v: string) => void;
+}) => (
+  <div className="px-8 py-10 flex flex-col items-start gap-4">
+    <label className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+      {label}{unit ? ` (${unit})` : ""}
+    </label>
+    <div className="flex items-center gap-3">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-48 px-4 py-3 text-2xl font-bold text-gray-800 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-colors text-center"
+        placeholder="0"
+      />
+      {unit && <span className="text-lg text-gray-400 font-semibold">{unit}</span>}
+    </div>
+  </div>
+);
+
+// Таблица с процентами (с наименованием и значением)
+const PercentTable = ({
   rows,
   onUpdate,
   onAdd,
@@ -89,9 +117,8 @@ const SimpleSettingsTable = ({
 }) => {
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
   const COLS: { key: keyof Omit<SimpleRow, "id">; label: string; width: string }[] = [
-    { key: "nazvanie",   label: "Наименование",   width: "260px" },
-    { key: "znachenie",  label: `Значение${unit ? ` (${unit})` : ""}`, width: "140px" },
-    { key: "primechanie",label: "Примечание",      width: "220px" },
+    { key: "nazvanie",  label: "Наименование",                          width: "300px" },
+    { key: "znachenie", label: `Значение${unit ? ` (${unit})` : ""}`,  width: "160px" },
   ];
 
   const handleKeyDown = (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
@@ -108,16 +135,13 @@ const SimpleSettingsTable = ({
   return (
     <>
       <div className="px-5 py-3 border-b border-gray-200 flex justify-end">
-        <button
-          onClick={onAdd}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-        >
+        <button onClick={onAdd} className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
           <Icon name="Plus" size={14} />
           Добавить строку
         </button>
       </div>
       <div className="overflow-x-auto">
-        <table className="border-collapse text-xs w-full">
+        <table className="border-collapse text-xs" style={{ minWidth: "400px" }}>
           <thead>
             <tr style={{ backgroundColor: "#1a3a6b" }}>
               <th className="border border-blue-900 px-1 py-1.5 text-white text-center" style={{ width: "28px" }}>№</th>
@@ -181,29 +205,26 @@ const Settings = () => {
   const [routes, setRoutes] = useState<Route[]>([emptyRoute(), emptyRoute()]);
   const [routeActiveCell, setRouteActiveCell] = useState<{ rowId: number; col: string } | null>(null);
 
-  // Simple-table states
-  const [stoimostProezda,   setStoimostProezda]   = useState<SimpleRow[]>([emptySimpleRow()]);
-  const [stoimostTopliva,   setStoimostTopliva]   = useState<SimpleRow[]>([emptySimpleRow()]);
+  // Фиксированные одиночные значения
+  const [stoimostProezda,  setStoimostProezda]  = useState("");
+  const [stoimostTopliva,  setStoimostTopliva]  = useState("");
+  const [zpVodDezhurki,    setZpVodDezhurki]    = useState("");
+  const [dezhDt,           setDezhDt]           = useState("");
+  const [hozNuzhdyGarazh,  setHozNuzhdyGarazh]  = useState("");
+
+  // Процентные таблицы (наименование + значение)
   const [procentVodBezCond, setProcentVodBezCond] = useState<SimpleRow[]>([emptySimpleRow()]);
   const [procentVodSCond,   setProcentVodSCond]   = useState<SimpleRow[]>([emptySimpleRow()]);
   const [procentCond,       setProcentCond]       = useState<SimpleRow[]>([emptySimpleRow()]);
-  const [zpVodDezhurki,     setZpVodDezhurki]     = useState<SimpleRow[]>([emptySimpleRow()]);
-  const [dezhDt,            setDezhDt]            = useState<SimpleRow[]>([emptySimpleRow()]);
-  const [hozNuzhdyGarazh,   setHozNuzhdyGarazh]  = useState<SimpleRow[]>([emptySimpleRow()]);
 
-  const simpleMap: Record<string, { rows: SimpleRow[]; setRows: React.Dispatch<React.SetStateAction<SimpleRow[]>> }> = {
-    stoimostProezda:   { rows: stoimostProezda,   setRows: setStoimostProezda   },
-    stoimostTopliva:   { rows: stoimostTopliva,   setRows: setStoimostTopliva   },
+  const percentMap: Record<string, { rows: SimpleRow[]; setRows: React.Dispatch<React.SetStateAction<SimpleRow[]>> }> = {
     procentVodBezCond: { rows: procentVodBezCond, setRows: setProcentVodBezCond },
     procentVodSCond:   { rows: procentVodSCond,   setRows: setProcentVodSCond   },
     procentCond:       { rows: procentCond,       setRows: setProcentCond       },
-    zpVodDezhurki:     { rows: zpVodDezhurki,     setRows: setZpVodDezhurki     },
-    dezhDt:            { rows: dezhDt,            setRows: setDezhDt            },
-    hozNuzhdyGarazh:   { rows: hozNuzhdyGarazh,   setRows: setHozNuzhdyGarazh  },
   };
 
-  const makeSimpleHandlers = (key: string) => {
-    const { rows, setRows } = simpleMap[key];
+  const makePercentHandlers = (key: string) => {
+    const { rows, setRows } = percentMap[key];
     return {
       rows,
       onUpdate: (id: number, col: keyof SimpleRow, val: string) => {
@@ -371,11 +392,28 @@ const Settings = () => {
             </>
           )}
 
-          {/* Simple settings tabs */}
-          {Object.keys(simpleMap).includes(tab) && (
-            <SimpleSettingsTable
-              {...makeSimpleHandlers(tab)}
-              unit={currentTabMeta?.unit}
+          {/* Фиксированные вкладки */}
+          {tab === "stoimostProezda" && (
+            <FixedValueTab label="Стоимость проезда" unit="₽" value={stoimostProezda} onChange={(v) => { setStoimostProezda(v); setSaved(false); }} />
+          )}
+          {tab === "stoimostTopliva" && (
+            <FixedValueTab label="Стоимость топлива" unit="₽/л" value={stoimostTopliva} onChange={(v) => { setStoimostTopliva(v); setSaved(false); }} />
+          )}
+          {tab === "zpVodDezhurki" && (
+            <FixedValueTab label="ЗП водителя дежурки" unit="₽" value={zpVodDezhurki} onChange={(v) => { setZpVodDezhurki(v); setSaved(false); }} />
+          )}
+          {tab === "dezhDt" && (
+            <FixedValueTab label="Дежурка ДТ" unit="л" value={dezhDt} onChange={(v) => { setDezhDt(v); setSaved(false); }} />
+          )}
+          {tab === "hozNuzhdyGarazh" && (
+            <FixedValueTab label="Хоз. нужды гараж" unit="₽" value={hozNuzhdyGarazh} onChange={(v) => { setHozNuzhdyGarazh(v); setSaved(false); }} />
+          )}
+
+          {/* Процентные вкладки */}
+          {Object.keys(percentMap).includes(tab) && (
+            <PercentTable
+              {...makePercentHandlers(tab)}
+              unit="%"
             />
           )}
         </div>
