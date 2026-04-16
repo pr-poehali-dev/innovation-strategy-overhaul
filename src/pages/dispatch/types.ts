@@ -4,12 +4,12 @@ export interface NaryadRow {
   bortovoy: string;
   gos: string;
   marka: string;
+  garazhny: string;
   marshrut: string;
   fio: string;
   fioKond: string;
-  garazhny: string;
   putevoy: string;
-  terminal: string;      // номер/название терминала
+  terminal: string;
   podrabotka: boolean;
   biletov: string;
 }
@@ -29,10 +29,10 @@ export const emptyRow = (): NaryadRow => ({
   bortovoy: "",
   gos: "",
   marka: "",
+  garazhny: "",
   marshrut: "",
   fio: "",
   fioKond: "",
-  garazhny: "",
   putevoy: "",
   terminal: "",
   podrabotka: false,
@@ -48,9 +48,11 @@ export const DEFAULT_SETTINGS: NormaSettings = {
   procentCondS: "15",
 };
 
+// Порядок: Гаражный → Маршрут → Терминал → Путевой лист
 export const TEXT_COLS = [
   { key: "garazhny", label: "Гаражный №",   width: "90px"  },
   { key: "marshrut", label: "Маршрут",      width: "90px"  },
+  { key: "terminal", label: "Терминал",     width: "120px" },
   { key: "putevoy",  label: "Путевой лист", width: "110px" },
 ] as const;
 

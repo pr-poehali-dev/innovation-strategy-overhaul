@@ -14,6 +14,8 @@ interface ProdazhiRow {
   kolBil: string;
   valid: string;
   qr: string;
+  podVod: string;   // подработка водителя, ₽
+  podCond: string;  // подработка кондуктора, ₽
 }
 
 type ColKey = keyof Omit<ProdazhiRow, "id">;
@@ -28,12 +30,15 @@ const COLUMNS: { key: ColKey; label: string; width: string; numeric?: boolean }[
   { key: "kolBil",  label: "Кол. бил",        width: "70px",  numeric: true },
   { key: "valid",   label: "Валид",           width: "65px",  numeric: true },
   { key: "qr",      label: "QR",              width: "60px",  numeric: true },
+  { key: "podVod",  label: "Вод. подр., ₽",  width: "90px",  numeric: true },
+  { key: "podCond", label: "Конд. подр., ₽", width: "90px",  numeric: true },
 ];
 
 const emptyRow = (): ProdazhiRow => ({
   id: Date.now() + Math.random(),
   bort: "", marGr: "", fioVod: "", fioCond: "",
   dt: "", reysy: "", kolBil: "", valid: "", qr: "",
+  podVod: "", podCond: "",
 });
 
 const toNum = (v: string) => parseFloat((v || "0").replace(",", ".")) || 0;
@@ -67,11 +72,13 @@ const Prodazhi = () => {
         const existing = existingByBort.get(e.bortovoy);
         return {
           ...(existing ?? emptyRow()),
-          bort:    e.bortovoy,
-          marGr:   e.marshrut,
-          fioVod:  e.fioVod,
-          fioCond: e.fioKond || "без",
-          kolBil:  e.biletov || (existing?.kolBil ?? ""),
+          bort:     e.bortovoy,
+          marGr:    e.marshrut,
+          fioVod:   e.fioVod,
+          fioCond:  e.fioKond || "без",
+          kolBil:   e.biletov || (existing?.kolBil ?? ""),
+          podVod:   e.podrabotkaVod  > 0 ? String(Math.round(e.podrabotkaVod))  : (existing?.podVod  ?? ""),
+          podCond:  e.podrabotkaKond > 0 ? String(Math.round(e.podrabotkaKond)) : (existing?.podCond ?? ""),
         };
       });
     });
@@ -194,8 +201,9 @@ const Prodazhi = () => {
       );
     }
 
+    const isPod = col.key === "podVod" || col.key === "podCond";
     return (
-      <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
+      <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width, background: isPod ? "#fff8f0" : undefined }}>
         <input
           type="text"
           value={row[col.key] as string}
@@ -206,8 +214,9 @@ const Prodazhi = () => {
           autoFocus={isActive}
           disabled={isOff && (col.key === "dt" || col.key === "reysy" || col.key === "kolBil" || col.key === "valid" || col.key === "qr")}
           className={[
-            "w-full h-6 px-1 text-xs text-gray-800 bg-transparent outline-none border-2 transition-colors text-center",
+            "w-full h-6 px-1 text-xs bg-transparent outline-none border-2 transition-colors text-center",
             isActive ? "border-blue-500 bg-blue-50" : "border-transparent",
+            isPod ? "text-orange-700 font-semibold" : "text-gray-800",
             isOff ? "text-gray-400" : "",
           ].join(" ")}
           placeholder=""
