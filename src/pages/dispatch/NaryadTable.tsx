@@ -8,7 +8,7 @@ import {
   fmt,
 } from "./types";
 
-// SelectCell — вне компонента, чтобы не нарушать правила хуков
+// SelectCell — определён вне NaryadTable (правила хуков)
 const SelectCell = ({
   value,
   options,
