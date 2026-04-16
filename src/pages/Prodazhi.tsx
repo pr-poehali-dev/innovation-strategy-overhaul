@@ -4,6 +4,16 @@ import NavBar from "@/components/NavBar";
 import { useAppStore, getGrafiki } from "@/store/appStore";
 import { calcPodrabotka } from "@/pages/dispatch/types";
 
+const LS_PRODAZHI = "dat_prodazhi_v1";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function loadProdazhi(): Record<string, any> {
+  try { const r = localStorage.getItem(LS_PRODAZHI); return r ? JSON.parse(r) : {}; } catch (e) { console.warn(e); return {}; }
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function saveProdazhi(data: Record<string, any>): void {
+  try { localStorage.setItem(LS_PRODAZHI, JSON.stringify(data)); } catch (e) { console.warn(e); }
+}
+
 interface ProdazhiRow {
   id: number;
   bort: string;
@@ -64,14 +74,34 @@ const Prodazhi = () => {
   const driverList = employees.filter((e) => e.dolzhnost === "Водитель"  && e.status === "active");
   const condList   = employees.filter((e) => e.dolzhnost === "Кондуктор" && e.status === "active");
 
-  // Диспетчер
-  const [dispFio, setDispFio] = useState("");
+  // Загрузка сохранённых данных
+  const [allData, setAllData] = useState<Record<string, { rows: ProdazhiRow[]; dispFio: string }>>(() => loadProdazhi());
+
   const [selectedKey, setSelectedKey] = useState(() => toDateKey(new Date()));
   const [reportDate, setReportDate] = useState(today);
 
+  // Диспетчер и строки — берём из сохранённых данных за выбранный день
+  const [dispFio, setDispFio] = useState(() => allData[toDateKey(new Date())]?.dispFio ?? "");
   const [rows, setRows] = useState<ProdazhiRow[]>(() =>
-    Array.from({ length: 10 }, emptyRow)
+    allData[toDateKey(new Date())]?.rows ?? Array.from({ length: 10 }, emptyRow)
   );
+
+  // При смене даты — загружаем сохранённые данные
+  useEffect(() => {
+    const saved = allData[selectedKey];
+    setRows(saved?.rows ?? Array.from({ length: 10 }, emptyRow));
+    setDispFio(saved?.dispFio ?? "");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey]);
+
+  // Сохранение при каждом изменении строк или диспетчера
+  useEffect(() => {
+    setAllData((prev) => {
+      const updated = { ...prev, [selectedKey]: { rows, dispFio } };
+      saveProdazhi(updated);
+      return updated;
+    });
+  }, [rows, dispFio, selectedKey]);
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
 
   // Строки наряда за выбранный день

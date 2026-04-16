@@ -14,6 +14,7 @@ import Vedomost from "./pages/Vedomost";
 import Ts from "./pages/Ts";
 import Terminals from "./pages/Terminals";
 import Bdd from "./pages/Bdd";
+import Tb from "./pages/Tb";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/ts" element={<Ts />} />
             <Route path="/terminals" element={<Terminals />} />
             <Route path="/bdd" element={<Bdd />} />
+            <Route path="/tb" element={<Tb />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

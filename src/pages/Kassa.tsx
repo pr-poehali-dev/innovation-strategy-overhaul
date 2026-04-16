@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 import { useAppStore } from "@/store/appStore";
@@ -13,6 +13,16 @@ import ChastVydacha from "./kassa/ChastVydacha";
 
 const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 
+const LS_KASSA = "dat_kassa_v1";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function loadKassa(): Record<string, any> {
+  try { const r = localStorage.getItem(LS_KASSA); return r ? JSON.parse(r) : {}; } catch (e) { console.warn(e); return {}; }
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function saveKassa(data: Record<string, any>): void {
+  try { localStorage.setItem(LS_KASSA, JSON.stringify(data)); } catch (e) { console.warn(e); }
+}
+
 const toDateKey = (d: Date): string => {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -23,13 +33,38 @@ const toDateKey = (d: Date): string => {
 const Kassa = () => {
   const { weeklyNaryady, naryadSettings, employees } = useAppStore();
 
+  const [allData, setAllData] = useState<Record<string, { rows: KassaRow[]; vyplaty: VyplataRow[] }>>(() => loadKassa());
+
   const [tab, setTab] = useState<"kassa" | "chast">("kassa");
   const [selectedKey, setSelectedKey] = useState(() => toDateKey(new Date()));
-  const [rows, setRows] = useState<KassaRow[]>(() => Array.from({ length: 12 }, () => emptyRow()));
-  const [vyplaty, setVyplaty] = useState<VyplataRow[]>(() => Array.from({ length: 10 }, emptyVyp));
+  const [rows, setRows] = useState<KassaRow[]>(() => {
+    const saved = loadKassa()[toDateKey(new Date())];
+    return saved?.rows ?? Array.from({ length: 12 }, () => emptyRow());
+  });
+  const [vyplaty, setVyplaty] = useState<VyplataRow[]>(() => {
+    const saved = loadKassa()[toDateKey(new Date())];
+    return saved?.vyplaty ?? Array.from({ length: 10 }, emptyVyp);
+  });
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
   const [activeVyp, setActiveVyp] = useState<{ rowId: number; col: string } | null>(null);
-  const prevKeyRef = useRef<string>("");
+
+
+  // При смене даты — загружаем сохранённые данные
+  useEffect(() => {
+    const saved = allData[selectedKey];
+    setRows(saved?.rows ?? Array.from({ length: 12 }, () => emptyRow()));
+    setVyplaty(saved?.vyplaty ?? Array.from({ length: 10 }, emptyVyp));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey]);
+
+  // Сохранение при каждом изменении
+  useEffect(() => {
+    setAllData((prev) => {
+      const updated = { ...prev, [selectedKey]: { rows, vyplaty } };
+      saveKassa(updated);
+      return updated;
+    });
+  }, [rows, vyplaty, selectedKey]);
 
   const [chastRows, setChastRows] = useState<ChastRow[]>(() =>
     employees
@@ -45,8 +80,6 @@ const Kassa = () => {
   // Синхронизация напрямую из weeklyNaryady — не зависит от открытия Dispatch
   useEffect(() => {
     if (!naryadRows.length) return;
-    prevKeyRef.current = selectedKey;
-
     setRows((currentRows) => {
       const existingByBort = new Map(currentRows.map((r) => [r.bort, r]));
       const syncedRows: KassaRow[] = naryadRows.map((r) => {

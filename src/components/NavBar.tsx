@@ -11,6 +11,7 @@ const LINKS = [
   { to: "/ts",        label: "ТС",          icon: "Bus"            },
   { to: "/terminals", label: "Терминалы",  icon: "CreditCard"     },
   { to: "/bdd",      label: "БДД",        icon: "ShieldAlert"   },
+  { to: "/tb",       label: "Журнал ТБ",  icon: "ClipboardCheck" },
   { to: "/vedomost", label: "Ведомость",  icon: "FileText"      },
   { to: "/settings", label: "Настройки",  icon: "Settings"      },
 ];
