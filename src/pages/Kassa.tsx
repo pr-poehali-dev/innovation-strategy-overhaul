@@ -3,8 +3,10 @@ import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 import { useAppStore } from "@/store/appStore";
 
+// ─── Типы ──────────────────────────────────────────────────────────────────
 interface KassaRow {
   id: number;
+  type: "route" | "disp" | "empty"; // тип строки
   mar: string;
   bort: string;
   fioVod: string;
@@ -24,218 +26,383 @@ interface KassaRow {
   itogo: string;
 }
 
-const COLUMNS: { key: keyof Omit<KassaRow, "id">; label: string; width: string }[] = [
-  { key: "mar",        label: "№ мар",           width: "50px"  },
-  { key: "bort",       label: "Борт №",           width: "60px"  },
-  { key: "fioVod",     label: "ФИО водитель",     width: "140px" },
-  { key: "fioCond",    label: "ФИО кондуктор",    width: "140px" },
-  { key: "prodBilety", label: "Проданные билеты", width: "110px" },
-  { key: "kolBil",     label: "Кол. бил",         width: "70px"  },
-  { key: "beznal",     label: "Безнал",           width: "70px"  },
-  { key: "qr",         label: "QR код",           width: "70px"  },
-  { key: "viruchka",   label: "Выручка",          width: "80px"  },
-  { key: "obed",       label: "Обед",             width: "60px"  },
-  { key: "rashodDt",   label: "Расход ДТ",        width: "80px"  },
-  { key: "chek",       label: "Чек",              width: "60px"  },
-  { key: "vozvrat",    label: "Возврат",          width: "70px"  },
-  { key: "podrVod",    label: "Подр. вод",        width: "80px"  },
-  { key: "podrCond",   label: "Подр. конд",       width: "80px"  },
-  { key: "vPlus",      label: "В плюс",           width: "70px"  },
-  { key: "itogo",      label: "ИТОГО",            width: "80px"  },
+interface VyplataRow {
+  id: number;
+  fio: string;
+  vid: string;   // ДТ | ЗП | ХОЗ | ...
+  summa: string;
+  kol: string;
+  itogo: string; // авто = summa * kol
+}
+
+// ─── Константы ─────────────────────────────────────────────────────────────
+// Цвета маршрутов — по первой цифре марш. группы
+const ROUTE_COLORS: Record<string, string> = {
+  "1":  "#e8f4e8", // зелёный
+  "3":  "#e8ecf8", // голубой
+  "6":  "#fef9e8", // жёлтый
+  "15": "#fdeef0", // розовый
+  "24": "#f0ebe8", // персиковый
+};
+
+const getRouteColor = (mar: string) => {
+  const grp = mar.split("/")[0].trim();
+  return ROUTE_COLORS[grp] ?? "#ffffff";
+};
+
+const MAIN_COLS: { key: keyof Omit<KassaRow, "id" | "type">; label: string; width: string; numeric?: boolean }[] = [
+  { key: "mar",        label: "№ мар",             width: "55px"  },
+  { key: "bort",       label: "Борт №",             width: "55px"  },
+  { key: "fioVod",     label: "ФИО водитель",       width: "130px" },
+  { key: "fioCond",    label: "ФИО кондуктор",      width: "100px" },
+  { key: "prodBilety", label: "Проданные билеты",   width: "95px"  },
+  { key: "kolBil",     label: "Кол. бил",           width: "60px",  numeric: true },
+  { key: "beznal",     label: "Безнал",             width: "65px",  numeric: true },
+  { key: "qr",         label: "QR код",             width: "60px",  numeric: true },
+  { key: "viruchka",   label: "Выручка",            width: "75px",  numeric: true },
+  { key: "obed",       label: "Обед",               width: "55px",  numeric: true },
+  { key: "rashodDt",   label: "Расх. ДТ",           width: "65px",  numeric: true },
+  { key: "chek",       label: "Чек",                width: "55px",  numeric: true },
+  { key: "vozvrat",    label: "Возврат",            width: "65px",  numeric: true },
+  { key: "podrVod",    label: "Подр. вод",          width: "70px",  numeric: true },
+  { key: "podrCond",   label: "Подр. конд",         width: "70px",  numeric: true },
+  { key: "vPlus",      label: "В плюс",             width: "65px",  numeric: true },
+  { key: "itogo",      label: "ИТОГО",              width: "75px",  numeric: true },
 ];
 
-const emptyRow = (): KassaRow => ({
+const VYP_COLS: { key: keyof Omit<VyplataRow, "id">; label: string; width: string }[] = [
+  { key: "fio",   label: "ФИО",          width: "110px" },
+  { key: "vid",   label: "Вид выплаты",  width: "90px"  },
+  { key: "summa", label: "Сумма",        width: "70px"  },
+  { key: "kol",   label: "Кол",         width: "50px"  },
+  { key: "itogo", label: "Итого",        width: "75px"  },
+];
+
+const toNum = (v: string) => parseFloat((v || "0").replace(",", ".")) || 0;
+
+const emptyRow = (type: KassaRow["type"] = "route"): KassaRow => ({
   id: Date.now() + Math.random(),
+  type,
   mar: "", bort: "", fioVod: "", fioCond: "",
   prodBilety: "", kolBil: "", beznal: "", qr: "",
   viruchka: "", obed: "", rashodDt: "", chek: "",
   vozvrat: "", podrVod: "", podrCond: "", vPlus: "", itogo: "",
 });
 
-const today = new Date().toLocaleDateString("ru-RU", {
-  day: "2-digit", month: "2-digit", year: "numeric",
+const emptyVyp = (): VyplataRow => ({
+  id: Date.now() + Math.random(),
+  fio: "", vid: "", summa: "", kol: "", itogo: "",
 });
 
+const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+// ─── Компонент ─────────────────────────────────────────────────────────────
 const Kassa = () => {
   const { naryadEntries } = useAppStore();
 
-  const [rows, setRows] = useState<KassaRow[]>([
-    emptyRow(), emptyRow(), emptyRow(), emptyRow(), emptyRow(),
-  ]);
+  const [rows, setRows] = useState<KassaRow[]>(() => Array.from({ length: 12 }, () => emptyRow()));
+  const [vyplaty, setVyplaty] = useState<VyplataRow[]>(() => Array.from({ length: 10 }, emptyVyp));
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
+  const [activeVyp, setActiveVyp] = useState<{ rowId: number; col: string } | null>(null);
   const [imported, setImported] = useState(false);
 
-  // При изменении naryadEntries в сторе — предлагать импорт
   const handleImport = () => {
-    if (naryadEntries.length === 0) return;
-    const newRows: KassaRow[] = naryadEntries.map((e) => ({
-      id: Date.now() + Math.random(),
-      mar:        e.marshrut,
-      bort:       e.bortovoy,
-      fioVod:     e.fioVod,
-      fioCond:    e.fioKond,
-      prodBilety: "",
-      kolBil:     e.biletov,
-      beznal:     "",
-      qr:         "",
-      viruchka:   "",
-      obed:       "",
-      rashodDt:   "",
-      chek:       "",
-      vozvrat:    "",
-      podrVod:    e.podrabotkaVod > 0 ? e.podrabotkaVod.toFixed(2) : "",
-      podrCond:   e.podrabotkaKond > 0 ? e.podrabotkaKond.toFixed(2) : "",
-      vPlus:      "",
-      itogo:      "",
+    if (!naryadEntries.length) return;
+    const newRows = naryadEntries.map((e) => ({
+      ...emptyRow(),
+      mar:      e.marshrut,
+      bort:     e.bortovoy,
+      fioVod:   e.fioVod,
+      fioCond:  e.fioKond || "без",
+      kolBil:   e.biletov,
+      podrVod:  e.podrabotkaVod  > 0 ? String(Math.round(e.podrabotkaVod))  : "",
+      podrCond: e.podrabotkaKond > 0 ? String(Math.round(e.podrabotkaKond)) : "",
     }));
     setRows(newRows);
     setImported(true);
     setTimeout(() => setImported(false), 3000);
   };
 
-  useEffect(() => {
-    if (naryadEntries.length > 0) setImported(false);
-  }, [naryadEntries]);
+  useEffect(() => { if (naryadEntries.length) setImported(false); }, [naryadEntries]);
 
-  const updateCell = (id: number, col: keyof KassaRow, value: string) => {
+  // Обновление строк кассы
+  const updateCell = (id: number, col: keyof KassaRow, value: string) =>
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
-  };
 
-  const addRow = () => setRows((prev) => [...prev, emptyRow()]);
+  const addRow = (type: KassaRow["type"] = "route") =>
+    setRows((prev) => [...prev, emptyRow(type)]);
 
-  const deleteRow = (id: number) => {
-    if (rows.length === 1) return;
+  const deleteRow = (id: number) =>
     setRows((prev) => prev.filter((r) => r.id !== id));
-  };
 
   const handleKeyDown = (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
-    if (e.key === "Tab" || e.key === "Enter") {
-      e.preventDefault();
-      if (colIdx + 1 < COLUMNS.length) {
-        setActiveCell({ rowId: rows[rowIdx].id, col: COLUMNS[colIdx + 1].key });
-      } else if (rowIdx + 1 < rows.length) {
-        setActiveCell({ rowId: rows[rowIdx + 1].id, col: COLUMNS[0].key });
-      } else {
-        addRow();
-        setTimeout(() => {
-          setActiveCell({ rowId: rows[rows.length - 1]?.id, col: COLUMNS[0].key });
-        }, 0);
-      }
+    if (e.key !== "Tab" && e.key !== "Enter") return;
+    e.preventDefault();
+    const cols = MAIN_COLS;
+    if (colIdx + 1 < cols.length) {
+      setActiveCell({ rowId: rows[rowIdx].id, col: cols[colIdx + 1].key });
+    } else if (rowIdx + 1 < rows.length) {
+      setActiveCell({ rowId: rows[rowIdx + 1].id, col: cols[0].key });
     }
   };
 
-  const numericCols: (keyof KassaRow)[] = [
-    "kolBil", "beznal", "qr", "viruchka", "obed",
-    "rashodDt", "chek", "vozvrat", "podrVod", "podrCond", "vPlus", "itogo",
-  ];
+  // Обновление выплат
+  const updateVyp = (id: number, col: keyof VyplataRow, val: string) => {
+    setVyplaty((prev) => prev.map((v) => {
+      if (v.id !== id) return v;
+      const updated = { ...v, [col]: val };
+      if (col === "summa" || col === "kol") {
+        const s = toNum(col === "summa" ? val : updated.summa);
+        const k = toNum(col === "kol"   ? val : updated.kol);
+        updated.itogo = s && k ? String(Math.round(s * k)) : "";
+      }
+      return updated;
+    }));
+  };
 
+  const addVyp = () => setVyplaty((prev) => [...prev, emptyVyp()]);
+  const deleteVyp = (id: number) => setVyplaty((prev) => prev.filter((v) => v.id !== id));
+
+  const handleVypKeyDown = (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
+    if (e.key !== "Tab" && e.key !== "Enter") return;
+    e.preventDefault();
+    const cols = VYP_COLS;
+    if (colIdx + 1 < cols.length) {
+      setActiveVyp({ rowId: vyplaty[rowIdx].id, col: cols[colIdx + 1].key });
+    } else if (rowIdx + 1 < vyplaty.length) {
+      setActiveVyp({ rowId: vyplaty[rowIdx + 1].id, col: cols[0].key });
+    }
+  };
+
+  // Итоги основной таблицы
+  const numericKeys = MAIN_COLS.filter((c) => c.numeric).map((c) => c.key);
   const getSum = (col: keyof KassaRow) =>
-    rows.reduce((acc, r) => acc + (parseFloat((r[col] as string).replace(",", ".")) || 0), 0);
+    rows.reduce((acc, r) => acc + toNum(r[col] as string), 0);
+
+  // Итог выплат
+  const vypItogo = vyplaty.reduce((s, v) => s + toNum(v.itogo), 0);
+
+  // Строки — разбиваем на обычные и диспетчерские (тип disp)
+  const routeRows = rows.filter((r) => r.type !== "disp");
+  const dispRows  = rows.filter((r) => r.type === "disp");
+
+  const renderCell = (row: KassaRow, col: typeof MAIN_COLS[number], rowIdx: number, colIdx: number) => {
+    const isActive = activeCell?.rowId === row.id && activeCell?.col === col.key;
+    const isPodr   = col.key === "podrVod" || col.key === "podrCond" || col.key === "rashodDt";
+    return (
+      <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
+        <input
+          type="text"
+          value={row[col.key] as string}
+          onChange={(e) => updateCell(row.id, col.key, e.target.value)}
+          onFocus={() => setActiveCell({ rowId: row.id, col: col.key })}
+          onBlur={() => setActiveCell(null)}
+          onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
+          autoFocus={isActive}
+          className={[
+            "w-full h-6 px-1 text-gray-800 bg-transparent outline-none border-2 transition-colors text-center",
+            isActive ? "border-blue-500 bg-blue-50" : "border-transparent",
+            isPodr ? "text-orange-700" : "",
+            col.key === "itogo" ? "font-bold" : "",
+          ].join(" ")}
+          placeholder=""
+        />
+      </td>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
       <NavBar title="Касса" />
 
-      <div className="px-4 py-5 max-w-[1700px] mx-auto">
+      <div className="px-3 py-4 max-w-[1920px] mx-auto">
         <div className="bg-white border border-gray-300 shadow-sm">
-          <div className="border-b border-gray-300 px-5 py-3 flex items-center justify-between print:hidden">
+
+          {/* Шапка */}
+          <div className="border-b border-gray-300 px-4 py-3 flex items-center justify-between print:hidden">
             <div>
               <h1 className="text-lg font-bold text-gray-800 uppercase tracking-wide">Кассовый отчёт</h1>
               <p className="text-xs text-gray-500 mt-0.5">ООО «Дальавтотранс» · {today}</p>
             </div>
             <div className="flex gap-2">
               {naryadEntries.length > 0 && (
-                <button
-                  onClick={handleImport}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors ${
-                    imported ? "bg-green-600 text-white" : "bg-indigo-600 text-white hover:bg-indigo-700"
-                  }`}
-                >
+                <button onClick={handleImport}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors ${imported ? "bg-green-600 text-white" : "bg-indigo-600 text-white hover:bg-indigo-700"}`}>
                   <Icon name={imported ? "Check" : "Download"} size={14} />
                   {imported ? "Загружено!" : `Из наряда (${naryadEntries.length})`}
                 </button>
               )}
-              <button
-                onClick={addRow}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-              >
-                <Icon name="Plus" size={14} />
-                Строка
+              <button onClick={() => addRow("route")}
+                className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700">
+                <Icon name="Plus" size={12} /> Строка
               </button>
-              <button
-                onClick={() => window.print()}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-              >
-                <Icon name="Printer" size={14} />
-                Печать
+              <button onClick={() => addRow("disp")}
+                className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-amber-500 text-white rounded hover:bg-amber-600">
+                <Icon name="Plus" size={12} /> Диспетчер
+              </button>
+              <button onClick={() => window.print()}
+                className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
+                <Icon name="Printer" size={12} /> Печать
               </button>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="border-collapse text-xs" style={{ minWidth: "100%" }}>
-              <thead>
-                <tr style={{ backgroundColor: "#1a3a6b" }}>
-                  <th className="border border-blue-900 px-1 py-1 text-white font-semibold text-center" style={{ width: "28px", minWidth: "28px" }}>№</th>
-                  {COLUMNS.map((col) => (
-                    <th key={col.key} className="border border-blue-900 px-1 py-1 text-white font-semibold text-center leading-tight" style={{ width: col.width, minWidth: col.width }}>
-                      {col.label}
-                    </th>
-                  ))}
-                  <th className="border border-blue-900 px-1 py-1 text-white font-semibold print:hidden" style={{ width: "28px" }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, rowIdx) => (
-                  <tr key={row.id} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50"}>
-                    <td className="border border-gray-300 text-center text-gray-400 select-none py-0" style={{ width: "28px" }}>
-                      {rowIdx + 1}
-                    </td>
-                    {COLUMNS.map((col, colIdx) => {
-                      const isActive = activeCell?.rowId === row.id && activeCell?.col === col.key;
-                      return (
-                        <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
-                          <input
-                            type="text"
-                            value={row[col.key] as string}
-                            onChange={(e) => updateCell(row.id, col.key, e.target.value)}
-                            onFocus={() => setActiveCell({ rowId: row.id, col: col.key })}
-                            onBlur={() => setActiveCell(null)}
-                            onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
-                            autoFocus={isActive}
-                            className={`w-full h-7 px-1 text-gray-800 bg-transparent outline-none border-2 ${
-                              isActive ? "border-blue-500 bg-blue-50" : "border-transparent"
-                            } transition-colors`}
-                            placeholder=""
-                          />
+          {/* Основной блок: таблица + выплаты рядом */}
+          <div className="flex gap-0 overflow-x-auto">
+
+            {/* ── Левая таблица кассы ── */}
+            <div className="flex-shrink-0">
+              <table className="border-collapse text-xs" style={{ tableLayout: "fixed" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#1a3a6b" }}>
+                    <th className="border border-blue-900 px-1 py-1 text-white text-center" style={{ width: "24px" }}>№</th>
+                    {MAIN_COLS.map((col) => (
+                      <th key={col.key} className="border border-blue-900 px-1 py-1 text-white font-semibold text-center leading-tight"
+                        style={{ width: col.width, minWidth: col.width }}>
+                        {col.label}
+                      </th>
+                    ))}
+                    <th className="border border-blue-900 px-1 py-1 print:hidden" style={{ width: "22px" }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Маршрутные строки */}
+                  {routeRows.map((row, rowIdx) => {
+                    const bg = row.mar ? getRouteColor(row.mar) : rowIdx % 2 === 0 ? "#fff" : "#f5f8ff";
+                    return (
+                      <tr key={row.id} style={{ backgroundColor: bg }}>
+                        <td className="border border-gray-300 text-center text-gray-400 select-none text-xs" style={{ width: "24px" }}>
+                          {rowIdx + 1}
                         </td>
-                      );
-                    })}
-                    <td className="border border-gray-300 text-center print:hidden" style={{ width: "28px" }}>
-                      <button onClick={() => deleteRow(row.id)} className="text-gray-300 hover:text-red-500 transition-colors p-0.5">
-                        <Icon name="X" size={12} />
+                        {MAIN_COLS.map((col, colIdx) => renderCell(row, col, rowIdx, colIdx))}
+                        <td className="border border-gray-300 text-center print:hidden" style={{ width: "22px" }}>
+                          <button onClick={() => deleteRow(row.id)} className="text-gray-300 hover:text-red-500 p-0.5">
+                            <Icon name="X" size={11} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {/* Диспетчерские строки */}
+                  {dispRows.length > 0 && (
+                    <tr>
+                      <td colSpan={MAIN_COLS.length + 2} className="border-0 p-0 bg-amber-50">
+                        <table className="border-collapse text-xs w-full">
+                          <tbody>
+                            {dispRows.map((row, rowIdx) => (
+                              <tr key={row.id} style={{ backgroundColor: "#fffbe6" }}>
+                                <td className="border border-gray-300 text-center text-amber-600 font-semibold select-none px-1" style={{ width: "24px" }}>
+                                  Д
+                                </td>
+                                {MAIN_COLS.map((col, colIdx) => renderCell(row, col, routeRows.length + rowIdx, colIdx))}
+                                <td className="border border-gray-300 text-center print:hidden" style={{ width: "22px" }}>
+                                  <button onClick={() => deleteRow(row.id)} className="text-gray-300 hover:text-red-500 p-0.5">
+                                    <Icon name="X" size={11} />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                  )}
+
+                  {/* Итоговая строка */}
+                  <tr style={{ backgroundColor: "#f97316" }}>
+                    <td className="border border-orange-400 px-1 py-1 text-center font-bold text-white text-xs" style={{ width: "24px" }}>Σ</td>
+                    {MAIN_COLS.map((col) => (
+                      <td key={col.key} className="border border-orange-400 px-1 py-1 text-center font-bold text-white text-xs" style={{ width: col.width }}>
+                        {col.numeric ? (() => { const s = getSum(col.key); return s !== 0 ? s.toLocaleString("ru-RU") : ""; })() : ""}
+                      </td>
+                    ))}
+                    <td className="border border-orange-400 print:hidden" style={{ width: "22px" }}></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* ── Правая панель: выплаты ── */}
+            <div className="flex-shrink-0 border-l-2 border-gray-400">
+              <table className="border-collapse text-xs" style={{ tableLayout: "fixed" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#7b3f00" }}>
+                    <th className="border border-amber-900 px-1 py-1 text-white text-center" style={{ width: "22px" }}>№</th>
+                    {VYP_COLS.map((col) => (
+                      <th key={col.key} className="border border-amber-900 px-1 py-1 text-white font-semibold text-center leading-tight"
+                        style={{ width: col.width, minWidth: col.width }}>
+                        {col.label}
+                      </th>
+                    ))}
+                    <th className="border border-amber-900 px-1 py-1 print:hidden" style={{ width: "22px" }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {vyplaty.map((vRow, rowIdx) => (
+                    <tr key={vRow.id} className={rowIdx % 2 === 0 ? "bg-amber-50" : "bg-orange-50"}>
+                      <td className="border border-gray-300 text-center text-gray-400 select-none text-xs" style={{ width: "22px" }}>
+                        {rowIdx + 1}
+                      </td>
+                      {VYP_COLS.map((col, colIdx) => {
+                        const isActive = activeVyp?.rowId === vRow.id && activeVyp?.col === col.key;
+                        const isReadonly = col.key === "itogo";
+                        return (
+                          <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
+                            <input
+                              type="text"
+                              value={vRow[col.key]}
+                              readOnly={isReadonly}
+                              onChange={(e) => !isReadonly && updateVyp(vRow.id, col.key, e.target.value)}
+                              onFocus={() => setActiveVyp({ rowId: vRow.id, col: col.key })}
+                              onBlur={() => setActiveVyp(null)}
+                              onKeyDown={(e) => handleVypKeyDown(e, rowIdx, colIdx)}
+                              autoFocus={isActive}
+                              className={[
+                                "w-full h-6 px-1 text-gray-800 bg-transparent outline-none border-2 transition-colors text-center",
+                                isActive ? "border-amber-400 bg-amber-50" : "border-transparent",
+                                isReadonly ? "font-bold text-amber-800 bg-amber-100 cursor-default" : "",
+                              ].join(" ")}
+                              placeholder=""
+                            />
+                          </td>
+                        );
+                      })}
+                      <td className="border border-gray-300 text-center print:hidden" style={{ width: "22px" }}>
+                        <button onClick={() => deleteVyp(vRow.id)} className="text-gray-300 hover:text-red-500 p-0.5">
+                          <Icon name="X" size={11} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {/* Кнопка добавить */}
+                  <tr className="print:hidden">
+                    <td colSpan={VYP_COLS.length + 2} className="border border-gray-200 px-2 py-1">
+                      <button onClick={addVyp} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700">
+                        <Icon name="Plus" size={11} /> строка
                       </button>
                     </td>
                   </tr>
-                ))}
 
-                <tr style={{ backgroundColor: "#d6e4f7" }}>
-                  <td className="border border-gray-400 px-1 py-1 text-center font-bold text-gray-700 text-xs">Σ</td>
-                  {COLUMNS.map((col) => (
-                    <td key={col.key} className="border border-gray-400 px-1 py-1 text-center font-bold text-gray-800 text-xs">
-                      {numericCols.includes(col.key)
-                        ? (() => { const s = getSum(col.key); return s !== 0 ? s.toLocaleString("ru-RU") : ""; })()
-                        : ""}
+                  {/* Итог выплат */}
+                  <tr style={{ backgroundColor: "#7b3f00" }}>
+                    <td colSpan={VYP_COLS.length + 1} className="border border-amber-900 px-2 py-1 text-right text-white font-bold text-xs">
+                      Итого выплат:
                     </td>
-                  ))}
-                  <td className="border border-gray-400 print:hidden"></td>
-                </tr>
-              </tbody>
-            </table>
+                    <td className="border border-amber-900 px-1 py-1 text-center text-white font-bold text-xs">
+                      {vypItogo > 0 ? vypItogo.toLocaleString("ru-RU") : "—"}
+                    </td>
+                    <td className="border border-amber-900 print:hidden" style={{ width: "22px" }}></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <div className="border-t border-gray-300 px-5 py-2 bg-gray-50 flex items-center justify-between text-xs text-gray-400 print:hidden">
-            <span>Строк: {rows.length}</span>
+          {/* Подвал */}
+          <div className="border-t border-gray-300 px-4 py-2 bg-gray-50 flex items-center justify-between text-xs text-gray-400 print:hidden">
+            <span>Строк: {rows.length} · Выплат: {vyplaty.length}</span>
             <span>Tab / Enter — переход между ячейками</span>
           </div>
         </div>
