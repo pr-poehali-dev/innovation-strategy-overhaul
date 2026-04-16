@@ -341,6 +341,11 @@ const INITIAL_EMPLOYEES: Employee[] = [
   { id: 1055, tabNum: "", fio: "Еремина М.Е.",        dolzhnost: "Кондуктор", bort: "",    kategoriya: "",  telefon: "", dataRozhd: "14.06.1983", dataPriema: "", status: "active", inn: "270311389421",  snils: "078-812-877 16", udostoverenie: "" },
   { id: 1056, tabNum: "", fio: "Леваева Г.Н.",        dolzhnost: "Кондуктор", bort: "",    kategoriya: "",  telefon: "", dataRozhd: "09.09.1963", dataPriema: "", status: "active", inn: "270310454879",  snils: "035-242-407 17", udostoverenie: "" },
   { id: 1062, tabNum: "", fio: "Ершова М.А.",         dolzhnost: "Кондуктор", bort: "",    kategoriya: "",  telefon: "", dataRozhd: "20.03.1959", dataPriema: "", status: "active", inn: "270303549400",  snils: "034-551-442 32", udostoverenie: "" },
+  // ИТР — Директора организаций
+  { id: 2001, tabNum: "", fio: "",                   dolzhnost: "Директор",  bort: "",    kategoriya: "",  telefon: "", dataRozhd: "",           dataPriema: "", status: "active", inn: "",              snils: "",               udostoverenie: "" },
+  { id: 2002, tabNum: "", fio: "",                   dolzhnost: "Директор",  bort: "",    kategoriya: "",  telefon: "", dataRozhd: "",           dataPriema: "", status: "active", inn: "",              snils: "",               udostoverenie: "" },
+  // ИТР — Медик (Червонная Л.М.)
+  { id: 2003, tabNum: "", fio: "Червонная Л.М.",     dolzhnost: "Медик",     bort: "",    kategoriya: "",  telefon: "", dataRozhd: "",           dataPriema: "", status: "active", inn: "",              snils: "",               udostoverenie: "" },
 ];
 
 const INITIAL_TERMINALS: Terminal[] = [

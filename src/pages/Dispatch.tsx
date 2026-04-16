@@ -135,7 +135,7 @@ const Dispatch = () => {
       dispFio:    find("Диспетчер"),
       mekhFio:    find("Механик по выпуску"),
       medFio:     find("Медик"),
-      nachGarFio: find("Нач. гаража"),
+      nachGarFio: "",
     };
   }, [selectedKey, weeklyDayMeta, employees]);
 

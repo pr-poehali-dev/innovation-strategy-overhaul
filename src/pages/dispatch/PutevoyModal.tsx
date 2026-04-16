@@ -24,10 +24,9 @@ const PutevoyModal = ({ row, today, dayMeta, onClose }: Props) => {
     const active = employees.filter((e) => e.status === "active");
     const find = (d: string) => active.find((e) => e.dolzhnost === d)?.fio ?? "";
     return {
-      medik:   dayMeta.medFio     || find("Медик"),
-      mekh:    dayMeta.mekhFio    || find("Механик по выпуску"),
-      disp:    dayMeta.dispFio    || find("Диспетчер"),
-      nachGar: dayMeta.nachGarFio || find("Нач. гаража"),
+      medik: dayMeta.medFio  || find("Медик"),
+      mekh:  dayMeta.mekhFio || find("Механик по выпуску"),
+      disp:  dayMeta.dispFio || find("Диспетчер"),
     };
   }, [employees, dayMeta]);
 

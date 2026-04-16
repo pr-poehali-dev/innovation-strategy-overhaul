@@ -6,27 +6,141 @@ interface Props {
   rows: NaryadRow[];
   dayMeta: DayMeta;
   displayDate: string;
-  monthYear: string; // "Апрель 2026"
+  monthYear: string;
 }
 
+const CERVONNAYA = "Червонная Л.М.";
+
 const JurnalMed = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
-  const { companies, activeCompanyIdx, employees, vehicles } = useAppStore();
-  const company = companies[activeCompanyIdx];
+  const { companies, employees, vehicles, routes } = useAppStore();
 
-  const medik = dayMeta.medFio || employees.find((e) => e.dolzhnost === "Медик" && e.status === "active")?.fio || "_______________";
+  // Медик — фиксировано Червонная Л.М., иначе из дежурных/кадров
+  const medik = CERVONNAYA ||
+    dayMeta.medFio ||
+    employees.find((e) => e.dolzhnost === "Медик" && e.status === "active")?.fio ||
+    "_______________";
 
-  // Только строки с водителями
+  const getVehicle = (bort: string) => vehicles.find((v) => v.bortovoy === bort);
+  const getVodInfo = (fio: string) => employees.find((e) => e.fio === fio || (fio && fio.startsWith(e.fio.split(" ")[0])));
+  const getRouteCompanyIdx = (marshrut: string) => {
+    const num = marshrut.split("/")[0].trim();
+    return routes.find((r) => r.nomer === num)?.companyIdx ?? 0;
+  };
+
+  // Активные строки с водителями
   const activeRows = useMemo(
     () => rows.filter((r) => r.fio && r.fio !== "без"),
     [rows]
   );
 
-  const getVehicle = (bort: string) => vehicles.find((v) => v.bortovoy === bort);
-  const getVodInfo = (fio: string) => employees.find((e) => e.fio === fio || fio.startsWith(e.fio.split(" ")[0]));
+  // Группировка по организации
+  const byCompany = useMemo(() => {
+    const map = new Map<number, NaryadRow[]>();
+    activeRows.forEach((row) => {
+      const idx = getRouteCompanyIdx(row.marshrut);
+      if (!map.has(idx)) map.set(idx, []);
+      map.get(idx)!.push(row);
+    });
+    return map;
+  }, [activeRows, routes]);
+
+  // Если строк нет — один пустой блок
+  const companyGroups: Array<{ companyIdx: number; rows: NaryadRow[] }> =
+    byCompany.size > 0
+      ? Array.from(byCompany.entries()).map(([companyIdx, rows]) => ({ companyIdx, rows }))
+      : [{ companyIdx: 0, rows: [] }];
+
+  const renderBlock = (companyIdx: number, blockRows: NaryadRow[]) => {
+    const company = companies[companyIdx];
+    const startNum = 1;
+    return (
+      <div key={companyIdx} className="mb-8">
+        {/* Шапка блока */}
+        <div className="text-center mb-3">
+          <div className="font-bold text-[12px]">{company?.nazvanie || "___________________________"}</div>
+          <div className="mt-1.5 font-bold text-[13px] uppercase tracking-wide">
+            ЖУРНАЛ РЕГИСТРАЦИИ ПРЕДРЕЙСОВЫХ МЕДИЦИНСКИХ ОСМОТРОВ ВОДИТЕЛЕЙ
+          </div>
+          <div className="text-[9px] mt-0.5 text-gray-600">
+            (форма согласно Приказу Минздрава России от 15.12.2014 № 835н)
+          </div>
+          <div className="mt-1">за {monthYear} г.</div>
+        </div>
+
+        {/* Реквизиты */}
+        <div className="flex justify-between text-[10px] mb-2 px-2">
+          <div>Медицинский работник: <span className="border-b border-black px-8 font-semibold">{medik}</span></div>
+          <div>Дата: <span className="border-b border-black px-6">{displayDate}</span></div>
+        </div>
+
+        {/* Таблица */}
+        <table className="border-collapse w-full text-[9px]">
+          <thead>
+            <tr style={{ backgroundColor: "#1a3a6b" }}>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "28px" }}>№</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "130px" }}>ФИО водителя</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "60px" }}>Дата рождения</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "50px" }}>Борт №</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "65px" }}>Гос. знак</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "60px" }}>Маршрут</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "55px" }}>Путевой №</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "65px" }}>Время осмотра</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "55px" }}>АД (мм рт.ст.)</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "45px" }}>Пульс</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "45px" }}>Алкотестер</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "65px" }}>Результат</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "65px" }}>Подпись медработника</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "65px" }}>Подпись водителя</th>
+            </tr>
+          </thead>
+          <tbody>
+            {blockRows.map((row, idx) => {
+              const veh = getVehicle(row.bortovoy);
+              const vod = getVodInfo(row.fio);
+              return (
+                <tr key={row.id} style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f5f8ff" }}>
+                  <td className="border border-gray-300 text-center py-2">{startNum + idx}</td>
+                  <td className="border border-gray-300 px-1 py-2 font-medium">{row.fio}</td>
+                  <td className="border border-gray-300 px-1 py-2 text-center">{vod?.dataRozhd || ""}</td>
+                  <td className="border border-gray-300 px-1 py-2 text-center font-bold">{row.bortovoy}</td>
+                  <td className="border border-gray-300 px-1 py-2 text-center">{veh?.gos || ""}</td>
+                  <td className="border border-gray-300 px-1 py-2 text-center">{row.marshrut}</td>
+                  <td className="border border-gray-300 px-1 py-2 text-center font-semibold text-blue-700">{row.putevoy}</td>
+                  <td className="border border-gray-300"></td>
+                  <td className="border border-gray-300"></td>
+                  <td className="border border-gray-300"></td>
+                  <td className="border border-gray-300 text-center text-gray-400">0,00</td>
+                  <td className="border border-gray-300 text-center font-semibold text-green-800">допущен</td>
+                  <td className="border border-gray-300"></td>
+                  <td className="border border-gray-300"></td>
+                </tr>
+              );
+            })}
+            {Array.from({ length: Math.max(0, 3 - blockRows.length) }).map((_, i) => (
+              <tr key={`empty-${i}`}>
+                <td className="border border-gray-300 text-center py-3 text-gray-300">{blockRows.length + i + 1}</td>
+                {Array.from({ length: 13 }).map((_, j) => (
+                  <td key={j} className="border border-gray-300 py-3"></td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Подпись блока */}
+        <div className="flex justify-between mt-3 px-2 text-[10px]">
+          <div>
+            Медицинский работник: <span className="border-b border-black px-8 font-semibold">{medik}</span>
+            &nbsp;&nbsp;Подпись: <span className="border-b border-black px-10"></span>
+          </div>
+          <div>Дата: <span className="border-b border-black px-8">{displayDate}</span></div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="p-2">
-      {/* Кнопка печати */}
       <div className="flex justify-end mb-3 print:hidden">
         <button
           onClick={() => window.print()}
@@ -35,97 +149,8 @@ const JurnalMed = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
           Печать журнала
         </button>
       </div>
-
-      {/* ═══ Печатная форма ═══ */}
-      <div
-        id="jurnal-med-print"
-        className="bg-white font-serif text-[10px] leading-tight"
-        style={{ minWidth: "900px" }}
-      >
-        {/* Шапка */}
-        <div className="text-center mb-3">
-          <div className="font-bold text-[12px]">{company?.nazvanie || "___________________________"}</div>
-          <div className="mt-2 font-bold text-[13px] uppercase tracking-wide">
-            ЖУРНАЛ РЕГИСТРАЦИИ ПРЕДРЕЙСОВЫХ МЕДИЦИНСКИХ ОСМОТРОВ ВОДИТЕЛЕЙ
-          </div>
-          <div className="text-[10px] mt-0.5">
-            (форма согласно Приказу Минздрава России от 15.12.2014 № 835н)
-          </div>
-          <div className="mt-1">за {monthYear} г.</div>
-        </div>
-
-        {/* Реквизиты */}
-        <div className="flex justify-between text-[10px] mb-3 px-2">
-          <div>Медицинский работник: <span className="border-b border-black px-8">{medik}</span></div>
-          <div>Дата: <span className="border-b border-black px-6">{displayDate}</span></div>
-        </div>
-
-        {/* Таблица */}
-        <table className="border-collapse w-full text-[9px]">
-          <thead>
-            <tr style={{ backgroundColor: "#1a3a6b" }}>
-              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "28px" }}>№ п/п</th>
-              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "130px" }}>ФИО водителя</th>
-              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "60px" }}>Дата рождения</th>
-              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "55px" }}>Борт №</th>
-              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "65px" }}>Гос. знак</th>
-              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "65px" }}>Маршрут</th>
-              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "60px" }}>Путевой лист №</th>
-              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "70px" }}>Время осмотра</th>
-              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "55px" }}>АД (мм рт.ст.)</th>
-              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "45px" }}>Пульс (уд/мин)</th>
-              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "45px" }}>Алкотестер</th>
-              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "65px" }}>Результат (допущен / не допущен)</th>
-              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "70px" }}>Подпись мед. работника</th>
-              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "70px" }}>Подпись водителя</th>
-            </tr>
-          </thead>
-          <tbody>
-            {activeRows.map((row, idx) => {
-              const veh = getVehicle(row.bortovoy);
-              const vod = getVodInfo(row.fio);
-              const rowBg = idx % 2 === 0 ? "#ffffff" : "#f5f8ff";
-              return (
-                <tr key={row.id} style={{ backgroundColor: rowBg }}>
-                  <td className="border border-gray-300 text-center py-2" style={{ width: "28px" }}>{idx + 1}</td>
-                  <td className="border border-gray-300 px-1 py-2 font-medium" style={{ width: "130px" }}>{row.fio}</td>
-                  <td className="border border-gray-300 px-1 py-2 text-center" style={{ width: "60px" }}>{vod?.dataRozhd || ""}</td>
-                  <td className="border border-gray-300 px-1 py-2 text-center font-bold" style={{ width: "55px" }}>{row.bortovoy}</td>
-                  <td className="border border-gray-300 px-1 py-2 text-center" style={{ width: "65px" }}>{veh?.gos || ""}</td>
-                  <td className="border border-gray-300 px-1 py-2 text-center" style={{ width: "65px" }}>{row.marshrut}</td>
-                  <td className="border border-gray-300 px-1 py-2 text-center" style={{ width: "60px" }}>{row.putevoy}</td>
-                  <td className="border border-gray-300 text-center" style={{ width: "70px" }}></td>
-                  <td className="border border-gray-300 text-center" style={{ width: "55px" }}></td>
-                  <td className="border border-gray-300 text-center" style={{ width: "45px" }}></td>
-                  <td className="border border-gray-300 text-center" style={{ width: "45px" }}>0,00</td>
-                  <td className="border border-gray-300 text-center font-semibold text-green-800" style={{ width: "65px" }}>допущен</td>
-                  <td className="border border-gray-300 text-center" style={{ width: "70px" }}></td>
-                  <td className="border border-gray-300 text-center" style={{ width: "70px" }}></td>
-                </tr>
-              );
-            })}
-            {/* Пустые строки для ручной дозаписи */}
-            {Array.from({ length: Math.max(0, 5 - activeRows.length) }).map((_, i) => (
-              <tr key={`empty-${i}`}>
-                <td className="border border-gray-300 text-center py-3">{activeRows.length + i + 1}</td>
-                {Array.from({ length: 13 }).map((_, j) => (
-                  <td key={j} className="border border-gray-300"></td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* Подпись */}
-        <div className="flex justify-between mt-4 px-2 text-[10px]">
-          <div>
-            Медицинский работник: <span className="border-b border-black px-12">{medik}</span>
-            &nbsp;&nbsp;Подпись: <span className="border-b border-black px-10"></span>
-          </div>
-          <div>
-            Дата составления: <span className="border-b border-black px-8">{displayDate}</span>
-          </div>
-        </div>
+      <div className="bg-white font-serif text-[10px] leading-tight" style={{ minWidth: "900px" }}>
+        {companyGroups.map(({ companyIdx, rows }) => renderBlock(companyIdx, rows))}
       </div>
     </div>
   );

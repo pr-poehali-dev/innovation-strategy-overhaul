@@ -6,6 +6,7 @@ import { useAppStore, Employee } from "@/store/appStore";
 type TabType = "voditely" | "konduktery" | "itr";
 
 const ITR_DOLZHNOSTI = [
+  "Директор",
   "Нач. гаража",
   "Механик по выпуску",
   "Механик по ремонту",

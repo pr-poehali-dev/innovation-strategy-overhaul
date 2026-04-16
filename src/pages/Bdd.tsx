@@ -23,7 +23,7 @@ const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2
 const DtpDocPrint = ({ rec, onClose }: { rec: DtpRecord; onClose: () => void }) => {
   const { companies, activeCompanyIdx, employees } = useAppStore();
   const company = companies[activeCompanyIdx] ?? EMPTY_COMPANY;
-  const nachGar = employees.find((e) => e.dolzhnost === "Нач. гаража")?.fio ?? "_______________";
+  const direktor = employees.find((e) => e.dolzhnost === "Директор" && e.status === "active")?.fio ?? "_______________";
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center p-4 overflow-y-auto">
@@ -90,8 +90,8 @@ const DtpDocPrint = ({ rec, onClose }: { rec: DtpRecord; onClose: () => void }) 
 
           <div className="grid grid-cols-2 gap-8 mt-8">
             <div>
-              <div className="border-b border-black min-h-[20px]">{nachGar}</div>
-              <div className="text-xs text-gray-500 text-center mt-1">Начальник гаража</div>
+              <div className="border-b border-black min-h-[20px]">{direktor}</div>
+              <div className="text-xs text-gray-500 text-center mt-1">Директор</div>
             </div>
             <div>
               <div className="border-b border-black min-h-[20px]"></div>
