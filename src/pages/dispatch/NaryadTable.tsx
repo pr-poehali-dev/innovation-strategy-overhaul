@@ -1,5 +1,5 @@
 import Icon from "@/components/ui/icon";
-import { useAppStore, TsVehicle } from "@/store/appStore";
+import { useAppStore, TsVehicle, getGrafiki } from "@/store/appStore";
 import {
   NaryadRow,
   NormaSettings,
@@ -62,15 +62,19 @@ const NaryadTable = ({
   onSetActiveCell,
   onOpenPutevoy,
 }: Props) => {
-  const { vehicles, employees, terminals } = useAppStore();
+  const { vehicles, employees, terminals, routes } = useAppStore();
 
   const driverFios      = employees.filter((e) => e.dolzhnost === "Водитель"  && e.status === "active").map((e) => e.fio);
   const condFios        = employees.filter((e) => e.dolzhnost === "Кондуктор" && e.status === "active").map((e) => e.fio);
   const activeTerminals = terminals.filter((t) => t.status === "active");
 
+  // Все графики всех маршрутов: ["1/1","1/2",...,"3/1","3/2",...]
+  const allGrafiki = routes.flatMap((r) => getGrafiki(r));
+
   // Стабильные id для datalist
-  const vodListId  = "narad-vod-datalist";
-  const condListId = "narad-cond-datalist";
+  const vodListId     = "narad-vod-datalist";
+  const condListId    = "narad-cond-datalist";
+  const grafikListId  = "narad-grafik-datalist";
 
   const handleKeyDown = (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
     if (e.key === "Tab" || e.key === "Enter") {
@@ -104,13 +108,16 @@ const NaryadTable = ({
 
   return (
     <>
-      {/* Глобальные datalist для ФИО */}
+      {/* Глобальные datalist */}
       <datalist id={vodListId}>
         {driverFios.map((f) => <option key={f} value={f} />)}
       </datalist>
       <datalist id={condListId}>
         <option value="без" />
         {condFios.map((f) => <option key={f} value={f} />)}
+      </datalist>
+      <datalist id={grafikListId}>
+        {allGrafiki.map((g) => <option key={g} value={g} />)}
       </datalist>
 
       <div className="overflow-x-auto">
@@ -192,6 +199,20 @@ const NaryadTable = ({
                   {/* Текстовые поля */}
                   {TEXT_COLS.map((col, colIdx) => {
                     const isActive = activeCell?.rowId === row.id && activeCell?.col === col.key;
+                    // Маршрут/график — с datalist
+                    if (col.key === "marshrut") {
+                      return (
+                        <SelectCell
+                          key={col.key}
+                          value={row.marshrut}
+                          options={allGrafiki}
+                          placeholder="1/1"
+                          onChange={(v) => onUpdateCell(row.id, "marshrut", v)}
+                          width={col.width}
+                          listId={grafikListId}
+                        />
+                      );
+                    }
                     return (
                       <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
                         <input

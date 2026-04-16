@@ -1,17 +1,7 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
-import { useAppStore } from "@/store/appStore";
-
-interface Route {
-  id: number;
-  nomer: string;
-  nazvanie: string;
-  nachalo: string;
-  konets: string;
-  intervalMin: string;
-  rabochieChasy: string;
-}
+import { useAppStore, Route, getGrafiki } from "@/store/appStore";
 
 interface SimpleRow {
   id: number;
@@ -19,9 +9,9 @@ interface SimpleRow {
   znachenie: string;
 }
 
-const emptyRoute = (): Route => ({
+const emptyRoute = (companyIdx: number): Route => ({
   id: Date.now() + Math.random(),
-  nomer: "", nazvanie: "", nachalo: "", konets: "", intervalMin: "", rabochieChasy: "",
+  nomer: "", nazvanie: "", nachalo: "", konets: "", grafikov: 1, intervalMin: "", rabochieChasy: "", companyIdx,
 });
 
 const emptySimpleRow = (): SimpleRow => ({
@@ -56,13 +46,15 @@ const TABS: { key: TabType; label: string; icon: string; unit?: string }[] = [
   { key: "hozNuzhdyGarazh",   label: "Хоз. нужды гараж",               icon: "Wrench",     unit: "₽"  },
 ];
 
-const ROUTE_COLS: { key: keyof Omit<Route, "id">; label: string; width: string }[] = [
-  { key: "nomer",         label: "№ маршрута",    width: "100px" },
+type RouteStringKey = "nomer" | "nazvanie" | "nachalo" | "konets" | "intervalMin" | "rabochieChasy";
+
+const ROUTE_COLS: { key: RouteStringKey; label: string; width: string }[] = [
+  { key: "nomer",         label: "№ маршрута",    width: "90px"  },
   { key: "nazvanie",      label: "Название",       width: "180px" },
-  { key: "nachalo",       label: "Начало",         width: "140px" },
-  { key: "konets",        label: "Конец",          width: "140px" },
-  { key: "intervalMin",   label: "Интервал (мин)", width: "120px" },
-  { key: "rabochieChasy", label: "Часы работы",    width: "130px" },
+  { key: "nachalo",       label: "Начало",         width: "130px" },
+  { key: "konets",        label: "Конец",          width: "130px" },
+  { key: "intervalMin",   label: "Интервал (мин)", width: "110px" },
+  { key: "rabochieChasy", label: "Часы работы",    width: "110px" },
 ];
 
 // Фиксированное одиночное значение
@@ -191,14 +183,16 @@ const Settings = () => {
   const [tab, setTab] = useState<TabType>("company");
   const [saved, setSaved] = useState(false);
 
-  const { companies, setCompanies, activeCompanyIdx, setActiveCompanyIdx } = useAppStore();
+  const { companies, setCompanies, activeCompanyIdx, setActiveCompanyIdx, routes, setRoutes } = useAppStore();
   const company = companies[activeCompanyIdx];
+
+  // Маршруты текущей организации
+  const compRoutes = routes.filter((r) => r.companyIdx === activeCompanyIdx);
 
   const updateCompany = (key: keyof typeof company, value: string) => {
     setCompanies((prev) => prev.map((c, i) => i === activeCompanyIdx ? { ...c, [key]: value } : c));
     setSaved(false);
   };
-  const [routes, setRoutes] = useState<Route[]>([emptyRoute(), emptyRoute()]);
   const [routeActiveCell, setRouteActiveCell] = useState<{ rowId: number; col: string } | null>(null);
 
   // Фиксированные одиночные значения
@@ -237,13 +231,17 @@ const Settings = () => {
 
 
 
-  const addRoute = () => setRoutes((prev) => [...prev, emptyRoute()]);
+  const addRoute = () => setRoutes((prev) => [...prev, emptyRoute(activeCompanyIdx)]);
   const deleteRoute = (id: number) => {
-    if (routes.length === 1) return;
     setRoutes((prev) => prev.filter((r) => r.id !== id));
   };
-  const updateRoute = (id: number, col: keyof Route, value: string) => {
+  const updateRoute = (id: number, col: RouteStringKey, value: string) => {
     setRoutes((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
+    setSaved(false);
+  };
+  const updateRouteGrafikov = (id: number, value: string) => {
+    const n = parseInt(value) || 1;
+    setRoutes((prev) => prev.map((r) => (r.id === id ? { ...r, grafikov: Math.max(1, n) } : r)));
     setSaved(false);
   };
 
@@ -342,7 +340,10 @@ const Settings = () => {
           {/* Routes tab */}
           {tab === "routes" && (
             <>
-              <div className="px-5 py-3 border-b border-gray-200 flex justify-end">
+              <div className="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
+                <span className="text-xs text-gray-500">
+                  Маршруты организации: <b>{company.nazvanie}</b>
+                </span>
                 <button
                   onClick={addRoute}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
@@ -352,7 +353,7 @@ const Settings = () => {
                 </button>
               </div>
               <div className="overflow-x-auto">
-                <table className="border-collapse text-xs w-full">
+                <table className="border-collapse text-xs" style={{ minWidth: "900px" }}>
                   <thead>
                     <tr style={{ backgroundColor: "#1a3a6b" }}>
                       <th className="border border-blue-900 px-1 py-1.5 text-white text-center" style={{ width: "28px" }}>№</th>
@@ -361,11 +362,13 @@ const Settings = () => {
                           {col.label}
                         </th>
                       ))}
+                      <th className="border border-blue-900 px-2 py-1.5 text-white font-semibold text-center" style={{ width: "75px" }}>Графиков</th>
+                      <th className="border border-blue-900 px-2 py-1.5 text-white font-semibold text-left" style={{ width: "200px" }}>Графики (список)</th>
                       <th className="border border-blue-900 px-1 py-1" style={{ width: "28px" }}></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {routes.map((row, rowIdx) => (
+                    {compRoutes.map((row, rowIdx) => (
                       <tr key={row.id} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50"}>
                         <td className="border border-gray-300 text-center text-gray-400 select-none" style={{ width: "28px" }}>{rowIdx + 1}</td>
                         {ROUTE_COLS.map((col) => {
@@ -374,7 +377,7 @@ const Settings = () => {
                             <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
                               <input
                                 type="text"
-                                value={row[col.key] as string}
+                                value={row[col.key]}
                                 onChange={(e) => updateRoute(row.id, col.key, e.target.value)}
                                 onFocus={() => setRouteActiveCell({ rowId: row.id, col: col.key })}
                                 onBlur={() => setRouteActiveCell(null)}
@@ -386,6 +389,21 @@ const Settings = () => {
                             </td>
                           );
                         })}
+                        {/* Кол-во графиков */}
+                        <td className="border border-gray-300 p-0" style={{ width: "75px" }}>
+                          <input
+                            type="number"
+                            min={1}
+                            max={99}
+                            value={row.grafikov}
+                            onChange={(e) => updateRouteGrafikov(row.id, e.target.value)}
+                            className="w-full h-7 px-2 text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors text-center"
+                          />
+                        </td>
+                        {/* Список графиков */}
+                        <td className="border border-gray-300 px-2 py-1 text-xs text-gray-500" style={{ width: "200px" }}>
+                          {getGrafiki(row).join(" · ")}
+                        </td>
                         <td className="border border-gray-300 text-center" style={{ width: "28px" }}>
                           <button onClick={() => deleteRoute(row.id)} className="text-gray-300 hover:text-red-500 transition-colors p-0.5">
                             <Icon name="X" size={12} />
@@ -397,7 +415,7 @@ const Settings = () => {
                 </table>
               </div>
               <div className="border-t border-gray-300 px-5 py-2 bg-gray-50 text-xs text-gray-400">
-                Маршрутов: {routes.length}
+                Маршрутов: {compRoutes.length} · Всего графиков: {compRoutes.reduce((s, r) => s + r.grafikov, 0)}
               </div>
             </>
           )}

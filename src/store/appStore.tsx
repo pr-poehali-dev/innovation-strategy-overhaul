@@ -118,6 +118,36 @@ export interface Employee {
   status: "active" | "inactive";
 }
 
+// ─── Маршрут ───────────────────────────────────────────────────────────────
+export interface Route {
+  id: number;
+  nomer: string;        // номер маршрута (1, 3, 6, 15, 24)
+  nazvanie: string;     // полное название
+  nachalo: string;
+  konets: string;
+  grafikov: number;     // количество графиков
+  intervalMin: string;
+  rabochieChasy: string;
+  companyIdx: number;   // привязка к организации
+}
+
+// Генерирует все графики маршрута: "1/1", "1/2", ...
+export const getGrafiki = (route: Route): string[] =>
+  Array.from({ length: route.grafikov }, (_, i) => `${route.nomer}/${i + 1}`);
+
+export const INITIAL_ROUTES: Route[] = [
+  // ДАТ — маршрут №1, 10 графиков
+  { id: 101, nomer: "1",  nazvanie: "3-й мкр. - ул. Уральская",          nachalo: "3-й мкр.",             konets: "ул. Уральская",      grafikov: 10, intervalMin: "", rabochieChasy: "", companyIdx: 0 },
+  // ДАТ — маршрут №15, 4 графика
+  { id: 102, nomer: "15", nazvanie: "мкр. Амурлитмаш — мкр. Хорпинский", nachalo: "мкр. Амурлитмаш",     konets: "мкр. Хорпинский",    grafikov: 4,  intervalMin: "", rabochieChasy: "", companyIdx: 0 },
+  // ДАТ — маршрут №24, 6 графиков
+  { id: 103, nomer: "24", nazvanie: "ул. Уральская - мкр. Амурлитмаш",   nachalo: "ул. Уральская",         konets: "мкр. Амурлитмаш",   grafikov: 6,  intervalMin: "", rabochieChasy: "", companyIdx: 0 },
+  // ТиТ — маршрут №3, 11 графиков
+  { id: 104, nomer: "3",  nazvanie: "ул. Юбилейная - ул. Уральская",      nachalo: "ул. Юбилейная",         konets: "ул. Уральская",      grafikov: 11, intervalMin: "", rabochieChasy: "", companyIdx: 1 },
+  // ТиТ — маршрут №6, 4 графика
+  { id: 105, nomer: "6",  nazvanie: "мкр. Индустриальный - ул. Уральская",nachalo: "мкр. Индустриальный",  konets: "ул. Уральская",      grafikov: 4,  intervalMin: "", rabochieChasy: "", companyIdx: 1 },
+];
+
 // ─── Context ───────────────────────────────────────────────────────────────
 interface AppStore {
   vehicles: TsVehicle[];
@@ -132,6 +162,8 @@ interface AppStore {
   setTerminals: React.Dispatch<React.SetStateAction<Terminal[]>>;
   employees: Employee[];
   setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>;
+  routes: Route[];
+  setRoutes: React.Dispatch<React.SetStateAction<Route[]>>;
 }
 
 const AppContext = createContext<AppStore | null>(null);
@@ -158,6 +190,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [activeCompanyIdx, setActiveCompanyIdx] = useState(0);
   const [terminals, setTerminals] = useState<Terminal[]>([]);
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
+  const [routes, setRoutes] = useState<Route[]>(INITIAL_ROUTES);
 
   return (
     <AppContext.Provider value={{
@@ -167,6 +200,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       activeCompanyIdx, setActiveCompanyIdx,
       terminals, setTerminals,
       employees, setEmployees,
+      routes, setRoutes,
     }}>
       {children}
     </AppContext.Provider>

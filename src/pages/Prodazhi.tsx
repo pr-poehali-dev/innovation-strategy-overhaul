@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
-import { useAppStore } from "@/store/appStore";
+import { useAppStore, getGrafiki } from "@/store/appStore";
 
 interface ProdazhiRow {
   id: number;
@@ -43,7 +43,8 @@ const today = new Date().toLocaleDateString("ru-RU", {
 });
 
 const Prodazhi = () => {
-  const { naryadEntries, employees, vehicles } = useAppStore();
+  const { naryadEntries, employees, vehicles, routes } = useAppStore();
+  const allGrafiki = routes.flatMap((r) => getGrafiki(r));
 
   const driverList = employees.filter((e) => e.dolzhnost === "Водитель"  && e.status === "active");
   const condList   = employees.filter((e) => e.dolzhnost === "Кондуктор" && e.status === "active");
@@ -106,10 +107,11 @@ const Prodazhi = () => {
   const vsegoVyshlo = rows.filter((r) => r.fioVod && r.fioVod !== "0" && r.marGr && r.marGr !== "вых" && r.marGr !== "отп" && r.marGr !== "рем").length;
   const vsegoVykhod = rows.filter((r) => r.marGr === "вых" || r.marGr === "отп" || r.marGr === "рем").length;
 
-  // ФИО из стора — datalist
-  const vodFioList = "vod-fio-list";
+  // datalist ids
+  const vodFioList  = "vod-fio-list";
   const condFioList = "cond-fio-list";
-  const bortList = "bort-list";
+  const bortList    = "bort-list";
+  const grafikList  = "prodazhi-grafik-list";
 
   const renderCell = (row: ProdazhiRow, col: typeof COLUMNS[number], rowIdx: number, colIdx: number) => {
     const isActive = activeCell?.rowId === row.id && activeCell?.col === col.key;
@@ -149,6 +151,25 @@ const Prodazhi = () => {
             autoFocus={isActive}
             className={`w-full h-6 px-1 text-xs text-gray-800 bg-transparent outline-none border-2 ${isActive ? "border-blue-500 bg-blue-50" : "border-transparent"} transition-colors`}
             placeholder="без"
+          />
+        </td>
+      );
+    }
+    // Маршрут/График — с datalist
+    if (col.key === "marGr") {
+      return (
+        <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
+          <input
+            type="text"
+            list={grafikList}
+            value={row.marGr}
+            onChange={(e) => updateCell(row.id, "marGr", e.target.value)}
+            onFocus={() => setActiveCell({ rowId: row.id, col: col.key })}
+            onBlur={() => setActiveCell(null)}
+            onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
+            autoFocus={isActive}
+            className={`w-full h-6 px-1 text-xs text-gray-800 bg-transparent outline-none border-2 ${isActive ? "border-blue-500 bg-blue-50" : "border-transparent"} transition-colors text-center`}
+            placeholder="1/1"
           />
         </td>
       );
@@ -210,6 +231,12 @@ const Prodazhi = () => {
       </datalist>
       <datalist id={bortList}>
         {vehicles.map((v) => <option key={v.id} value={v.bortovoy}>{v.bortovoy} {v.marka}</option>)}
+      </datalist>
+      <datalist id={grafikList}>
+        <option value="вых" />
+        <option value="отп" />
+        <option value="рем" />
+        {allGrafiki.map((g) => <option key={g} value={g} />)}
       </datalist>
 
       <div className="px-4 py-4 max-w-[1200px] mx-auto">
