@@ -1,7 +1,8 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
-import { NaryadRow, NormaSettings, emptyRow, DEFAULT_SETTINGS } from "./dispatch/types";
+import { useAppStore, NaryadEntry } from "@/store/appStore";
+import { NaryadRow, NormaSettings, emptyRow, DEFAULT_SETTINGS, calcPodrabotka } from "./dispatch/types";
 import NormaPanel from "./dispatch/NormaPanel";
 import PutevoyModal from "./dispatch/PutevoyModal";
 import NaryadTable from "./dispatch/NaryadTable";
@@ -11,14 +12,21 @@ const Dispatch = () => {
     day: "2-digit", month: "2-digit", year: "numeric",
   });
 
+  const { setNaryadEntries } = useAppStore();
+
   const [rows, setRows] = useState<NaryadRow[]>([emptyRow(), emptyRow(), emptyRow()]);
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
   const [settings, setSettings] = useState<NormaSettings>(DEFAULT_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
   const [putevoyRow, setPutevoyRow] = useState<NaryadRow | null>(null);
+  const [razneseno, setRazneseno] = useState(false);
 
   const updateCell = (id: number, col: keyof NaryadRow, value: string | boolean) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
+  };
+
+  const updateRow = (id: number, partial: Partial<NaryadRow>) => {
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...partial } : r)));
   };
 
   const addRow = () => setRows((prev) => [...prev, emptyRow()]);
@@ -30,6 +38,31 @@ const Dispatch = () => {
 
   const setSetting = (key: keyof NormaSettings, val: string) =>
     setSettings((prev) => ({ ...prev, [key]: val }));
+
+  // Разнести данные наряда в Кассу и Продажи (через стор)
+  const handleRaznesti = () => {
+    const filledRows = rows.filter((r) => r.fio.trim() || r.bortovoy.trim());
+    const entries: NaryadEntry[] = filledRows.map((r) => {
+      const calc = calcPodrabotka(r, settings);
+      return {
+        date:              today,
+        bortovoy:          r.bortovoy,
+        gos:               r.gos,
+        marka:             r.marka,
+        garazhny:          r.garazhny,
+        marshrut:          r.marshrut,
+        fioVod:            r.fio,
+        fioKond:           r.fioKond,
+        putevoy:           r.putevoy,
+        biletov:           r.biletov,
+        podrabotkaVod:     calc?.vod  ?? 0,
+        podrabotkaKond:    calc?.cond ?? 0,
+      };
+    });
+    setNaryadEntries(entries);
+    setRazneseno(true);
+    setTimeout(() => setRazneseno(false), 3000);
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
@@ -62,6 +95,15 @@ const Dispatch = () => {
                 Нормативы
               </button>
               <button
+                onClick={handleRaznesti}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors ${
+                  razneseno ? "bg-green-600 text-white" : "bg-indigo-600 text-white hover:bg-indigo-700"
+                }`}
+              >
+                <Icon name={razneseno ? "Check" : "ArrowRightLeft"} size={14} />
+                {razneseno ? "Разнесено!" : "Разнести в Кассу/Продажи"}
+              </button>
+              <button
                 onClick={addRow}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
               >
@@ -87,6 +129,7 @@ const Dispatch = () => {
             activeCell={activeCell}
             settings={settings}
             onUpdateCell={updateCell}
+            onUpdateRow={updateRow}
             onAddRow={addRow}
             onDeleteRow={deleteRow}
             onSetActiveCell={setActiveCell}

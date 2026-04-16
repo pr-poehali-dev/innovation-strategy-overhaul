@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
+import { useAppStore } from "@/store/appStore";
 
 interface ProdazhiRow {
   id: number;
   marGr: string;
+  bort: string;
   fioVod: string;
   fioCond: string;
   reysy: string;
@@ -16,20 +18,21 @@ interface ProdazhiRow {
 }
 
 const COLUMNS: { key: keyof Omit<ProdazhiRow, "id">; label: string; width: string }[] = [
-  { key: "marGr",     label: "Мар. Гр",        width: "90px"  },
-  { key: "fioVod",    label: "ФИО Водителя",   width: "160px" },
-  { key: "fioCond",   label: "ФИО кондуктора", width: "160px" },
-  { key: "reysy",     label: "Рейсы",          width: "70px"  },
-  { key: "faktReys",  label: "Факт рейс",      width: "80px"  },
-  { key: "vremya",    label: "Время",          width: "80px"  },
-  { key: "faktVremya",label: "Факт время",     width: "90px"  },
-  { key: "dt",        label: "ДТ",             width: "70px"  },
-  { key: "skhody",    label: "Сходы",          width: "120px" },
+  { key: "marGr",      label: "Мар. Гр",        width: "90px"  },
+  { key: "bort",       label: "Борт №",          width: "70px"  },
+  { key: "fioVod",     label: "ФИО Водителя",   width: "160px" },
+  { key: "fioCond",    label: "ФИО кондуктора", width: "160px" },
+  { key: "reysy",      label: "Рейсы",          width: "70px"  },
+  { key: "faktReys",   label: "Факт рейс",      width: "80px"  },
+  { key: "vremya",     label: "Время",          width: "80px"  },
+  { key: "faktVremya", label: "Факт время",     width: "90px"  },
+  { key: "dt",         label: "ДТ",             width: "70px"  },
+  { key: "skhody",     label: "Сходы",          width: "120px" },
 ];
 
 const emptyRow = (): ProdazhiRow => ({
   id: Date.now() + Math.random(),
-  marGr: "", fioVod: "", fioCond: "",
+  marGr: "", bort: "", fioVod: "", fioCond: "",
   reysy: "", faktReys: "", vremya: "",
   faktVremya: "", dt: "", skhody: "",
 });
@@ -39,10 +42,37 @@ const today = new Date().toLocaleDateString("ru-RU", {
 });
 
 const Prodazhi = () => {
+  const { naryadEntries } = useAppStore();
+
   const [rows, setRows] = useState<ProdazhiRow[]>([
     emptyRow(), emptyRow(), emptyRow(), emptyRow(), emptyRow(),
   ]);
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
+  const [imported, setImported] = useState(false);
+
+  const handleImport = () => {
+    if (naryadEntries.length === 0) return;
+    const newRows: ProdazhiRow[] = naryadEntries.map((e) => ({
+      id:         Date.now() + Math.random(),
+      marGr:      e.marshrut,
+      bort:       e.bortovoy,
+      fioVod:     e.fioVod,
+      fioCond:    e.fioKond,
+      reysy:      "",
+      faktReys:   "",
+      vremya:     "",
+      faktVremya: "",
+      dt:         "",
+      skhody:     "",
+    }));
+    setRows(newRows);
+    setImported(true);
+    setTimeout(() => setImported(false), 3000);
+  };
+
+  useEffect(() => {
+    if (naryadEntries.length > 0) setImported(false);
+  }, [naryadEntries]);
 
   const updateCell = (id: number, col: keyof ProdazhiRow, value: string) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
@@ -83,23 +113,26 @@ const Prodazhi = () => {
         <div className="bg-white border border-gray-300 shadow-sm">
           <div className="border-b border-gray-300 px-5 py-3 flex items-center justify-between print:hidden">
             <div>
-              <h1 className="text-lg font-bold text-gray-800 uppercase tracking-wide">
-                Продажи / Выходы на линию
-              </h1>
+              <h1 className="text-lg font-bold text-gray-800 uppercase tracking-wide">Продажи / Выходы на линию</h1>
               <p className="text-xs text-gray-500 mt-0.5">ООО «Дальавтотранс» · {today}</p>
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={addRow}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-              >
+              {naryadEntries.length > 0 && (
+                <button
+                  onClick={handleImport}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors ${
+                    imported ? "bg-green-600 text-white" : "bg-indigo-600 text-white hover:bg-indigo-700"
+                  }`}
+                >
+                  <Icon name={imported ? "Check" : "Download"} size={14} />
+                  {imported ? "Загружено!" : `Из наряда (${naryadEntries.length})`}
+                </button>
+              )}
+              <button onClick={addRow} className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
                 <Icon name="Plus" size={14} />
                 Строка
               </button>
-              <button
-                onClick={() => window.print()}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-              >
+              <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
                 <Icon name="Printer" size={14} />
                 Печать
               </button>
@@ -110,18 +143,9 @@ const Prodazhi = () => {
             <table className="border-collapse text-xs" style={{ minWidth: "100%" }}>
               <thead>
                 <tr style={{ backgroundColor: "#6fa8dc" }}>
-                  <th
-                    className="border border-blue-400 px-1 py-1.5 text-white font-semibold text-center"
-                    style={{ width: "28px", minWidth: "28px" }}
-                  >
-                    №
-                  </th>
+                  <th className="border border-blue-400 px-1 py-1.5 text-white font-semibold text-center" style={{ width: "28px", minWidth: "28px" }}>№</th>
                   {COLUMNS.map((col) => (
-                    <th
-                      key={col.key}
-                      className="border border-blue-400 px-1 py-1.5 text-white font-semibold text-center leading-tight"
-                      style={{ width: col.width, minWidth: col.width }}
-                    >
+                    <th key={col.key} className="border border-blue-400 px-1 py-1.5 text-white font-semibold text-center leading-tight" style={{ width: col.width, minWidth: col.width }}>
                       {col.label}
                     </th>
                   ))}
@@ -161,7 +185,6 @@ const Prodazhi = () => {
                   </tr>
                 ))}
 
-                {/* Sum row */}
                 <tr style={{ backgroundColor: "#c9daf8" }}>
                   <td className="border border-gray-400 px-1 py-1 text-center font-bold text-gray-700 text-xs">Σ</td>
                   {COLUMNS.map((col) => (

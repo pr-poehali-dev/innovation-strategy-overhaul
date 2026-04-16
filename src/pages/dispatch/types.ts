@@ -1,6 +1,10 @@
 export interface NaryadRow {
   id: number;
+  vehicleId: number | null; // ссылка на TsVehicle.id
   bortovoy: string;
+  gos: string;
+  marka: string;
+  marshrut: string;
   fio: string;
   fioKond: string;
   garazhny: string;
@@ -20,7 +24,11 @@ export interface NormaSettings {
 
 export const emptyRow = (): NaryadRow => ({
   id: Date.now() + Math.random(),
+  vehicleId: null,
   bortovoy: "",
+  gos: "",
+  marka: "",
+  marshrut: "",
   fio: "",
   fioKond: "",
   garazhny: "",
@@ -39,11 +47,11 @@ export const DEFAULT_SETTINGS: NormaSettings = {
 };
 
 export const TEXT_COLS = [
-  { key: "bortovoy", label: "Бортовой №",     width: "120px" },
-  { key: "fio",      label: "ФИО водителя",   width: "200px" },
-  { key: "fioKond",  label: "ФИО кондуктора", width: "200px" },
-  { key: "garazhny", label: "Гаражный №",     width: "110px" },
-  { key: "putevoy",  label: "Путевой лист",   width: "140px" },
+  { key: "marshrut", label: "Маршрут",        width: "110px" },
+  { key: "fio",      label: "ФИО водителя",   width: "190px" },
+  { key: "fioKond",  label: "ФИО кондуктора", width: "190px" },
+  { key: "garazhny", label: "Гаражный №",     width: "100px" },
+  { key: "putevoy",  label: "Путевой лист",   width: "130px" },
 ] as const;
 
 export function calcPodrabotka(
