@@ -1,0 +1,411 @@
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useAppStore } from "@/store/appStore";
+import { calcPodrabotka } from "@/pages/dispatch/types";
+import { loadVedomostRows, calcVedomostRow } from "@/pages/Vedomost";
+import {
+  KassaRow, VyplataRow, ChastRow, Day, MonthlyKassaRow,
+  MAIN_COLS, VYP_COLS,
+  toNum, emptyRow, emptyVyp, emptyChastRow,
+} from "./kassaTypes";
+import {
+  LS_PRODAZHI, LS_VEDOMOST,
+  loadKassa, saveKassa, loadProdazhiAll, toDateKey,
+  PodrabJournalEntry,
+} from "./kassaShared";
+
+export const useKassaLogic = () => {
+  const { weeklyNaryady, naryadSettings, employees } = useAppStore();
+
+  const [tab, setTab] = useState<"kassa" | "chast" | "podrab" | "monthly">("kassa");
+  const [selectedKey, setSelectedKey] = useState(() => toDateKey(new Date()));
+  const [monthKey, setMonthKey] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+
+  const [rows, setRows] = useState<KassaRow[]>(() => {
+    const saved = loadKassa()[toDateKey(new Date())];
+    return saved?.rows ?? Array.from({ length: 12 }, () => emptyRow());
+  });
+  const [vyplaty, setVyplaty] = useState<VyplataRow[]>(() => {
+    const saved = loadKassa()[toDateKey(new Date())];
+    return saved?.vyplaty ?? Array.from({ length: 10 }, emptyVyp);
+  });
+  const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
+  const [activeVyp, setActiveVyp] = useState<{ rowId: number; col: string } | null>(null);
+
+  const isLoadingRef = useRef(false);
+
+  const handleDateChange = (newKey: string) => {
+    isLoadingRef.current = true;
+    setSelectedKey(newKey);
+    const saved = loadKassa()[newKey];
+    setRows(saved?.rows ?? Array.from({ length: 12 }, () => emptyRow()));
+    setVyplaty(saved?.vyplaty ?? Array.from({ length: 10 }, emptyVyp));
+    setTimeout(() => { isLoadingRef.current = false; }, 0);
+  };
+
+  useEffect(() => {
+    if (isLoadingRef.current) return;
+    const data = loadKassa();
+    data[selectedKey] = { rows, vyplaty };
+    saveKassa(data);
+  }, [rows, vyplaty, selectedKey]);
+
+  const [chastRows, setChastRows] = useState<ChastRow[]>(() =>
+    employees
+      .filter((e) => e.status === "active")
+      .sort((a, b) => a.fio.localeCompare(b.fio, "ru"))
+      .map((e) => emptyChastRow(e.fio, ""))
+      .concat(Array.from({ length: 30 }, () => emptyChastRow()))
+  );
+
+  const naryadRows = useMemo(() => weeklyNaryady[selectedKey] ?? [], [weeklyNaryady, selectedKey]);
+
+  // Синхронизация из наряда
+  useEffect(() => {
+    if (!naryadRows.length) return;
+    const cena = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
+    setRows((currentRows) => {
+      const existingByBort = new Map(currentRows.map((r) => [r.bort, r]));
+      const workingRows = naryadRows.filter((r) => r.fio && !r.statusOtsutstviya);
+      const syncedRows: KassaRow[] = workingRows.map((r) => {
+        const existing = existingByBort.get(r.bortovoy);
+        const existingRow = existing ?? emptyRow();
+        const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
+        const hasCond = !!(r.fioKond && r.fioKond.trim());
+        const obedAuto = hasCond
+          ? (naryadSettings.obedVodKond ?? "300")
+          : (naryadSettings.obedVod ?? "150");
+        const podrVod  = calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : existingRow.podrVod;
+        const podrCond = calc && calc.cond > 0 ? String(Math.round(calc.cond)) : existingRow.podrCond;
+        const kolBil = r.biletov || existingRow.kolBil;
+        const viruchka = existing
+          ? existingRow.viruchka
+          : (() => {
+              const kol = parseFloat(kolBil) || 0;
+              const bez = toNum(existingRow.beznal);
+              const qrV = toNum(existingRow.qr);
+              return (kol || bez || qrV) ? String(Math.round(kol * cena + bez + qrV)) : "";
+            })();
+        const prodBilety = viruchka && cena
+          ? String(Math.round(toNum(viruchka) / cena))
+          : existingRow.prodBilety;
+        const rashodDt = existingRow.rashodDt;
+        const itogo = (() => {
+          const v = toNum(viruchka), o = toNum(obedAuto), rd = toNum(rashodDt);
+          const ch = toNum(existingRow.chek), vz = toNum(existingRow.vozvrat);
+          const pv = toNum(podrVod), pk = toNum(podrCond);
+          return (v || o || rd || ch || vz || pv || pk)
+            ? String(Math.round(v - o - rd - ch - vz - pv - pk))
+            : existingRow.itogo;
+        })();
+        return {
+          ...existingRow,
+          type: "route" as const,
+          mar: r.marshrut, bort: r.bortovoy,
+          fioVod: r.fio, fioCond: r.fioKond || "без",
+          kolBil, viruchka, prodBilety, obed: obedAuto,
+          podrVod, podrCond,
+          podrVodVydano:  existingRow.podrVodVydano  ?? false,
+          podrCondVydano: existingRow.podrCondVydano ?? false,
+          itogo,
+        };
+      });
+      const dispRows = currentRows.filter((r) => r.type === "disp");
+      return [...syncedRows, ...dispRows];
+    });
+  }, [naryadRows, naryadSettings, selectedKey]);
+
+  // ─── Расчётные поля ──────────────────────────────────────────────────────
+  const calcViruchka = (r: KassaRow, overrides: Partial<KassaRow> = {}): string => {
+    const row    = { ...r, ...overrides };
+    const kol    = toNum(row.kolBil);
+    const beznal = toNum(row.beznal);
+    const qr     = toNum(row.qr);
+    const cena   = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
+    if (!kol && !beznal && !qr) return "";
+    return String(Math.round(kol * cena + beznal + qr));
+  };
+
+  const calcProdBilety = (viruchka: string): string => {
+    const v    = toNum(viruchka);
+    const cena = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
+    if (!v || !cena) return "";
+    return String(Math.round(v / cena));
+  };
+
+  const calcItogo = (r: KassaRow, overrides: Partial<KassaRow> = {}): string => {
+    const row  = { ...r, ...overrides };
+    const v    = toNum(row.viruchka);
+    const bez  = toNum(row.beznal);
+    const qr   = toNum(row.qr);
+    const obed = toNum(row.obed);
+    const rDt  = toNum(row.rashodDt);
+    const chek = toNum(row.chek);
+    const vozv = toNum(row.vozvrat);
+    const pvod = toNum(row.podrVod);
+    const pkond= toNum(row.podrCond);
+    const plus = toNum(row.vPlus);
+    if (!v && !bez && !qr && !obed && !rDt && !chek && !vozv && !pvod && !pkond && !plus) return "";
+    return String(Math.round(v - bez - qr - obed - rDt - chek - vozv - pvod - pkond + plus));
+  };
+
+  const ITOGO_DEPS = new Set<keyof KassaRow>([
+    "viruchka", "beznal", "qr", "obed", "rashodDt", "chek", "vozvrat", "podrVod", "podrCond", "vPlus",
+  ]);
+
+  // ─── Обработчики кассы ───────────────────────────────────────────────────
+  const updateCell = (id: number, col: keyof KassaRow, value: string) =>
+    setRows((prev) => prev.map((r) => {
+      if (r.id !== id) return r;
+      const updated: KassaRow = { ...r, [col]: value };
+      if (col === "kolBil" || col === "beznal" || col === "qr") {
+        updated.viruchka   = calcViruchka(r, { [col]: value });
+        updated.prodBilety = calcProdBilety(updated.viruchka);
+        updated.itogo      = calcItogo(r, { [col]: value, viruchka: updated.viruchka });
+      }
+      if (col === "viruchka") {
+        updated.prodBilety = calcProdBilety(value);
+        updated.itogo      = calcItogo(r, { viruchka: value });
+      }
+      if (ITOGO_DEPS.has(col) && col !== "viruchka" && col !== "kolBil" && col !== "beznal" && col !== "qr") {
+        updated.itogo = calcItogo(r, { [col]: value });
+      }
+      if (col === "rashodDt" && r.bort) {
+        const cenaTopliva = parseFloat(naryadSettings.stoimostTopliva) || 0;
+        if (cenaTopliva && toNum(value) > 0) {
+          const litry = String(Math.round(toNum(value) / cenaTopliva * 100) / 100);
+          const prodAll = loadProdazhiAll();
+          const prodDay = prodAll[selectedKey];
+          if (prodDay?.rows) {
+            prodDay.rows = (prodDay.rows as Array<Record<string, string>>).map((pr) =>
+              pr.bort === r.bort ? { ...pr, dt: litry } : pr
+            );
+            prodAll[selectedKey] = prodDay;
+            try { localStorage.setItem(LS_PRODAZHI, JSON.stringify(prodAll)); } catch (e) { console.warn(e); }
+          }
+        }
+      }
+      return updated;
+    }));
+
+  const addRow = (type: KassaRow["type"] = "route") =>
+    setRows((prev) => [...prev, emptyRow(type)]);
+
+  const deleteRow = (id: number) =>
+    setRows((prev) => prev.filter((r) => r.id !== id));
+
+  const handleKeyDown = (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
+    if (e.key !== "Tab" && e.key !== "Enter") return;
+    e.preventDefault();
+    if (colIdx + 1 < MAIN_COLS.length) {
+      setActiveCell({ rowId: rows[rowIdx].id, col: MAIN_COLS[colIdx + 1].key });
+    } else if (rowIdx + 1 < rows.length) {
+      setActiveCell({ rowId: rows[rowIdx + 1].id, col: MAIN_COLS[0].key });
+    }
+  };
+
+  // ─── Обработчики выплат ──────────────────────────────────────────────────
+  const updateVyp = (id: number, col: keyof VyplataRow, val: string) => {
+    setVyplaty((prev) => prev.map((v) => {
+      if (v.id !== id) return v;
+      const updated = { ...v, [col]: val };
+      if (col === "summa" || col === "kol") {
+        const s = toNum(col === "summa" ? val : updated.summa);
+        const k = toNum(col === "kol"   ? val : updated.kol);
+        updated.itogo = s && k ? String(Math.round(s * k)) : "";
+      }
+      return updated;
+    }));
+  };
+
+  const addVyp = () => setVyplaty((prev) => [...prev, emptyVyp()]);
+  const deleteVyp = (id: number) => setVyplaty((prev) => prev.filter((v) => v.id !== id));
+
+  const handleVypKeyDown = (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
+    if (e.key !== "Tab" && e.key !== "Enter") return;
+    e.preventDefault();
+    if (colIdx + 1 < VYP_COLS.length) {
+      setActiveVyp({ rowId: vyplaty[rowIdx].id, col: VYP_COLS[colIdx + 1].key });
+    } else if (rowIdx + 1 < vyplaty.length) {
+      setActiveVyp({ rowId: vyplaty[rowIdx + 1].id, col: VYP_COLS[0].key });
+    }
+  };
+
+  // ─── Обработчики частичной выдачи ───────────────────────────────────────
+  const updateChast = (id: number, field: "fio" | "nachisleno", val: string) =>
+    setChastRows((prev) => prev.map((r) => r.id === id ? { ...r, [field]: val } : r));
+
+  const updateChastDay = (id: number, day: Day, val: string) =>
+    setChastRows((prev) => prev.map((r) => r.id === id ? { ...r, vyplaty: { ...r.vyplaty, [day]: val } } : r));
+
+  const addChastRow = () => setChastRows((prev) => [...prev, emptyChastRow()]);
+
+  // ─── Синхронизация ───────────────────────────────────────────────────────
+  const syncFromVedomost = () => {
+    const vedRows = loadVedomostRows();
+    setChastRows((prev) => prev.map((r) => {
+      if (!r.fio) return r;
+      const vedRow = vedRows.find((v: { fio?: string }) => v.fio === r.fio);
+      if (!vedRow) return r;
+      const { ostatok } = calcVedomostRow(vedRow);
+      return { ...r, nachisleno: ostatok !== 0 ? String(Math.round(ostatok)) : r.nachisleno };
+    }));
+  };
+
+  const syncBeznal = () => {
+    const prodAll = loadProdazhiAll();
+    const prodDay = prodAll[selectedKey];
+    if (!prodDay?.rows) return;
+    const validByBort = new Map<string, string>();
+    (prodDay.rows as Array<{ bort?: string; valid?: string }>).forEach((r) => {
+      if (r.bort && r.valid) validByBort.set(r.bort, r.valid);
+    });
+    if (validByBort.size === 0) return;
+    setRows((prev) => prev.map((r) => {
+      const val = validByBort.get(r.bort);
+      if (!val) return r;
+      return { ...r, beznal: val };
+    }));
+  };
+
+  // ─── Подработка: выдача + синхронизация в Ведомость ─────────────────────
+  const syncPodrToVedomost = (fio: string, summa: string) => {
+    if (!fio || !summa) return;
+    try {
+      const raw = localStorage.getItem(LS_VEDOMOST);
+      if (!raw) return;
+      const vedRows = JSON.parse(raw) as Array<Record<string, string>>;
+      const cur = vedRows.find((v) => v.fio === fio);
+      if (!cur) return;
+      const prev = parseFloat(cur.poluchPodrab || "0") || 0;
+      const add  = parseFloat(summa) || 0;
+      cur.poluchPodrab = String(Math.round(prev + add));
+      localStorage.setItem(LS_VEDOMOST, JSON.stringify(vedRows));
+    } catch (e) { console.warn(e); }
+  };
+
+  const toggleVydano = (id: number, who: "vod" | "cond") => {
+    setRows((prev) => prev.map((r) => {
+      if (r.id !== id) return r;
+      const field    = who === "vod" ? "podrVodVydano"  : "podrCondVydano";
+      const sumField = who === "vod" ? "podrVod" : "podrCond";
+      const fio      = who === "vod" ? r.fioVod : r.fioCond;
+      const newVal   = !r[field];
+      const summa    = r[sumField];
+      if (newVal) {
+        syncPodrToVedomost(fio, summa);
+      } else {
+        try {
+          const raw = localStorage.getItem(LS_VEDOMOST);
+          if (raw) {
+            const vedRows = JSON.parse(raw) as Array<Record<string, string>>;
+            const cur = vedRows.find((v) => v.fio === fio);
+            if (cur) {
+              const prev = parseFloat(cur.poluchPodrab || "0") || 0;
+              const sub  = parseFloat(summa) || 0;
+              cur.poluchPodrab = String(Math.max(0, Math.round(prev - sub)));
+              localStorage.setItem(LS_VEDOMOST, JSON.stringify(vedRows));
+            }
+          }
+        } catch (e) { console.warn(e); }
+      }
+      return { ...r, [field]: newVal };
+    }));
+  };
+
+  // ─── Журнал выдачи подработок за месяц ──────────────────────────────────
+  const podrabJournal = useMemo((): PodrabJournalEntry[] => {
+    const kassaAll = loadKassa();
+    const result: PodrabJournalEntry[] = [];
+    Object.entries(kassaAll).forEach(([dateKey, dayData]) => {
+      if (!dateKey.startsWith(monthKey)) return;
+      const dayRows: KassaRow[] = dayData?.rows ?? [];
+      dayRows.forEach((r) => {
+        if (!r.bort || r.type === "disp") return;
+        if (!toNum(r.podrVod) && !toNum(r.podrCond)) return;
+        result.push({
+          dateKey, bort: r.bort, mar: r.mar,
+          fioVod: r.fioVod, fioCond: r.fioCond,
+          podrVod: r.podrVod, podrCond: r.podrCond,
+          vodVyd: r.podrVodVydano ?? false,
+          condVyd: r.podrCondVydano ?? false,
+        });
+      });
+    });
+    return result.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+  }, [rows, monthKey]);
+
+  // ─── Месячный отчёт ──────────────────────────────────────────────────────
+  const monthlyRows = useMemo((): MonthlyKassaRow[] => {
+    const prodAll = loadProdazhiAll();
+    const kassaAll = loadKassa();
+    const map = new Map<string, MonthlyKassaRow>();
+    Object.entries(kassaAll).forEach(([dateKey, dayData]) => {
+      if (!dateKey.startsWith(monthKey)) return;
+      const dayRows: KassaRow[] = dayData?.rows ?? [];
+      const prodDay = prodAll[dateKey];
+      const validByBort = new Map<string, string>();
+      if (prodDay?.rows) {
+        (prodDay.rows as Array<{ bort?: string; valid?: string }>).forEach((r) => {
+          if (r.bort && r.valid) validByBort.set(r.bort, r.valid);
+        });
+      }
+      dayRows.filter((r) => r.bort && r.type !== "disp").forEach((r) => {
+        const bortKey = r.bort;
+        const beznalVal = toNum(r.beznal) > 0
+          ? toNum(r.beznal)
+          : toNum(validByBort.get(r.bort) ?? "0");
+        const dayEntry = {
+          kolBil: toNum(r.kolBil), beznal: beznalVal,
+          qr: toNum(r.qr), viruchka: toNum(r.viruchka),
+          obed: toNum(r.obed), rashodDt: toNum(r.rashodDt),
+          chek: toNum(r.chek), vozvrat: toNum(r.vozvrat),
+          podrVod: toNum(r.podrVod), podrCond: toNum(r.podrCond),
+          vPlus: toNum(r.vPlus), itogo: toNum(r.itogo),
+        };
+        if (!map.has(bortKey)) {
+          map.set(bortKey, {
+            id: Math.random() * 1e15 + performance.now(),
+            bort: r.bort, mar: r.mar, fioVod: r.fioVod, fioCond: r.fioCond,
+            kolBil: 0, beznal: 0, qr: 0, viruchka: 0,
+            obed: 0, rashodDt: 0, chek: 0, vozvrat: 0,
+            podrVod: 0, podrCond: 0, vPlus: 0, itogo: 0,
+            byDay: {},
+          });
+        }
+        const existing = map.get(bortKey)!;
+        if (r.fioVod) existing.fioVod = r.fioVod;
+        if (r.fioCond && r.fioCond !== "без") existing.fioCond = r.fioCond;
+        (Object.keys(dayEntry) as (keyof typeof dayEntry)[]).forEach((k) => {
+          (existing[k] as number) += dayEntry[k];
+        });
+        existing.byDay[dateKey] = dayEntry;
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => {
+      const an = parseInt(a.mar.split("/")[0]) || 0;
+      const bn = parseInt(b.mar.split("/")[0]) || 0;
+      return an !== bn ? an - bn : a.bort.localeCompare(b.bort);
+    });
+  }, [rows, monthKey]);
+
+  return {
+    // state
+    tab, setTab,
+    selectedKey, monthKey, setMonthKey,
+    rows, vyplaty, activeCell, activeVyp,
+    chastRows, naryadRows,
+    podrabJournal, monthlyRows,
+    // handlers
+    handleDateChange,
+    updateCell, addRow, deleteRow, handleKeyDown,
+    setActiveCell,
+    updateVyp, addVyp, deleteVyp, handleVypKeyDown,
+    setActiveVyp,
+    updateChast, updateChastDay, addChastRow,
+    syncFromVedomost, syncBeznal,
+    toggleVydano,
+  };
+};

@@ -1,462 +1,29 @@
-import { useState, useEffect, useMemo, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
-import { useAppStore } from "@/store/appStore";
-import { calcPodrabotka } from "@/pages/dispatch/types";
-import {
-  KassaRow, VyplataRow, ChastRow, Day, MonthlyKassaRow,
-  MAIN_COLS, VYP_COLS,
-  toNum, emptyRow, emptyVyp, emptyChastRow,
-} from "./kassa/kassaTypes";
+import { useKassaLogic } from "./kassa/useKassaLogic";
 import KassaOtchet from "./kassa/KassaOtchet";
 import ChastVydacha from "./kassa/ChastVydacha";
 import KassaMonthly from "./kassa/KassaMonthly";
-import { loadVedomostRows, calcVedomostRow } from "@/pages/Vedomost";
-
-const LS_PRODAZHI = "dat_prodazhi_v1";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function loadProdazhiAll(): Record<string, any> {
-  try { const r = localStorage.getItem(LS_PRODAZHI); return r ? JSON.parse(r) : {}; } catch (e) { console.warn(e); return {}; }
-}
+import KassaPodrabJournal from "./kassa/KassaPodrabJournal";
 
 const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 
-const LS_KASSA = "dat_kassa_v1";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function loadKassa(): Record<string, any> {
-  try { const r = localStorage.getItem(LS_KASSA); return r ? JSON.parse(r) : {}; } catch (e) { console.warn(e); return {}; }
-}
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function saveKassa(data: Record<string, any>): void {
-  try {
-    localStorage.setItem(LS_KASSA, JSON.stringify(data));
-    // Уведомляем другие компоненты на той же вкладке (storage event не срабатывает автоматически)
-    window.dispatchEvent(new StorageEvent("storage", { key: LS_KASSA }));
-  } catch (e) { console.warn(e); }
-}
-
-const toDateKey = (d: Date): string => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-};
-
 const Kassa = () => {
-  const { weeklyNaryady, naryadSettings, employees } = useAppStore();
-
-  const [tab, setTab] = useState<"kassa" | "chast" | "podrab" | "monthly">("kassa");
-  const [selectedKey, setSelectedKey] = useState(() => toDateKey(new Date()));
-  const [monthKey, setMonthKey] = useState(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-  });
-  const [rows, setRows] = useState<KassaRow[]>(() => {
-    const saved = loadKassa()[toDateKey(new Date())];
-    return saved?.rows ?? Array.from({ length: 12 }, () => emptyRow());
-  });
-  const [vyplaty, setVyplaty] = useState<VyplataRow[]>(() => {
-    const saved = loadKassa()[toDateKey(new Date())];
-    return saved?.vyplaty ?? Array.from({ length: 10 }, emptyVyp);
-  });
-  const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
-  const [activeVyp, setActiveVyp] = useState<{ rowId: number; col: string } | null>(null);
-
-  // Флаг смены даты — не сохранять пока rows/vyplaty не обновились
-  const isLoadingRef = useRef(false);
-
-  // При смене даты — синхронно загружаем данные, потом сохранение безопасно
-  const handleDateChange = (newKey: string) => {
-    isLoadingRef.current = true;
-    setSelectedKey(newKey);
-    const saved = loadKassa()[newKey];
-    setRows(saved?.rows ?? Array.from({ length: 12 }, () => emptyRow()));
-    setVyplaty(saved?.vyplaty ?? Array.from({ length: 10 }, emptyVyp));
-    setTimeout(() => { isLoadingRef.current = false; }, 0);
-  };
-
-  // Сохранение — пропускаем один цикл после смены даты
-  useEffect(() => {
-    if (isLoadingRef.current) return;
-    const data = loadKassa();
-    data[selectedKey] = { rows, vyplaty };
-    saveKassa(data);
-  }, [rows, vyplaty, selectedKey]);
-
-  const [chastRows, setChastRows] = useState<ChastRow[]>(() =>
-    employees
-      .filter((e) => e.status === "active")
-      .sort((a, b) => a.fio.localeCompare(b.fio, "ru"))
-      .map((e) => emptyChastRow(e.fio, ""))
-      .concat(Array.from({ length: 30 }, () => emptyChastRow()))
-  );
-
-  // Строки наряда за выбранный день
-  const naryadRows = useMemo(() => weeklyNaryady[selectedKey] ?? [], [weeklyNaryady, selectedKey]);
-
-  // Синхронизация из наряда: только работающие экипажи (без статуса отсутствия)
-  useEffect(() => {
-    if (!naryadRows.length) return;
-    const cena = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
-    setRows((currentRows) => {
-      const existingByBort = new Map(currentRows.map((r) => [r.bort, r]));
-      // Только строки с фио и без статуса отсутствия
-      const workingRows = naryadRows.filter((r) => r.fio && !r.statusOtsutstviya);
-      const syncedRows: KassaRow[] = workingRows.map((r) => {
-        const existing = existingByBort.get(r.bortovoy);
-        const existingRow = existing ?? emptyRow();
-        const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
-        const hasCond = !!(r.fioKond && r.fioKond.trim());
-        // Обед — всегда проставляем (при изменении кондуктора тоже обновляется)
-        const obedAuto = hasCond
-          ? (naryadSettings.obedVodKond ?? "300")
-          : (naryadSettings.obedVod ?? "150");
-        // Подработка из настроек
-        const podrVod  = calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : existingRow.podrVod;
-        const podrCond = calc && calc.cond > 0 ? String(Math.round(calc.cond)) : existingRow.podrCond;
-        // kolBil из наряда
-        const kolBil = r.biletov || existingRow.kolBil;
-        // Выручку не трогаем если строка уже есть (пользователь мог ввести вручную)
-        const viruchka = existing
-          ? existingRow.viruchka
-          : (() => {
-              const kol = parseFloat(kolBil) || 0;
-              const bez = toNum(existingRow.beznal);
-              const qrV = toNum(existingRow.qr);
-              return (kol || bez || qrV) ? String(Math.round(kol * cena + bez + qrV)) : "";
-            })();
-        const prodBilety = viruchka && cena
-          ? String(Math.round(toNum(viruchka) / cena))
-          : existingRow.prodBilety;
-        const rashodDt = existingRow.rashodDt;
-        const itogo = (() => {
-          const v = toNum(viruchka), o = toNum(obedAuto), rd = toNum(rashodDt);
-          const ch = toNum(existingRow.chek), vz = toNum(existingRow.vozvrat);
-          const pv = toNum(podrVod), pk = toNum(podrCond);
-          return (v || o || rd || ch || vz || pv || pk)
-            ? String(Math.round(v - o - rd - ch - vz - pv - pk))
-            : existingRow.itogo;
-        })();
-        return {
-          ...existingRow,
-          type: "route" as const,
-          mar: r.marshrut, bort: r.bortovoy,
-          fioVod: r.fio, fioCond: r.fioKond || "без",
-          kolBil, viruchka, prodBilety, obed: obedAuto,
-          podrVod, podrCond,
-          // Галочки выдачи не трогаем
-          podrVodVydano:  existingRow.podrVodVydano  ?? false,
-          podrCondVydano: existingRow.podrCondVydano ?? false,
-          itogo,
-        };
-      });
-      const dispRows = currentRows.filter((r) => r.type === "disp");
-      return [...syncedRows, ...dispRows];
-    });
-  }, [naryadRows, naryadSettings, selectedKey]);
-
-  // ─── Расчётные поля ──────────────────────────────────────────────────────
-  // Выручка = Кол.бил × стоимость проезда + Безнал + QR
-  const calcViruchka = (r: KassaRow, overrides: Partial<KassaRow> = {}): string => {
-    const row    = { ...r, ...overrides };
-    const kol    = toNum(row.kolBil);
-    const beznal = toNum(row.beznal);
-    const qr     = toNum(row.qr);
-    const cena   = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
-    if (!kol && !beznal && !qr) return "";
-    return String(Math.round(kol * cena + beznal + qr));
-  };
-
-  // Проданные билеты = Выручка / стоимость проезда
-  const calcProdBilety = (viruchka: string): string => {
-    const v    = toNum(viruchka);
-    const cena = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
-    if (!v || !cena) return "";
-    return String(Math.round(v / cena));
-  };
-
-  // ИТОГО = Выручка − Безнал − QR − Обед − РасходДТ − Чек − Возврат − ПодрВод − ПодрКонд + В плюс
-  const calcItogo = (r: KassaRow, overrides: Partial<KassaRow> = {}): string => {
-    const row  = { ...r, ...overrides };
-    const v    = toNum(row.viruchka);
-    const bez  = toNum(row.beznal);
-    const qr   = toNum(row.qr);
-    const obed = toNum(row.obed);
-    const rDt  = toNum(row.rashodDt);
-    const chek = toNum(row.chek);
-    const vozv = toNum(row.vozvrat);
-    const pvod = toNum(row.podrVod);
-    const pkond= toNum(row.podrCond);
-    const plus = toNum(row.vPlus);
-    if (!v && !bez && !qr && !obed && !rDt && !chek && !vozv && !pvod && !pkond && !plus) return "";
-    return String(Math.round(v - bez - qr - obed - rDt - chek - vozv - pvod - pkond + plus));
-  };
-
-  // Поля, влияющие на ИТОГО
-  const ITOGO_DEPS = new Set<keyof KassaRow>([
-    "viruchka", "beznal", "qr", "obed", "rashodDt", "chek", "vozvrat", "podrVod", "podrCond", "vPlus",
-  ]);
-
-  // ─── Обработчики кассы ───────────────────────────────────────────────────
-  const updateCell = (id: number, col: keyof KassaRow, value: string) =>
-    setRows((prev) => prev.map((r) => {
-      if (r.id !== id) return r;
-      const updated: KassaRow = { ...r, [col]: value };
-      // При изменении kolBil / beznal / qr — пересчитываем выручку
-      if (col === "kolBil" || col === "beznal" || col === "qr") {
-        updated.viruchka   = calcViruchka(r, { [col]: value });
-        updated.prodBilety = calcProdBilety(updated.viruchka);
-        updated.itogo      = calcItogo(r, { [col]: value, viruchka: updated.viruchka });
-      }
-      // При изменении выручки — пересчитываем производные
-      if (col === "viruchka") {
-        updated.prodBilety = calcProdBilety(value);
-        updated.itogo      = calcItogo(r, { viruchka: value });
-      }
-      // При изменении любого вычета — пересчитываем итого
-      if (ITOGO_DEPS.has(col) && col !== "viruchka" && col !== "kolBil" && col !== "beznal" && col !== "qr") {
-        updated.itogo = calcItogo(r, { [col]: value });
-      }
-
-      // При изменении Расх.ДТ — переносим в Продажи (литры)
-      if (col === "rashodDt" && r.bort) {
-        const cenaTopliva = parseFloat(naryadSettings.stoimostTopliva) || 0;
-        if (cenaTopliva && toNum(value) > 0) {
-          const litry = String(Math.round(toNum(value) / cenaTopliva * 100) / 100);
-          const prodAll = loadProdazhiAll();
-          const prodDay = prodAll[selectedKey];
-          if (prodDay?.rows) {
-            prodDay.rows = (prodDay.rows as Array<Record<string, string>>).map((pr) =>
-              pr.bort === r.bort ? { ...pr, dt: litry } : pr
-            );
-            prodAll[selectedKey] = prodDay;
-            try { localStorage.setItem(LS_PRODAZHI, JSON.stringify(prodAll)); } catch (e) { console.warn(e); }
-          }
-        }
-      }
-
-      return updated;
-    }));
-
-  const addRow = (type: KassaRow["type"] = "route") =>
-    setRows((prev) => [...prev, emptyRow(type)]);
-
-  const deleteRow = (id: number) =>
-    setRows((prev) => prev.filter((r) => r.id !== id));
-
-  const handleKeyDown = (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
-    if (e.key !== "Tab" && e.key !== "Enter") return;
-    e.preventDefault();
-    if (colIdx + 1 < MAIN_COLS.length) {
-      setActiveCell({ rowId: rows[rowIdx].id, col: MAIN_COLS[colIdx + 1].key });
-    } else if (rowIdx + 1 < rows.length) {
-      setActiveCell({ rowId: rows[rowIdx + 1].id, col: MAIN_COLS[0].key });
-    }
-  };
-
-  // ─── Обработчики выплат ──────────────────────────────────────────────────
-  const updateVyp = (id: number, col: keyof VyplataRow, val: string) => {
-    setVyplaty((prev) => prev.map((v) => {
-      if (v.id !== id) return v;
-      const updated = { ...v, [col]: val };
-      if (col === "summa" || col === "kol") {
-        const s = toNum(col === "summa" ? val : updated.summa);
-        const k = toNum(col === "kol"   ? val : updated.kol);
-        updated.itogo = s && k ? String(Math.round(s * k)) : "";
-      }
-      return updated;
-    }));
-  };
-
-  const addVyp = () => setVyplaty((prev) => [...prev, emptyVyp()]);
-  const deleteVyp = (id: number) => setVyplaty((prev) => prev.filter((v) => v.id !== id));
-
-  const handleVypKeyDown = (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
-    if (e.key !== "Tab" && e.key !== "Enter") return;
-    e.preventDefault();
-    if (colIdx + 1 < VYP_COLS.length) {
-      setActiveVyp({ rowId: vyplaty[rowIdx].id, col: VYP_COLS[colIdx + 1].key });
-    } else if (rowIdx + 1 < vyplaty.length) {
-      setActiveVyp({ rowId: vyplaty[rowIdx + 1].id, col: VYP_COLS[0].key });
-    }
-  };
-
-  // ─── Обработчики частичной выдачи ───────────────────────────────────────
-  const updateChast = (id: number, field: "fio" | "nachisleno", val: string) =>
-    setChastRows((prev) => prev.map((r) => r.id === id ? { ...r, [field]: val } : r));
-
-  const updateChastDay = (id: number, day: Day, val: string) =>
-    setChastRows((prev) => prev.map((r) => r.id === id ? { ...r, vyplaty: { ...r.vyplaty, [day]: val } } : r));
-
-  const addChastRow = () => setChastRows((prev) => [...prev, emptyChastRow()]);
-
-  // ─── Синхронизация "Начислено" в ЧастичнаяВыдача ← Ведомость.ostatok ────
-  const syncFromVedomost = () => {
-    const vedRows = loadVedomostRows();
-    setChastRows((prev) => prev.map((r) => {
-      if (!r.fio) return r;
-      const vedRow = vedRows.find((v: { fio?: string }) => v.fio === r.fio);
-      if (!vedRow) return r;
-      const { ostatok } = calcVedomostRow(vedRow);
-      return { ...r, nachisleno: ostatok !== 0 ? String(Math.round(ostatok)) : r.nachisleno };
-    }));
-  };
-
-  // ─── Синхронизация "Безнал" в кассовый отчёт ← Продажи.valid ────────────
-  const syncBeznal = () => {
-    const prodAll = loadProdazhiAll();
-    // Для текущего selectedKey берём данные из Продаж
-    const prodDay = prodAll[selectedKey];
-    if (!prodDay?.rows) return;
-    const validByBort = new Map<string, string>();
-    (prodDay.rows as Array<{ bort?: string; valid?: string }>).forEach((r) => {
-      if (r.bort && r.valid) validByBort.set(r.bort, r.valid);
-    });
-    if (validByBort.size === 0) return;
-    setRows((prev) => prev.map((r) => {
-      const val = validByBort.get(r.bort);
-      if (!val) return r;
-      return { ...r, beznal: val };
-    }));
-  };
-
-  // ─── Помечаем подработку как выданную + синхронизируем в Ведомость ──────────
-  const LS_VEDOMOST = "dat_vedomost_v1";
-
-  const syncPodrToVedomost = (fio: string, summa: string) => {
-    if (!fio || !summa) return;
-    try {
-      const raw = localStorage.getItem(LS_VEDOMOST);
-      if (!raw) return;
-      const vedRows = JSON.parse(raw) as Array<Record<string, string>>;
-      const cur = vedRows.find((v) => v.fio === fio);
-      if (!cur) return;
-      const prev = parseFloat(cur.poluchPodrab || "0") || 0;
-      const add  = parseFloat(summa) || 0;
-      cur.poluchPodrab = String(Math.round(prev + add));
-      localStorage.setItem(LS_VEDOMOST, JSON.stringify(vedRows));
-    } catch (e) { console.warn(e); }
-  };
-
-  const toggleVydano = (id: number, who: "vod" | "cond") => {
-    setRows((prev) => prev.map((r) => {
-      if (r.id !== id) return r;
-      const field   = who === "vod" ? "podrVodVydano"  : "podrCondVydano";
-      const sumField = who === "vod" ? "podrVod" : "podrCond";
-      const fio     = who === "vod" ? r.fioVod : r.fioCond;
-      const newVal  = !r[field];
-      // При включении — добавляем сумму в Ведомость; при выключении — вычитаем
-      const summa = r[sumField];
-      if (newVal) {
-        syncPodrToVedomost(fio, summa);
-      } else {
-        // Отмена: вычитаем из Ведомости
-        try {
-          const raw = localStorage.getItem(LS_VEDOMOST);
-          if (raw) {
-            const vedRows = JSON.parse(raw) as Array<Record<string, string>>;
-            const cur = vedRows.find((v) => v.fio === fio);
-            if (cur) {
-              const prev = parseFloat(cur.poluchPodrab || "0") || 0;
-              const sub  = parseFloat(summa) || 0;
-              cur.poluchPodrab = String(Math.max(0, Math.round(prev - sub)));
-              localStorage.setItem(LS_VEDOMOST, JSON.stringify(vedRows));
-            }
-          }
-        } catch (e) { console.warn(e); }
-      }
-      return { ...r, [field]: newVal };
-    }));
-  };
-
-  // ─── Журнал выдачи подработок за месяц ──────────────────────────────────────
-  const podrabJournal = useMemo(() => {
-    const kassaAll = loadKassa();
-    type JEntry = { dateKey: string; bort: string; mar: string; fioVod: string; fioCond: string; podrVod: string; podrCond: string; vodVyd: boolean; condVyd: boolean };
-    const result: JEntry[] = [];
-    Object.entries(kassaAll).forEach(([dateKey, dayData]) => {
-      if (!dateKey.startsWith(monthKey)) return;
-      const dayRows: KassaRow[] = dayData?.rows ?? [];
-      dayRows.forEach((r) => {
-        if (!r.bort || r.type === "disp") return;
-        if (!toNum(r.podrVod) && !toNum(r.podrCond)) return;
-        result.push({
-          dateKey, bort: r.bort, mar: r.mar,
-          fioVod: r.fioVod, fioCond: r.fioCond,
-          podrVod: r.podrVod, podrCond: r.podrCond,
-          vodVyd: r.podrVodVydano ?? false,
-          condVyd: r.podrCondVydano ?? false,
-        });
-      });
-    });
-    return result.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
-  }, [rows, monthKey]);
-
-  // ─── Месячный отчёт: строим из сохранённых кассовых данных за выбранный месяц
-  const monthlyRows = useMemo((): MonthlyKassaRow[] => {
-    const prodAll = loadProdazhiAll();
-    const kassaAll = loadKassa();
-    const map = new Map<string, MonthlyKassaRow>();
-
-    // Перебираем все дни месяца из сохранённых кассовых данных
-    Object.entries(kassaAll).forEach(([dateKey, dayData]) => {
-      if (!dateKey.startsWith(monthKey)) return;
-      const dayRows: KassaRow[] = dayData?.rows ?? [];
-
-      // Для этого дня загружаем данные продаж (валид = безнал)
-      const prodDay = prodAll[dateKey];
-      const validByBort = new Map<string, string>();
-      if (prodDay?.rows) {
-        (prodDay.rows as Array<{ bort?: string; valid?: string }>).forEach((r) => {
-          if (r.bort && r.valid) validByBort.set(r.bort, r.valid);
-        });
-      }
-
-      dayRows.filter((r) => r.bort && r.type !== "disp").forEach((r) => {
-        const bortKey = r.bort;
-        // Безнал: из кассы или из продаж (valid)
-        const beznalVal = toNum(r.beznal) > 0
-          ? toNum(r.beznal)
-          : toNum(validByBort.get(r.bort) ?? "0");
-
-        const dayEntry = {
-          kolBil: toNum(r.kolBil), beznal: beznalVal,
-          qr: toNum(r.qr), viruchka: toNum(r.viruchka),
-          obed: toNum(r.obed), rashodDt: toNum(r.rashodDt),
-          chek: toNum(r.chek), vozvrat: toNum(r.vozvrat),
-          podrVod: toNum(r.podrVod), podrCond: toNum(r.podrCond),
-          vPlus: toNum(r.vPlus), itogo: toNum(r.itogo),
-        };
-
-        if (!map.has(bortKey)) {
-          map.set(bortKey, {
-            id: Math.random() * 1e15 + performance.now(),
-            bort: r.bort, mar: r.mar, fioVod: r.fioVod, fioCond: r.fioCond,
-            kolBil: 0, beznal: 0, qr: 0, viruchka: 0,
-            obed: 0, rashodDt: 0, chek: 0, vozvrat: 0,
-            podrVod: 0, podrCond: 0, vPlus: 0, itogo: 0,
-            byDay: {},
-          });
-        }
-        const existing = map.get(bortKey)!;
-        // Обновляем fio если есть
-        if (r.fioVod) existing.fioVod = r.fioVod;
-        if (r.fioCond && r.fioCond !== "без") existing.fioCond = r.fioCond;
-        // Суммируем
-        (Object.keys(dayEntry) as (keyof typeof dayEntry)[]).forEach((k) => {
-          (existing[k] as number) += dayEntry[k];
-        });
-        existing.byDay[dateKey] = dayEntry;
-      });
-    });
-
-    return Array.from(map.values()).sort((a, b) => {
-      const an = parseInt(a.mar.split("/")[0]) || 0;
-      const bn = parseInt(b.mar.split("/")[0]) || 0;
-      return an !== bn ? an - bn : a.bort.localeCompare(b.bort);
-    });
-   
-  }, [rows, monthKey]);
+  const {
+    tab, setTab,
+    selectedKey, monthKey, setMonthKey,
+    rows, vyplaty, activeCell, activeVyp,
+    chastRows, naryadRows,
+    podrabJournal, monthlyRows,
+    handleDateChange,
+    updateCell, addRow, deleteRow, handleKeyDown,
+    setActiveCell,
+    updateVyp, addVyp, deleteVyp, handleVypKeyDown,
+    setActiveVyp,
+    updateChast, updateChastDay, addChastRow,
+    syncFromVedomost, syncBeznal,
+    toggleVydano,
+  } = useKassaLogic();
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
@@ -515,10 +82,10 @@ const Kassa = () => {
           {/* Вкладки */}
           <div className="border-b border-gray-300 flex print:hidden">
             {([
-              ["kassa",   "Кассовый отчёт",         "Wallet"      ],
-              ["chast",   "Частичная выдача",        "UserCheck"   ],
-              ["podrab",  "Журнал подработок",       "BadgeDollarSign"],
-              ["monthly", "Отчёт за месяц",          "BarChart3"   ],
+              ["kassa",   "Кассовый отчёт",    "Wallet"          ],
+              ["chast",   "Частичная выдача",   "UserCheck"       ],
+              ["podrab",  "Журнал подработок",  "BadgeDollarSign" ],
+              ["monthly", "Отчёт за месяц",     "BarChart3"       ],
             ] as const).map(([key, label, icon]) => (
               <button
                 key={key}
@@ -533,20 +100,17 @@ const Kassa = () => {
                 {label}
               </button>
             ))}
-            {/* Кнопки синхронизации — зависят от активной вкладки */}
+            {/* Кнопки синхронизации */}
             <div className="ml-auto flex items-center gap-2 px-3">
               {tab === "kassa" && (
-                <>
-                  <button
-                    onClick={syncBeznal}
-                    title="Заполнить Безнал из Продаж (колонка Валид) по текущей дате"
-                    className="flex items-center gap-1.5 px-2 py-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100"
-                  >
-                    <Icon name="ArrowDownToLine" size={12} />
-                    Безнал ← Продажи
-                  </button>
-
-                </>
+                <button
+                  onClick={syncBeznal}
+                  title="Заполнить Безнал из Продаж (колонка Валид) по текущей дате"
+                  className="flex items-center gap-1.5 px-2 py-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100"
+                >
+                  <Icon name="ArrowDownToLine" size={12} />
+                  Безнал ← Продажи
+                </button>
               )}
               {tab === "chast" && (
                 <button
@@ -558,7 +122,7 @@ const Kassa = () => {
                   Начислено ← Ведомость
                 </button>
               )}
-              {(tab === "monthly") && (
+              {tab === "monthly" && (
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">Месяц:</span>
                   <input
@@ -606,91 +170,11 @@ const Kassa = () => {
 
           {/* ═══ ВКЛАДКА: Журнал выдачи подработок ═══ */}
           {tab === "podrab" && (
-            <div>
-              <div className="px-5 py-2 bg-amber-50 border-b border-amber-100 flex items-center justify-between text-xs text-amber-700">
-                <span><Icon name="Info" size={13} className="inline mr-1" />Зелёный ✓ — подработка выдана. При отметке сумма попадает в Ведомость (Получ. Подраб.)</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-500">Месяц:</span>
-                  <input type="month" value={monthKey} onChange={(e) => setMonthKey(e.target.value)}
-                    className="border border-gray-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-blue-400" />
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="border-collapse text-xs w-full">
-                  <thead>
-                    <tr style={{ backgroundColor: "#1a3a6b" }}>
-                      {["Дата", "Борт", "Маршрут", "Водитель", "Кондуктор", "Подр. вод, ₽", "Выд. вод", "Подр. конд, ₽", "Выд. конд"].map((h) => (
-                        <th key={h} className="border border-blue-900 px-2 py-1.5 text-white font-semibold text-center leading-tight">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {podrabJournal.length === 0 && (
-                      <tr><td colSpan={9} className="text-center py-8 text-gray-400">Нет данных о подработках за выбранный месяц</td></tr>
-                    )}
-                    {podrabJournal.map((e, i) => {
-                      const d = new Date(e.dateKey + "T00:00:00");
-                      const dateStr = d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
-                      const bg = i % 2 === 0 ? "#fff" : "#f5f8ff";
-                      return (
-                        <tr key={`${e.dateKey}-${e.bort}`} style={{ backgroundColor: bg }}>
-                          <td className="border border-gray-300 px-2 py-1 text-center">{dateStr}</td>
-                          <td className="border border-gray-300 px-2 py-1 text-center font-bold text-blue-800">{e.bort}</td>
-                          <td className="border border-gray-300 px-2 py-1 text-center">{e.mar}</td>
-                          <td className="border border-gray-300 px-2 py-1">{e.fioVod}</td>
-                          <td className="border border-gray-300 px-2 py-1 text-gray-500">{e.fioCond || "—"}</td>
-                          {/* Подр. вод */}
-                          <td className="border border-gray-300 px-2 py-1 text-center text-orange-700 font-semibold">
-                            {toNum(e.podrVod) > 0 ? e.podrVod : "—"}
-                          </td>
-                          {/* Галочка вод */}
-                          <td className="border border-gray-300 text-center"
-                            style={{ backgroundColor: e.vodVyd ? "#dcfce7" : toNum(e.podrVod) > 0 ? "#fef9c3" : undefined }}>
-                            {toNum(e.podrVod) > 0 && (
-                              <span className={`text-base font-bold ${e.vodVyd ? "text-green-600" : "text-gray-300"}`}>
-                                {e.vodVyd ? "✓" : "○"}
-                              </span>
-                            )}
-                          </td>
-                          {/* Подр. конд */}
-                          <td className="border border-gray-300 px-2 py-1 text-center text-orange-700 font-semibold">
-                            {toNum(e.podrCond) > 0 ? e.podrCond : "—"}
-                          </td>
-                          {/* Галочка конд */}
-                          <td className="border border-gray-300 text-center"
-                            style={{ backgroundColor: e.condVyd ? "#dcfce7" : toNum(e.podrCond) > 0 ? "#fef9c3" : undefined }}>
-                            {toNum(e.podrCond) > 0 && (
-                              <span className={`text-base font-bold ${e.condVyd ? "text-green-600" : "text-gray-300"}`}>
-                                {e.condVyd ? "✓" : "○"}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  {podrabJournal.length > 0 && (
-                    <tfoot>
-                      <tr style={{ backgroundColor: "#1a3a6b" }}>
-                        <td colSpan={5} className="border border-blue-900 px-2 py-1 text-white text-xs font-bold">ИТОГО</td>
-                        <td className="border border-blue-900 px-2 py-1 text-white text-center font-bold">
-                          {podrabJournal.reduce((s, e) => s + toNum(e.podrVod), 0).toLocaleString("ru-RU")}
-                        </td>
-                        <td className="border border-blue-900 px-2 py-1 text-white text-center text-xs">
-                          {podrabJournal.filter((e) => e.vodVyd).length} / {podrabJournal.filter((e) => toNum(e.podrVod) > 0).length}
-                        </td>
-                        <td className="border border-blue-900 px-2 py-1 text-white text-center font-bold">
-                          {podrabJournal.reduce((s, e) => s + toNum(e.podrCond), 0).toLocaleString("ru-RU")}
-                        </td>
-                        <td className="border border-blue-900 px-2 py-1 text-white text-center text-xs">
-                          {podrabJournal.filter((e) => e.condVyd).length} / {podrabJournal.filter((e) => toNum(e.podrCond) > 0).length}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
-              </div>
-            </div>
+            <KassaPodrabJournal
+              podrabJournal={podrabJournal}
+              monthKey={monthKey}
+              onMonthChange={setMonthKey}
+            />
           )}
 
           {/* ═══ ВКЛАДКА: Отчёт за месяц ═══ */}
