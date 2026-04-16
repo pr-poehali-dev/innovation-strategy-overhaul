@@ -142,7 +142,11 @@ const Kassa = () => {
           mar: r.marshrut, bort: r.bortovoy,
           fioVod: r.fio, fioCond: r.fioKond || "без",
           kolBil, viruchka, prodBilety, obed: obedAuto,
-          podrVod, podrCond, itogo,
+          podrVod, podrCond,
+          // Выданную подработку не трогаем — только ручной ввод
+          podrVydVod:  existingRow.podrVydVod  ?? "",
+          podrVydCond: existingRow.podrVydCond ?? "",
+          itogo,
         };
       });
       const dispRows = currentRows.filter((r) => r.type === "disp");
@@ -170,22 +174,27 @@ const Kassa = () => {
     return String(Math.round(v / cena));
   };
 
-  // ИТОГО = Выручка − Обед − РасходДТ − Чек − Возврат − ПодрВод − ПодрКонд
+  // ИТОГО = Выручка − Безнал − QR − Обед − РасходДТ − Чек − Возврат − ПодрВод − ПодрКонд + В плюс
   const calcItogo = (r: KassaRow, overrides: Partial<KassaRow> = {}): string => {
-    const row    = { ...r, ...overrides };
-    const v      = toNum(row.viruchka);
-    const obed   = toNum(row.obed);
-    const rashod = toNum(row.rashodDt);
-    const chek   = toNum(row.chek);
-    const vozv   = toNum(row.vozvrat);
-    const pvod   = toNum(row.podrVod);
-    const pkond  = toNum(row.podrCond);
-    if (!v && !obed && !rashod && !chek && !vozv && !pvod && !pkond) return "";
-    return String(Math.round(v - obed - rashod - chek - vozv - pvod - pkond));
+    const row  = { ...r, ...overrides };
+    const v    = toNum(row.viruchka);
+    const bez  = toNum(row.beznal);
+    const qr   = toNum(row.qr);
+    const obed = toNum(row.obed);
+    const rDt  = toNum(row.rashodDt);
+    const chek = toNum(row.chek);
+    const vozv = toNum(row.vozvrat);
+    const pvod = toNum(row.podrVod);
+    const pkond= toNum(row.podrCond);
+    const plus = toNum(row.vPlus);
+    if (!v && !bez && !qr && !obed && !rDt && !chek && !vozv && !pvod && !pkond && !plus) return "";
+    return String(Math.round(v - bez - qr - obed - rDt - chek - vozv - pvod - pkond + plus));
   };
 
   // Поля, влияющие на ИТОГО
-  const ITOGO_DEPS = new Set<keyof KassaRow>(["viruchka", "obed", "rashodDt", "chek", "vozvrat", "podrVod", "podrCond"]);
+  const ITOGO_DEPS = new Set<keyof KassaRow>([
+    "viruchka", "beznal", "qr", "obed", "rashodDt", "chek", "vozvrat", "podrVod", "podrCond", "vPlus",
+  ]);
 
   // ─── Обработчики кассы ───────────────────────────────────────────────────
   const updateCell = (id: number, col: keyof KassaRow, value: string) =>
@@ -204,10 +213,11 @@ const Kassa = () => {
         updated.itogo      = calcItogo(r, { viruchka: value });
       }
       // При изменении любого вычета — пересчитываем итого
-      if (ITOGO_DEPS.has(col) && col !== "viruchka") {
+      if (ITOGO_DEPS.has(col) && col !== "viruchka" && col !== "kolBil" && col !== "beznal" && col !== "qr") {
         updated.itogo = calcItogo(r, { [col]: value });
       }
-      // При изменении Расх.ДТ — сразу переносим в Продажи
+
+      // При изменении Расх.ДТ — переносим в Продажи (литры)
       if (col === "rashodDt" && r.bort) {
         const cenaTopliva = parseFloat(naryadSettings.stoimostTopliva) || 0;
         if (cenaTopliva && toNum(value) > 0) {
@@ -223,6 +233,39 @@ const Kassa = () => {
           }
         }
       }
+
+      // При изменении выданной подработки — переносим в Продажи и Ведомость
+      if ((col === "podrVydVod" || col === "podrVydCond") && r.bort && toNum(value) > 0) {
+        const isVod = col === "podrVydVod";
+        const fio = isVod ? r.fioVod : r.fioCond;
+        // → Продажи
+        const prodAll = loadProdazhiAll();
+        const prodDay = prodAll[selectedKey];
+        if (prodDay?.rows) {
+          prodDay.rows = (prodDay.rows as Array<Record<string, string>>).map((pr) =>
+            pr.bort === r.bort
+              ? { ...pr, [isVod ? "podVod" : "podCond"]: value }
+              : pr
+          );
+          prodAll[selectedKey] = prodDay;
+          try { localStorage.setItem(LS_PRODAZHI, JSON.stringify(prodAll)); } catch (e) { console.warn(e); }
+        }
+        // → Ведомость (поле poluchPodrab)
+        if (fio) {
+          const LS_VED = "dat_vedomost_rows_v1";
+          try {
+            const vedRaw = localStorage.getItem(LS_VED);
+            if (vedRaw) {
+              const vedRows = JSON.parse(vedRaw) as Array<Record<string, string>>;
+              const updated2 = vedRows.map((vr) =>
+                vr.fio === fio ? { ...vr, poluchPodrab: value } : vr
+              );
+              localStorage.setItem(LS_VED, JSON.stringify(updated2));
+            }
+          } catch (e) { console.warn(e); }
+        }
+      }
+
       return updated;
     }));
 

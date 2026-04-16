@@ -43,8 +43,10 @@ export interface KassaRow {
   rashodDt: string;
   chek: string;
   vozvrat: string;
-  podrVod: string;
-  podrCond: string;
+  podrVod: string;    // начислено водителю
+  podrCond: string;   // начислено кондуктору
+  podrVydVod: string; // выдано водителю
+  podrVydCond: string;// выдано кондуктору
   vPlus: string;
   itogo: string;
 }
@@ -83,23 +85,25 @@ export const getRouteColor = (mar: string) => {
 };
 
 export const MAIN_COLS: { key: keyof Omit<KassaRow, "id" | "type">; label: string; width: string; numeric?: boolean }[] = [
-  { key: "mar",        label: "№ мар",             width: "55px"  },
-  { key: "bort",       label: "Борт №",             width: "55px"  },
-  { key: "fioVod",     label: "ФИО водитель",       width: "130px" },
-  { key: "fioCond",    label: "ФИО кондуктор",      width: "100px" },
-  { key: "prodBilety", label: "Проданные билеты",   width: "95px"  },
-  { key: "kolBil",     label: "Кол. бил",           width: "60px",  numeric: true },
-  { key: "beznal",     label: "Безнал",             width: "65px",  numeric: true },
-  { key: "qr",         label: "QR код",             width: "60px",  numeric: true },
-  { key: "viruchka",   label: "Выручка",            width: "75px",  numeric: true },
-  { key: "obed",       label: "Обед",               width: "55px",  numeric: true },
-  { key: "rashodDt",   label: "Расх. ДТ",           width: "65px",  numeric: true },
-  { key: "chek",       label: "Чек",                width: "55px",  numeric: true },
-  { key: "vozvrat",    label: "Возврат",            width: "65px",  numeric: true },
-  { key: "podrVod",    label: "Подр. вод",          width: "70px",  numeric: true },
-  { key: "podrCond",   label: "Подр. конд",         width: "70px",  numeric: true },
-  { key: "vPlus",      label: "В плюс",             width: "65px",  numeric: true },
-  { key: "itogo",      label: "ИТОГО",              width: "75px",  numeric: true },
+  { key: "mar",          label: "№ мар",            width: "55px"  },
+  { key: "bort",         label: "Борт №",            width: "55px"  },
+  { key: "fioVod",       label: "ФИО водитель",      width: "130px" },
+  { key: "fioCond",      label: "ФИО кондуктор",     width: "100px" },
+  { key: "prodBilety",   label: "Прод. бил",         width: "75px"  },
+  { key: "kolBil",       label: "Кол. бил",          width: "60px",  numeric: true },
+  { key: "beznal",       label: "Безнал",            width: "65px",  numeric: true },
+  { key: "qr",           label: "QR код",            width: "60px",  numeric: true },
+  { key: "viruchka",     label: "Выручка",           width: "75px",  numeric: true },
+  { key: "obed",         label: "Обед",              width: "55px",  numeric: true },
+  { key: "rashodDt",     label: "Расх. ДТ",          width: "65px",  numeric: true },
+  { key: "chek",         label: "Чек",               width: "55px",  numeric: true },
+  { key: "vozvrat",      label: "Возврат",           width: "65px",  numeric: true },
+  { key: "podrVod",      label: "Подр. вод ⟳",      width: "75px",  numeric: true },
+  { key: "podrCond",     label: "Подр. конд ⟳",     width: "80px",  numeric: true },
+  { key: "podrVydVod",   label: "Выд. вод",          width: "65px",  numeric: true },
+  { key: "podrVydCond",  label: "Выд. конд",         width: "70px",  numeric: true },
+  { key: "vPlus",        label: "В плюс",            width: "65px",  numeric: true },
+  { key: "itogo",        label: "ИТОГО",             width: "75px",  numeric: true },
 ];
 
 export const VYP_COLS: { key: keyof Omit<VyplataRow, "id">; label: string; width: string }[] = [
@@ -119,7 +123,9 @@ export const emptyRow = (type: KassaRow["type"] = "route"): KassaRow => ({
   mar: "", bort: "", fioVod: "", fioCond: "",
   prodBilety: "", kolBil: "", beznal: "", qr: "",
   viruchka: "", obed: "", rashodDt: "", chek: "",
-  vozvrat: "", podrVod: "", podrCond: "", vPlus: "", itogo: "",
+  vozvrat: "", podrVod: "", podrCond: "",
+  podrVydVod: "", podrVydCond: "",
+  vPlus: "", itogo: "",
 });
 
 export const emptyVyp = (): VyplataRow => ({

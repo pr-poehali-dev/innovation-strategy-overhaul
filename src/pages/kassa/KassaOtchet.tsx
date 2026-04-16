@@ -40,36 +40,85 @@ const KassaOtchet = ({
   const vypItogo = vyplaty.reduce((s, v) => s + toNum(v.itogo), 0);
 
   // Колонки только для просмотра (авторасчёт)
-  const READONLY_COLS = new Set(["prodBilety", "podrVod", "podrCond", "itogo"]);
+  const READONLY_COLS = new Set(["prodBilety", "itogo"]);
+  // Колонки «начислено» (авто из наряда, но показываем)
+  const NARAD_AUTO_COLS = new Set(["podrVod", "podrCond"]);
+  // Колонки «выдано» (ручной ввод, переносятся в Продажи и Ведомость)
+  const VYDANO_COLS = new Set(["podrVydVod", "podrVydCond"]);
 
   const renderCell = (row: KassaRow, col: typeof MAIN_COLS[number], rowIdx: number, colIdx: number) => {
     const isActive     = activeCell?.rowId === row.id && activeCell?.col === col.key;
     const isViruchka   = col.key === "viruchka";
     const isReadonly   = READONLY_COLS.has(col.key);
+    const isNaradAuto  = NARAD_AUTO_COLS.has(col.key);
+    const isVydano     = VYDANO_COLS.has(col.key);
 
-    // Readonly ячейки — только просмотр, не редактируются
+    // Readonly ячейки — только просмотр
     if (isReadonly) {
       const val = row[col.key] as string;
-      const bg =
-        col.key === "prodBilety" ? "#eff6ff" :
-        col.key === "podrVod"    ? "#fff7ed" :
-        col.key === "podrCond"   ? "#fff7ed" :
-        col.key === "itogo"      ? "#f0fdf4" : "#fafafa";
-      const textColor =
-        col.key === "prodBilety" ? "text-blue-700 font-semibold" :
-        col.key === "podrVod"    ? "text-orange-700 font-semibold" :
-        col.key === "podrCond"   ? "text-orange-700 font-semibold" :
-        col.key === "itogo"      ? "text-green-800 font-bold" : "text-gray-500";
+      const bg = col.key === "prodBilety" ? "#eff6ff" : col.key === "itogo" ? "#f0fdf4" : "#fafafa";
+      const textColor = col.key === "prodBilety" ? "text-blue-700 font-semibold" :
+                        col.key === "itogo"       ? "text-green-800 font-bold" : "text-gray-500";
       return (
         <td key={col.key} className="border border-gray-300 p-0"
           style={{ width: col.width, backgroundColor: bg }}
-          title={col.key === "itogo" ? "Авто: Выручка − Обед − Расх.ДТ − Чек − Возврат − Подр.вод − Подр.конд" :
-                 col.key === "prodBilety" ? "Авто: Выручка ÷ Стоимость проезда" :
-                 "Авто из наряда"}
+          title={col.key === "itogo"
+            ? "Авто: Выручка − Безнал − QR − Обед − Расх.ДТ − Чек − Возврат − Подр.вод − Подр.конд + В плюс"
+            : "Авто: Выручка ÷ Стоимость проезда"}
         >
           <div className={`w-full h-6 px-1 flex items-center justify-center text-xs select-none ${textColor}`}>
             {val || "—"}
           </div>
+        </td>
+      );
+    }
+
+    // Начислено из наряда (показываем, можно скорректировать)
+    if (isNaradAuto) {
+      const val = row[col.key] as string;
+      return (
+        <td key={col.key} className="border border-gray-300 p-0"
+          style={{ width: col.width, backgroundColor: "#fff7ed" }}
+          title="Начислено из наряда — можно скорректировать"
+        >
+          <input
+            type="text"
+            value={val}
+            onChange={(e) => onUpdateCell(row.id, col.key, e.target.value)}
+            onFocus={() => onSetActiveCell({ rowId: row.id, col: col.key })}
+            onBlur={() => onSetActiveCell(null)}
+            onKeyDown={(e) => onKeyDown(e, rowIdx, colIdx)}
+            className={[
+              "w-full h-6 px-1 bg-transparent outline-none border-2 transition-colors text-center text-orange-700 font-semibold text-xs",
+              isActive ? "border-orange-400 bg-orange-50" : "border-transparent",
+            ].join(" ")}
+            placeholder="—"
+          />
+        </td>
+      );
+    }
+
+    // Выдано (ручной ввод → автоперенос в Продажи и Ведомость)
+    if (isVydano) {
+      const val = row[col.key] as string;
+      return (
+        <td key={col.key} className="border border-gray-300 p-0"
+          style={{ width: col.width, backgroundColor: "#f0fdf4" }}
+          title="Выдано — переносится в Продажи и Ведомость"
+        >
+          <input
+            type="text"
+            value={val}
+            onChange={(e) => onUpdateCell(row.id, col.key, e.target.value)}
+            onFocus={() => onSetActiveCell({ rowId: row.id, col: col.key })}
+            onBlur={() => onSetActiveCell(null)}
+            onKeyDown={(e) => onKeyDown(e, rowIdx, colIdx)}
+            className={[
+              "w-full h-6 px-1 bg-transparent outline-none border-2 transition-colors text-center text-green-700 font-bold text-xs",
+              isActive ? "border-green-500 bg-green-50" : "border-transparent",
+            ].join(" ")}
+            placeholder="—"
+          />
         </td>
       );
     }
@@ -118,20 +167,24 @@ const KassaOtchet = ({
                     style={{
                       width: col.width, minWidth: col.width,
                       backgroundColor:
-                        col.key === "viruchka"   ? "#166534" :
-                        col.key === "prodBilety" ? "#1e3a5f" :
+                        col.key === "viruchka"                         ? "#166534" :
+                        col.key === "prodBilety"                       ? "#1e3a5f" :
                         col.key === "podrVod" || col.key === "podrCond" ? "#7c3d0a" :
-                        col.key === "itogo"      ? "#14532d" : undefined,
+                        col.key === "podrVydVod" || col.key === "podrVydCond" ? "#14532d" :
+                        col.key === "itogo"                            ? "#1a3a6b" : undefined,
                     }}
                     title={
-                      col.key === "viruchka"   ? "Авто: Кол.бил × Стоимость проезда + Безнал + QR" :
-                      col.key === "prodBilety" ? "Авто: Выручка ÷ Стоимость проезда" :
-                      col.key === "podrVod" || col.key === "podrCond" ? "Авто из наряда" :
-                      col.key === "itogo"      ? "Авто: Выручка − Обед − Расх.ДТ − Чек − Возврат − Подр.вод − Подр.конд" :
-                      col.key === "rashodDt"   ? "Ручной ввод → автоперенос в Продажи (ДТ)" : undefined
+                      col.key === "viruchka"    ? "Авто: Кол.бил × Стоимость проезда + Безнал + QR" :
+                      col.key === "prodBilety"  ? "Авто: Выручка ÷ Стоимость проезда" :
+                      col.key === "podrVod"     ? "Начислено из наряда" :
+                      col.key === "podrCond"    ? "Начислено из наряда" :
+                      col.key === "podrVydVod"  ? "Выдано вод. → Продажи + Ведомость" :
+                      col.key === "podrVydCond" ? "Выдано конд. → Продажи + Ведомость" :
+                      col.key === "itogo"       ? "Авто: Выручка−Безнал−QR−Обед−ДТ−Чек−Возврат−Подр.вод−Подр.конд+В плюс" :
+                      col.key === "rashodDt"    ? "Ручной ввод → автоперенос в Продажи (ДТ)" : undefined
                     }
                   >
-                    {col.label}{"viruchka prodBilety podrVod podrCond itogo".includes(col.key) ? " ⟳" : ""}
+                    {col.label}
                   </th>
                 ))}
                 <th className="border border-blue-900 px-1 py-1 text-white font-semibold text-center" style={{ width: "36px" }} title="Право на подработку">Подр.</th>

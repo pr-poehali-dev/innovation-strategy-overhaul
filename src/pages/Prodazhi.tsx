@@ -108,23 +108,30 @@ const Prodazhi = () => {
     });
   }, [rows, dispFio, selectedKey]);
 
-  // Читает из Кассы: расход ДТ → литры, подработки вод/конд → ₽
+  // Читает из Кассы: ДТ, выданная подработка, продБилеты → kolBil
   const applyFromKassa = (key: string) => {
     const kassaData = loadKassaForProdazhi()[key];
     if (!kassaData?.rows) return;
     const cenaTopliva = parseFloat(naryadSettings.stoimostTopliva) || 0;
 
-    type KassaRowMin = { bort?: string; rashodDt?: string; podrVod?: string; podrCond?: string };
-    const byBort = new Map<string, { dt?: string; podVod?: string; podCond?: string }>();
+    type KassaRowMin = {
+      bort?: string; rashodDt?: string;
+      podrVydVod?: string; podrVydCond?: string;
+      prodBilety?: string;
+    };
+    const byBort = new Map<string, { dt?: string; podVod?: string; podCond?: string; kolBil?: string }>();
 
     (kassaData.rows as KassaRowMin[]).forEach((r) => {
       if (!r.bort) return;
-      const entry: { dt?: string; podVod?: string; podCond?: string } = {};
+      const entry: { dt?: string; podVod?: string; podCond?: string; kolBil?: string } = {};
       if (r.rashodDt && parseFloat(r.rashodDt) > 0 && cenaTopliva > 0) {
         entry.dt = String(Math.round(parseFloat(r.rashodDt) / cenaTopliva * 100) / 100);
       }
-      if (r.podrVod && parseFloat(r.podrVod) > 0) entry.podVod = r.podrVod;
-      if (r.podrCond && parseFloat(r.podrCond) > 0) entry.podCond = r.podrCond;
+      // Выданная подработка (не начисленная)
+      if (r.podrVydVod  && parseFloat(r.podrVydVod)  > 0) entry.podVod  = r.podrVydVod;
+      if (r.podrVydCond && parseFloat(r.podrVydCond) > 0) entry.podCond = r.podrVydCond;
+      // Проданные билеты из кассы → Кол. бил в Продажах
+      if (r.prodBilety && parseFloat(r.prodBilety) > 0) entry.kolBil = r.prodBilety;
       if (Object.keys(entry).length > 0) byBort.set(r.bort, entry);
     });
 
@@ -134,9 +141,10 @@ const Prodazhi = () => {
       if (!kassa) return r;
       return {
         ...r,
-        ...(kassa.dt      !== undefined ? { dt:      kassa.dt }      : {}),
-        ...(kassa.podVod  !== undefined ? { podVod:  kassa.podVod }  : {}),
-        ...(kassa.podCond !== undefined ? { podCond: kassa.podCond } : {}),
+        ...(kassa.dt     !== undefined ? { dt:     kassa.dt }     : {}),
+        ...(kassa.podVod !== undefined ? { podVod: kassa.podVod } : {}),
+        ...(kassa.podCond!== undefined ? { podCond:kassa.podCond} : {}),
+        ...(kassa.kolBil !== undefined ? { kolBil: kassa.kolBil } : {}),
       };
     }));
   };
