@@ -2,18 +2,16 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 
-type EkipazType = "bez" | "s" | "";
-
 interface NaryadRow {
   id: number;
   bortovoy: string;
   fio: string;
+  fioKond: string;
   garazhny: string;
   putevoy: string;
   // подработка
   podrabotka: boolean;
   biletov: string;
-  ekipazh: EkipazType;
 }
 
 interface NormaSettings {
@@ -29,11 +27,11 @@ const emptyRow = (): NaryadRow => ({
   id: Date.now() + Math.random(),
   bortovoy: "",
   fio: "",
+  fioKond: "",
   garazhny: "",
   putevoy: "",
   podrabotka: false,
   biletov: "",
-  ekipazh: "",
 });
 
 const DEFAULT_SETTINGS: NormaSettings = {
@@ -46,19 +44,21 @@ const DEFAULT_SETTINGS: NormaSettings = {
 };
 
 const TEXT_COLS = [
-  { key: "bortovoy", label: "Бортовой №", width: "120px" },
-  { key: "fio",      label: "ФИО водителя", width: "220px" },
-  { key: "garazhny", label: "Гаражный №",  width: "110px" },
-  { key: "putevoy",  label: "Путевой лист", width: "140px" },
+  { key: "bortovoy", label: "Бортовой №",    width: "120px" },
+  { key: "fio",      label: "ФИО водителя",  width: "200px" },
+  { key: "fioKond",  label: "ФИО кондуктора", width: "200px" },
+  { key: "garazhny", label: "Гаражный №",    width: "110px" },
+  { key: "putevoy",  label: "Путевой лист",  width: "140px" },
 ] as const;
 
 function calcPodrabotka(row: NaryadRow, s: NormaSettings): { vod: number; cond: number } | null {
-  if (!row.podrabotka || !row.biletov || !row.ekipazh) return null;
+  if (!row.podrabotka || !row.biletov) return null;
   const bilety = parseFloat(row.biletov) || 0;
   const cena = parseFloat(s.stoimostBileta) || 0;
   const toplivoRub = (parseFloat(s.rashod) / 100) * bilety * (parseFloat(s.stoimostTopliva) || 0);
   const vyuchka = bilety * cena - toplivoRub;
-  if (row.ekipazh === "bez") {
+  const hasCond = row.fioKond.trim().length > 0;
+  if (!hasCond) {
     return { vod: vyuchka * (parseFloat(s.procentBez) / 100), cond: 0 };
   }
   return {
@@ -80,7 +80,7 @@ const Dispatch = () => {
   const [settings, setSettings] = useState<NormaSettings>(DEFAULT_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
 
-  const updateCell = (id: number, col: keyof NaryadRow, value: string | boolean | EkipazType) => {
+  const updateCell = (id: number, col: keyof NaryadRow, value: string | boolean) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
   };
 
@@ -197,9 +197,6 @@ const Dispatch = () => {
                   <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "90px" }}>
                     Билетов
                   </th>
-                  <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "120px" }}>
-                    Экипаж
-                  </th>
                   <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "110px" }}>
                     Водитель, ₽
                   </th>
@@ -262,23 +259,6 @@ const Dispatch = () => {
                         )}
                       </td>
 
-                      {/* Тип экипажа */}
-                      <td className="border border-gray-300 p-0 text-center" style={{ width: "120px" }}>
-                        {row.podrabotka ? (
-                          <select
-                            value={row.ekipazh}
-                            onChange={(e) => updateCell(row.id, "ekipazh", e.target.value as EkipazType)}
-                            className="w-full h-7 px-1 text-xs text-gray-800 bg-transparent outline-none border-0 cursor-pointer"
-                          >
-                            <option value="">— выбрать —</option>
-                            <option value="bez">Без кондуктора</option>
-                            <option value="s">С кондуктором</option>
-                          </select>
-                        ) : (
-                          <span className="block text-center text-gray-300 select-none">—</span>
-                        )}
-                      </td>
-
                       {/* Сумма водителю */}
                       <td className="border border-gray-300 text-center text-xs font-semibold" style={{ width: "110px" }}>
                         {calc !== null ? (
@@ -290,7 +270,7 @@ const Dispatch = () => {
 
                       {/* Сумма кондуктору */}
                       <td className="border border-gray-300 text-center text-xs font-semibold" style={{ width: "110px" }}>
-                        {calc !== null && row.ekipazh === "s" ? (
+                        {calc !== null && row.fioKond.trim().length > 0 ? (
                           <span className="text-green-700">{fmt(calc.cond)}</span>
                         ) : (
                           <span className="text-gray-300">—</span>
