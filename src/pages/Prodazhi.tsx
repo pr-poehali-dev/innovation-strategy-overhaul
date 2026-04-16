@@ -108,35 +108,49 @@ const Prodazhi = () => {
     });
   }, [rows, dispFio, selectedKey]);
 
-  // Читает rashodDt из Кассы и вычисляет DT (литры) для Продаж
-  const applyDtFromKassa = (key: string) => {
+  // Читает из Кассы: расход ДТ → литры, подработки вод/конд → ₽
+  const applyFromKassa = (key: string) => {
     const kassaData = loadKassaForProdazhi()[key];
     if (!kassaData?.rows) return;
     const cenaTopliva = parseFloat(naryadSettings.stoimostTopliva) || 0;
-    if (!cenaTopliva) return;
-    const dtByBort = new Map<string, string>();
-    (kassaData.rows as Array<{ bort?: string; rashodDt?: string }>).forEach((r) => {
-      if (r.bort && r.rashodDt && parseFloat(r.rashodDt) > 0) {
-        dtByBort.set(r.bort, String(Math.round(parseFloat(r.rashodDt) / cenaTopliva * 100) / 100));
+
+    type KassaRowMin = { bort?: string; rashodDt?: string; podrVod?: string; podrCond?: string };
+    const byBort = new Map<string, { dt?: string; podVod?: string; podCond?: string }>();
+
+    (kassaData.rows as KassaRowMin[]).forEach((r) => {
+      if (!r.bort) return;
+      const entry: { dt?: string; podVod?: string; podCond?: string } = {};
+      if (r.rashodDt && parseFloat(r.rashodDt) > 0 && cenaTopliva > 0) {
+        entry.dt = String(Math.round(parseFloat(r.rashodDt) / cenaTopliva * 100) / 100);
       }
+      if (r.podrVod && parseFloat(r.podrVod) > 0) entry.podVod = r.podrVod;
+      if (r.podrCond && parseFloat(r.podrCond) > 0) entry.podCond = r.podrCond;
+      if (Object.keys(entry).length > 0) byBort.set(r.bort, entry);
     });
-    if (dtByBort.size === 0) return;
+
+    if (byBort.size === 0) return;
     setRows((prev) => prev.map((r) => {
-      const newDt = dtByBort.get(r.bort);
-      return newDt !== undefined ? { ...r, dt: newDt } : r;
+      const kassa = byBort.get(r.bort);
+      if (!kassa) return r;
+      return {
+        ...r,
+        ...(kassa.dt      !== undefined ? { dt:      kassa.dt }      : {}),
+        ...(kassa.podVod  !== undefined ? { podVod:  kassa.podVod }  : {}),
+        ...(kassa.podCond !== undefined ? { podCond: kassa.podCond } : {}),
+      };
     }));
   };
 
-  // Обновляем DT при смене даты и при изменении стоимости топлива
+  // При смене даты и при изменении стоимости топлива
   useEffect(() => {
-    applyDtFromKassa(selectedKey);
+    applyFromKassa(selectedKey);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedKey, naryadSettings.stoimostTopliva]);
 
-  // Обновляем DT при изменении Кассы в другой вкладке браузера
+  // При изменении Кассы (storage event — в той же и в других вкладках)
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_KASSA) applyDtFromKassa(selectedKey);
+      if (e.key === LS_KASSA) applyFromKassa(selectedKey);
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
