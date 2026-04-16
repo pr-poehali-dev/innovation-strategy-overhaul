@@ -213,28 +213,32 @@ const NaryadTable = ({
                   />
 
                   {/* ФИО водителя */}
-                  <TextCell
-                    value={row.fio}
-                    onChange={(v) => onUpdateCell(row.id, "fio", v)}
-                    onFocus={() => onSetActiveCell({ rowId: row.id, col: "fio" })}
-                    onBlur={() => onSetActiveCell(null)}
-                    onKeyDown={(e) => handleKeyDown(e, rowIdx, TEXT_COLS.length)}
-                    isActive={activeCell?.rowId === row.id && activeCell?.col === "fio"}
-                    width="180px"
-                    listId={VOD_LIST}
-                  />
+                  <td className="border border-gray-300 p-0" style={{ width: "180px" }}>
+                    <input
+                      type="text"
+                      list={VOD_LIST}
+                      value={row.fio}
+                      onChange={(e) => onUpdateCell(row.id, "fio", e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, rowIdx, TEXT_COLS.length)}
+                      className="w-full h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors"
+                      placeholder=""
+                      autoComplete="off"
+                    />
+                  </td>
 
                   {/* ФИО кондуктора */}
-                  <TextCell
-                    value={row.fioKond}
-                    onChange={(v) => onUpdateCell(row.id, "fioKond", v)}
-                    onFocus={() => onSetActiveCell({ rowId: row.id, col: "fioKond" })}
-                    onBlur={() => onSetActiveCell(null)}
-                    onKeyDown={(e) => handleKeyDown(e, rowIdx, TEXT_COLS.length + 1)}
-                    isActive={activeCell?.rowId === row.id && activeCell?.col === "fioKond"}
-                    width="180px"
-                    listId={COND_LIST}
-                  />
+                  <td className="border border-gray-300 p-0" style={{ width: "180px" }}>
+                    <input
+                      type="text"
+                      list={COND_LIST}
+                      value={row.fioKond}
+                      onChange={(e) => onUpdateCell(row.id, "fioKond", e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, rowIdx, TEXT_COLS.length + 1)}
+                      className="w-full h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors"
+                      placeholder=""
+                      autoComplete="off"
+                    />
+                  </td>
 
                   {/* Статус */}
                   <td className="border border-gray-300 p-0" style={{ width: "120px" }}>
