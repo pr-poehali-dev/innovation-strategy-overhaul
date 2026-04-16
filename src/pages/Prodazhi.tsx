@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 import { useAppStore, getGrafiki } from "@/store/appStore";
+import { calcPodrabotka } from "@/pages/dispatch/types";
 
 interface ProdazhiRow {
   id: number;
@@ -49,8 +50,15 @@ const today = new Date().toLocaleDateString("ru-RU", {
   day: "2-digit", month: "2-digit", year: "numeric",
 });
 
+const toDateKey = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
 const Prodazhi = () => {
-  const { naryadEntries, employees, vehicles, routes } = useAppStore();
+  const { weeklyNaryady, naryadSettings, employees, vehicles, routes } = useAppStore();
   const allGrafiki = routes.flatMap((r) => getGrafiki(r));
 
   const driverList = employees.filter((e) => e.dolzhnost === "Водитель"  && e.status === "active");
@@ -58,6 +66,7 @@ const Prodazhi = () => {
 
   // Диспетчер
   const [dispFio, setDispFio] = useState("");
+  const [selectedKey, setSelectedKey] = useState(() => toDateKey(new Date()));
   const [reportDate, setReportDate] = useState(today);
 
   const [rows, setRows] = useState<ProdazhiRow[]>(() =>
@@ -65,26 +74,30 @@ const Prodazhi = () => {
   );
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
 
-  // Автоматическая синхронизация из наряда — сохраняет ручные правки (ДТ, рейсы и т.д.)
+  // Строки наряда за выбранный день
+  const naryadRows = useMemo(() => weeklyNaryady[selectedKey] ?? [], [weeklyNaryady, selectedKey]);
+
+  // Синхронизация напрямую из weeklyNaryady — не зависит от открытия Dispatch
   useEffect(() => {
-    if (!naryadEntries.length) return;
+    if (!naryadRows.length) return;
     setRows((currentRows) => {
       const existingByBort = new Map(currentRows.map((r) => [r.bort, r]));
-      return naryadEntries.map((e) => {
-        const existing = existingByBort.get(e.bortovoy);
+      return naryadRows.map((r) => {
+        const existing = existingByBort.get(r.bortovoy);
+        const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
         return {
           ...(existing ?? emptyRow()),
-          bort:     e.bortovoy,
-          marGr:    e.marshrut,
-          fioVod:   e.fioVod,
-          fioCond:  e.fioKond || "без",
-          kolBil:   e.biletov || (existing?.kolBil ?? ""),
-          podVod:   e.podrabotkaVod  > 0 ? String(Math.round(e.podrabotkaVod))  : (existing?.podVod  ?? ""),
-          podCond:  e.podrabotkaKond > 0 ? String(Math.round(e.podrabotkaKond)) : (existing?.podCond ?? ""),
+          bort:     r.bortovoy,
+          marGr:    r.marshrut,
+          fioVod:   r.fio,
+          fioCond:  r.fioKond || "без",
+          kolBil:   r.biletov || (existing?.kolBil ?? ""),
+          podVod:   calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : (existing?.podVod  ?? ""),
+          podCond:  calc && calc.cond > 0 ? String(Math.round(calc.cond)) : (existing?.podCond ?? ""),
         };
       });
     });
-  }, [naryadEntries]);
+  }, [naryadRows, naryadSettings]);
 
   const updateCell = (id: number, col: ColKey, value: string) =>
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
@@ -260,12 +273,6 @@ const Prodazhi = () => {
               <p className="text-xs text-gray-500 mt-0.5">ООО «Дальавтотранс» · {today}</p>
             </div>
             <div className="flex items-center gap-2">
-              {naryadEntries.length > 0 && (
-                <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded flex items-center gap-1">
-                  <Icon name="RefreshCw" size={11} />
-                  Синхронизировано с нарядом ({naryadEntries.length})
-                </span>
-              )}
               <button onClick={addRow} className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700">
                 <Icon name="Plus" size={12} /> Строка
               </button>
@@ -279,11 +286,22 @@ const Prodazhi = () => {
           <div className="px-5 py-2 border-b border-gray-200 flex items-center gap-4 text-xs text-gray-600">
             <span className="font-semibold">Дата:</span>
             <input
-              type="text"
-              value={reportDate}
-              onChange={(e) => setReportDate(e.target.value)}
-              className="border border-gray-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-blue-400 w-28"
+              type="date"
+              value={selectedKey}
+              onChange={(e) => {
+                setSelectedKey(e.target.value);
+                setReportDate(e.target.value
+                  ? new Date(e.target.value + "T00:00:00").toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" })
+                  : today);
+              }}
+              className="border border-gray-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-blue-400"
             />
+            {naryadRows.length > 0 && (
+              <span className="text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded flex items-center gap-1">
+                <Icon name="RefreshCw" size={10} />
+                Синхронизировано из наряда ({naryadRows.length} ТС)
+              </span>
+            )}
           </div>
 
           {/* Таблица */}
