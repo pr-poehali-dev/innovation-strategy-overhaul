@@ -21,8 +21,8 @@ interface ProdazhiRow {
 type ColKey = keyof Omit<ProdazhiRow, "id">;
 
 const COLUMNS: { key: ColKey; label: string; width: string; numeric?: boolean }[] = [
-  { key: "bort",    label: "Борт №",          width: "60px"  },
   { key: "marGr",   label: "Мар. Гр",         width: "70px"  },
+  { key: "bort",    label: "Борт №",          width: "60px"  },
   { key: "fioVod",  label: "ФИО водителя",    width: "160px" },
   { key: "fioCond", label: "ФИО кондуктора",  width: "130px" },
   { key: "dt",      label: "ДТ",              width: "60px",  numeric: true },
