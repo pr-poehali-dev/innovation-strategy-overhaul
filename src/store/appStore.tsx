@@ -90,6 +90,7 @@ export interface CompanySettings {
 export const INITIAL_COMPANIES: CompanySettings[] = [
   { nazvanie: 'ООО "Дальавтотранс"',        inn: "", direktor: "", telefon: "", adres: "" },
   { nazvanie: 'ООО "Техника и Технологии"', inn: "", direktor: "", telefon: "", adres: "" },
+  { nazvanie: 'ИП Герасимов',               inn: "", direktor: "", telefon: "", adres: "" },
 ];
 
 // ─── Терминал ───────────────────────────────────────────────────────────────
@@ -144,8 +145,8 @@ export const INITIAL_ROUTES: Route[] = [
   { id: 102, nomer: "15", nazvanie: "мкр. Амурлитмаш — мкр. Хорпинский", nachalo: "мкр. Амурлитмаш",     konets: "мкр. Хорпинский",    grafikov: 4,  intervalMin: "", rabochieChasy: "", companyIdx: 0 },
   // ДАТ — маршрут №24, 6 графиков
   { id: 103, nomer: "24", nazvanie: "ул. Уральская - мкр. Амурлитмаш",   nachalo: "ул. Уральская",         konets: "мкр. Амурлитмаш",   grafikov: 6,  intervalMin: "", rabochieChasy: "", companyIdx: 0 },
-  // ТиТ — маршрут №3, 11 графиков
-  { id: 104, nomer: "3",  nazvanie: "ул. Юбилейная - ул. Уральская",      nachalo: "ул. Юбилейная",         konets: "ул. Уральская",      grafikov: 11, intervalMin: "", rabochieChasy: "", companyIdx: 1 },
+  // ИП Герасимов — маршрут №3, 11 графиков
+  { id: 104, nomer: "3",  nazvanie: "ул. Юбилейная - ул. Уральская",      nachalo: "ул. Юбилейная",         konets: "ул. Уральская",      grafikov: 11, intervalMin: "", rabochieChasy: "", companyIdx: 2 },
   // ТиТ — маршрут №6, 4 графика
   { id: 105, nomer: "6",  nazvanie: "мкр. Индустриальный - ул. Уральская",nachalo: "мкр. Индустриальный",  konets: "ул. Уральская",      grafikov: 4,  intervalMin: "", rabochieChasy: "", companyIdx: 1 },
 ];
@@ -325,7 +326,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [weeklyNaryady, setWeeklyNaryady] = useState<WeeklyNaryady>({});
   const [companies, setCompanies] = useState<CompanySettings[]>(INITIAL_COMPANIES);
   const [activeCompanyIdx, setActiveCompanyIdx] = useState(0);
-  const [terminals, setTerminals] = useState<Terminal[]>([]);
+  const [terminals, setTerminals] = useState<Terminal[]>([
+    { id: 301, nomer: "Терминал-1 (ИП Герасимов)", serial: "", model: "", companyIdx: 2, status: "active", primechanie: "Маршрут №3" },
+    { id: 302, nomer: "Терминал-2 (ИП Герасимов)", serial: "", model: "", companyIdx: 2, status: "active", primechanie: "Маршрут №3" },
+    { id: 303, nomer: "Терминал-3 (ИП Герасимов)", serial: "", model: "", companyIdx: 2, status: "active", primechanie: "Маршрут №3" },
+  ]);
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
   const [routes, setRoutes] = useState<Route[]>(INITIAL_ROUTES);
   const [dtpRecords, setDtpRecords] = useState<DtpRecord[]>([]);
