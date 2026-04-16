@@ -72,13 +72,36 @@ export const useKassaLogic = () => {
       const syncedRows: KassaRow[] = workingRows.map((r) => {
         const existing = existingByBort.get(r.bortovoy);
         const existingRow = existing ?? emptyRow();
-        const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
         const hasCond = !!(r.fioKond && r.fioKond.trim());
         const obedAuto = hasCond
           ? (naryadSettings.obedVodKond ?? "300")
           : (naryadSettings.obedVod ?? "150");
-        const podrVod  = calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : existingRow.podrVod;
-        const podrCond = calc && calc.cond > 0 ? String(Math.round(calc.cond)) : existingRow.podrCond;
+
+        // Подработка: сначала пробуем из наряда, потом из выручки кассы
+        const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
+        let podrVod  = calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : "";
+        let podrCond = calc && calc.cond > 0 ? String(Math.round(calc.cond)) : "";
+
+        // Если наряд не дал подработку но галочка стоит — считаем из выручки кассы
+        if (r.podrabotka && !podrVod && existingRow.viruchka) {
+          const v = toNum(existingRow.viruchka);
+          const topRub = (parseFloat(naryadSettings.rashod) / 100) * (v / cena) * (parseFloat(naryadSettings.stoimostTopliva) || 0);
+          const vyuchka = v - topRub;
+          if (vyuchka > 0) {
+            const routeNum = r.marshrut.split("/")[0].trim();
+            if (routeNum === "6" && !hasCond) {
+              podrVod = naryadSettings.fixedRoute6 || "0";
+            } else if (!hasCond) {
+              podrVod = String(Math.round(vyuchka * (parseFloat(naryadSettings.procentBez) / 100)));
+            } else {
+              podrVod  = String(Math.round(vyuchka * (parseFloat(naryadSettings.procentVodS)  / 100)));
+              podrCond = String(Math.round(vyuchka * (parseFloat(naryadSettings.procentCondS) / 100)));
+            }
+          }
+        }
+        // Если были старые значения и новые пустые — оставляем старые
+        if (!podrVod)  podrVod  = existingRow.podrVod;
+        if (!podrCond) podrCond = existingRow.podrCond;
         const kolBil = r.biletov || existingRow.kolBil;
         const viruchka = existing
           ? existingRow.viruchka
@@ -93,12 +116,13 @@ export const useKassaLogic = () => {
           : existingRow.prodBilety;
         const rashodDt = existingRow.rashodDt;
         const itogo = (() => {
-          const v = toNum(viruchka), o = toNum(obedAuto), rd = toNum(rashodDt);
+          const v  = toNum(viruchka), bez = toNum(existingRow.beznal), qrV = toNum(existingRow.qr);
+          const o  = toNum(obedAuto), rd = toNum(rashodDt);
           const ch = toNum(existingRow.chek), vz = toNum(existingRow.vozvrat);
           const pv = toNum(podrVod), pk = toNum(podrCond);
-          return (v || o || rd || ch || vz || pv || pk)
-            ? String(Math.round(v - o - rd - ch - vz - pv - pk))
-            : existingRow.itogo;
+          const pl = toNum(existingRow.vPlus);
+          const any = v || bez || qrV || o || rd || ch || vz || pv || pk || pl;
+          return any ? String(Math.round(v - bez - qrV - o - rd - ch - vz - pv - pk + pl)) : existingRow.itogo;
         })();
         return {
           ...existingRow,
@@ -163,11 +187,49 @@ export const useKassaLogic = () => {
       if (col === "kolBil" || col === "beznal" || col === "qr") {
         updated.viruchka   = calcViruchka(r, { [col]: value });
         updated.prodBilety = calcProdBilety(updated.viruchka);
-        updated.itogo      = calcItogo(r, { [col]: value, viruchka: updated.viruchka });
+        // Пересчитываем подработку из новой выручки
+        const newV = toNum(updated.viruchka);
+        const cenaP = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
+        if (newV > 0 && cenaP > 0) {
+          const topRub = (parseFloat(naryadSettings.rashod) / 100) * (newV / cenaP) * (parseFloat(naryadSettings.stoimostTopliva) || 0);
+          const vyuchkaP = newV - topRub;
+          const hasCond = !!(r.fioCond && r.fioCond !== "без" && r.fioCond.trim());
+          const routeNum = r.mar?.split("/")[0]?.trim();
+          if (routeNum === "6" && !hasCond) {
+            updated.podrVod  = naryadSettings.fixedRoute6 || "0";
+            updated.podrCond = "";
+          } else if (!hasCond) {
+            updated.podrVod  = vyuchkaP > 0 ? String(Math.round(vyuchkaP * (parseFloat(naryadSettings.procentBez) / 100))) : "";
+            updated.podrCond = "";
+          } else {
+            updated.podrVod  = vyuchkaP > 0 ? String(Math.round(vyuchkaP * (parseFloat(naryadSettings.procentVodS)  / 100))) : "";
+            updated.podrCond = vyuchkaP > 0 ? String(Math.round(vyuchkaP * (parseFloat(naryadSettings.procentCondS) / 100))) : "";
+          }
+        }
+        updated.itogo = calcItogo(r, { [col]: value, viruchka: updated.viruchka, podrVod: updated.podrVod, podrCond: updated.podrCond });
       }
       if (col === "viruchka") {
         updated.prodBilety = calcProdBilety(value);
-        updated.itogo      = calcItogo(r, { viruchka: value });
+        // Пересчитываем подработку из новой выручки
+        const v = toNum(value);
+        const cena = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
+        if (v > 0 && cena > 0) {
+          const topRub = (parseFloat(naryadSettings.rashod) / 100) * (v / cena) * (parseFloat(naryadSettings.stoimostTopliva) || 0);
+          const vyuchka = v - topRub;
+          const hasCond = !!(r.fioCond && r.fioCond !== "без" && r.fioCond.trim());
+          const routeNum = r.mar?.split("/")[0]?.trim();
+          if (routeNum === "6" && !hasCond) {
+            updated.podrVod  = naryadSettings.fixedRoute6 || "0";
+            updated.podrCond = "";
+          } else if (!hasCond) {
+            updated.podrVod  = vyuchka > 0 ? String(Math.round(vyuchka * (parseFloat(naryadSettings.procentBez) / 100))) : "";
+            updated.podrCond = "";
+          } else {
+            updated.podrVod  = vyuchka > 0 ? String(Math.round(vyuchka * (parseFloat(naryadSettings.procentVodS)  / 100))) : "";
+            updated.podrCond = vyuchka > 0 ? String(Math.round(vyuchka * (parseFloat(naryadSettings.procentCondS) / 100))) : "";
+          }
+        }
+        updated.itogo = calcItogo(r, { viruchka: value, podrVod: updated.podrVod, podrCond: updated.podrCond });
       }
       if (ITOGO_DEPS.has(col) && col !== "viruchka" && col !== "kolBil" && col !== "beznal" && col !== "qr") {
         updated.itogo = calcItogo(r, { [col]: value });
