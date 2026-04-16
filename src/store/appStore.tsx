@@ -200,7 +200,7 @@ export interface NaryadSettingsStore {
 }
 
 const makeEmptyNaryadRow = (): NaryadRowStore => ({
-  id: Date.now() + Math.random(),
+  id: Math.random() * 1e15 + performance.now(),
   vehicleId: null, bortovoy: "", gos: "", marka: "",
   marshrut: "", fio: "", fioKond: "",
   putevoy: "", terminal: "", podrabotka: false, biletov: "",

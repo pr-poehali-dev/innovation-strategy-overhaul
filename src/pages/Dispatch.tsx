@@ -41,11 +41,10 @@ const getWeekDays = (monday: Date): Date[] =>
 // Тип адаптеры
 const toNaryadRow = (r: NaryadRowStore): NaryadRow => r as unknown as NaryadRow;
 
-let _rowIdCounter = Date.now();
-const nextId = () => ++_rowIdCounter;
+const uid = () => Math.random() * 1e15 + performance.now();
 
 const makeEmptyRow = (): NaryadRowStore => ({
-  id: nextId(),
+  id: uid(),
   vehicleId: null, bortovoy: "", gos: "", marka: "",
   marshrut: "", fio: "", fioKond: "",
   putevoy: "", terminal: "", podrabotka: false, biletov: "",

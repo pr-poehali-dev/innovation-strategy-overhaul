@@ -1,3 +1,4 @@
+import { useMemo, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 import { useAppStore, getGrafiki } from "@/store/appStore";
 import {
@@ -107,17 +108,27 @@ const NaryadTable = ({
 }: Props) => {
   const { vehicles, employees, terminals, routes } = useAppStore();
 
-  const driverFios      = employees.filter((e) => e.dolzhnost === "Водитель"  && e.status === "active").map((e) => e.fio);
-  const condFios        = employees.filter((e) => e.dolzhnost === "Кондуктор" && e.status === "active").map((e) => e.fio);
-  const activeTerminals = terminals.filter((t) => t.status === "active");
-  const allGrafiki      = routes.flatMap((r) => getGrafiki(r));
-  const allBorts        = [...new Set(vehicles.map((v) => v.bortovoy).filter(Boolean))].sort((a, b) => Number(a) - Number(b));
+  // Мемоизируем справочные данные — пересчитываются только при изменении источника
+  const driverFios = useMemo(
+    () => employees.filter((e) => e.dolzhnost === "Водитель"  && e.status === "active").map((e) => e.fio),
+    [employees]
+  );
+  const condFios = useMemo(
+    () => employees.filter((e) => e.dolzhnost === "Кондуктор" && e.status === "active").map((e) => e.fio),
+    [employees]
+  );
+  const activeTerminals = useMemo(() => terminals.filter((t) => t.status === "active"), [terminals]);
+  const allGrafiki      = useMemo(() => routes.flatMap((r) => getGrafiki(r)), [routes]);
+  const allBorts        = useMemo(
+    () => [...new Set(vehicles.map((v) => v.bortovoy).filter(Boolean))].sort((a, b) => Number(a) - Number(b)),
+    [vehicles]
+  );
 
-  // Занятые в других строках значения
-  const usedBorts    = (currentId: number) => new Set(rows.filter((r) => r.id !== currentId && r.bortovoy).map((r) => r.bortovoy));
-  const usedGrafiki  = (currentId: number) => new Set(rows.filter((r) => r.id !== currentId && r.marshrut).map((r) => r.marshrut));
+  // O(n) — вычисляем один раз, не в цикле строк
+  const allUsedBorts   = useMemo(() => new Set(rows.filter((r) => r.bortovoy).map((r) => r.bortovoy)), [rows]);
+  const allUsedGrafiki = useMemo(() => new Set(rows.filter((r) => r.marshrut).map((r) => r.marshrut)), [rows]);
 
-  const handleKeyDown = (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
     if (e.key === "Tab" || e.key === "Enter") {
       e.preventDefault();
       if (colIdx + 1 < TEXT_COLS.length) {
@@ -131,7 +142,7 @@ const NaryadTable = ({
         }, 0);
       }
     }
-  };
+  }, [rows, onSetActiveCell, onAddRow]);
 
   // datalist id для ФИО и терминала (глобальные, не зависят от строки)
   const VOD_LIST  = "dl-narad-vod";
@@ -174,9 +185,9 @@ const NaryadTable = ({
           </thead>
           <tbody>
             {rows.map((row, rowIdx) => {
-              // Доступные борта и графики — исключаем занятые другими строками
-              const freeBorts   = allBorts.filter((b) => !usedBorts(row.id).has(b));
-              const freeGrafiki = allGrafiki.filter((g) => !usedGrafiki(row.id).has(g));
+              // Доступные: всё кроме занятых другими, плюс текущее значение строки
+              const freeBorts   = allBorts.filter((b) => b === row.bortovoy || !allUsedBorts.has(b));
+              const freeGrafiki = allGrafiki.filter((g) => g === row.marshrut || !allUsedGrafiki.has(g));
 
               return (
                 <tr key={row.id} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50/40"}>

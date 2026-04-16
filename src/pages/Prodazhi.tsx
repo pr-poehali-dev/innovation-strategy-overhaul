@@ -34,8 +34,9 @@ const COLUMNS: { key: ColKey; label: string; width: string; numeric?: boolean }[
   { key: "podCond", label: "Конд. подр., ₽", width: "90px",  numeric: true },
 ];
 
+const uid = () => Math.random() * 1e15 + performance.now();
 const emptyRow = (): ProdazhiRow => ({
-  id: Date.now() + Math.random(),
+  id: uid(),
   bort: "", marGr: "", fioVod: "", fioCond: "",
   dt: "", reysy: "", kolBil: "", valid: "", qr: "",
   podVod: "", podCond: "",
