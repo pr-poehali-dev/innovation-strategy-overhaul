@@ -3,11 +3,29 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 // ─── localStorage persist ────────────────────────────────────────────────────
 const LS_KEY = "dat_app_store_v1";
 
+function mergeWithFallback<T>(loaded: unknown, fallback: T): T {
+  if (Array.isArray(fallback) && Array.isArray(loaded)) {
+    // Массив объектов: мержим каждый элемент с первым элементом fallback (как шаблон)
+    const template = fallback[0];
+    if (template && typeof template === "object") {
+      return (loaded as unknown[]).map((item) =>
+        typeof item === "object" && item !== null ? { ...template, ...(item as object) } : item
+      ) as unknown as T;
+    }
+    return loaded as T;
+  }
+  if (typeof fallback === "object" && fallback !== null && typeof loaded === "object" && loaded !== null && !Array.isArray(loaded)) {
+    return { ...(fallback as object), ...(loaded as object) } as T;
+  }
+  return loaded as T;
+}
+
 function loadFromLS<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(`${LS_KEY}:${key}`);
     if (raw === null) return fallback;
-    return JSON.parse(raw) as T;
+    const parsed = JSON.parse(raw);
+    return mergeWithFallback(parsed, fallback);
   } catch {
     return fallback;
   }
@@ -272,8 +290,6 @@ interface AppStore {
   setVehicles: React.Dispatch<React.SetStateAction<TsVehicle[]>>;
   naryadEntries: NaryadEntry[];
   setNaryadEntries: React.Dispatch<React.SetStateAction<NaryadEntry[]>>;
-  naryadRows: NaryadRowStore[];
-  setNaryadRows: React.Dispatch<React.SetStateAction<NaryadRowStore[]>>;
   naryadSettings: NaryadSettingsStore;
   setNaryadSettings: React.Dispatch<React.SetStateAction<NaryadSettingsStore>>;
   weeklyNaryady: WeeklyNaryady;
@@ -344,13 +360,6 @@ export interface NaryadSettingsStore {
   fixedRoute6: string;
 }
 
-const makeEmptyNaryadRow = (): NaryadRowStore => ({
-  id: Math.random() * 1e15 + performance.now(),
-  vehicleId: null, bortovoy: "", gos: "", marka: "",
-  marshrut: "", fio: "", fioKond: "",
-  putevoy: "", terminal: "", podrabotka: false, biletov: "", statusOtsutstviya: "", dtp: false,
-  odometrVyezd: "", odometrVozv: "",
-});
 
 const DEFAULT_NARAD_SETTINGS: NaryadSettingsStore = {
   stoimostBileta: "40", stoimostTopliva: "75", rashod: "30",
@@ -436,10 +445,7 @@ const INITIAL_TERMINALS: Terminal[] = [
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [vehicles,        setVehicles]        = usePersist<TsVehicle[]>           ("vehicles",        INITIAL_VEHICLES);
-  const [naryadEntries,   setNaryadEntries]   = useState<NaryadEntry[]>([]);
-  const [naryadRows,      setNaryadRows]      = useState<NaryadRowStore[]>([
-    makeEmptyNaryadRow(), makeEmptyNaryadRow(), makeEmptyNaryadRow(),
-  ]);
+  const [naryadEntries,   setNaryadEntries]   = usePersist<NaryadEntry[]>         ("naryadEntries",   []);
   const [naryadSettings,  setNaryadSettings]  = usePersist<NaryadSettingsStore>   ("naryadSettings",  DEFAULT_NARAD_SETTINGS);
   const [weeklyNaryady,   setWeeklyNaryady]   = usePersist<WeeklyNaryady>         ("weeklyNaryady",   {});
   const [companies,       setCompanies]       = usePersist<CompanySettings[]>     ("companies",       INITIAL_COMPANIES);
@@ -455,7 +461,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     <AppContext.Provider value={{
       vehicles, setVehicles,
       naryadEntries, setNaryadEntries,
-      naryadRows, setNaryadRows,
       naryadSettings, setNaryadSettings,
       weeklyNaryady, setWeeklyNaryady,
       companies, setCompanies,

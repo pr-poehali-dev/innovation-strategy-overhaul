@@ -57,15 +57,7 @@ export const emptyRow = (): NaryadRow => ({
   odometrVozv: "",
 });
 
-export const DEFAULT_SETTINGS: NormaSettings = {
-  stoimostBileta: "40",
-  stoimostTopliva: "75",
-  rashod: "30",
-  procentBez: "37",
-  procentVodS: "22",
-  procentCondS: "15",
-  fixedRoute6: "7000",
-};
+
 
 // Порядок в таблице: Борт № → Маршрут (остальные — отдельные ячейки)
 export const TEXT_COLS = [

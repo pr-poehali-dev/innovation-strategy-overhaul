@@ -3,7 +3,14 @@ import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 import { useAppStore, DtpRecord, CompanySettings } from "@/store/appStore";
 
-const EMPTY_COMPANY: CompanySettings = { nazvanie: "—", inn: "", direktor: "", telefon: "", adres: "" };
+const EMPTY_COMPANY: CompanySettings = {
+  nazvanie: "—", kratkoeNazvanie: "", inn: "", kpp: "", ogrn: "", okpo: "", okvad: "",
+  direktor: "", dolzhnostDir: "Директор", glavbuh: "",
+  adresYur: "", adres: "", telefon: "", email: "",
+  bank: "", bik: "", raschetnySchet: "", korSchet: "",
+  licenziya: "", licenziyaData: "", licenziyaVydan: "", reestrNomer: "",
+  svidetelstvo: "", svidetelstvoData: "", dogovorZakazchik: "", zakazchik: "", zakazchikInn: "",
+};
 
 const STATUS_LABELS: Record<DtpRecord["status"], string> = {
   new:          "Новое",
@@ -21,8 +28,11 @@ const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2
 
 // ─── Печать документа ДТП ──────────────────────────────────────────────────
 const DtpDocPrint = ({ rec, onClose }: { rec: DtpRecord; onClose: () => void }) => {
-  const { companies, activeCompanyIdx, employees } = useAppStore();
-  const company = companies[activeCompanyIdx] ?? EMPTY_COMPANY;
+  const { companies, routes, employees } = useAppStore();
+  // Компания определяется по маршруту из записи ДТП, а не по activeCompanyIdx
+  const routeNum = rec.marshrut?.split("/")[0]?.trim();
+  const matchedRoute = routes.find((r) => r.nomer === routeNum);
+  const company = (matchedRoute ? companies[matchedRoute.companyIdx] : companies[0]) ?? EMPTY_COMPANY;
   const direktor = employees.find((e) => e.dolzhnost === "Директор" && e.status === "active")?.fio ?? "_______________";
 
   return (
@@ -170,6 +180,13 @@ const DtpCard = ({
       {/* Тело карточки */}
       {open && (
         <div className="px-4 py-4 space-y-3 border-t">
+          {/* Данные из наряда (только чтение) */}
+          <div className="grid grid-cols-4 gap-2 bg-blue-50 rounded px-3 py-2 text-xs">
+            <div><span className="text-gray-500">Водитель:</span> <span className="font-medium">{rec.fioVod || "—"}</span></div>
+            <div><span className="text-gray-500">Кондуктор:</span> <span className="font-medium">{rec.fioKond || "—"}</span></div>
+            <div><span className="text-gray-500">Путевой №:</span> <span className="font-semibold text-blue-700">{rec.putevoy || "—"}</span></div>
+            <div><span className="text-gray-500">Маршрут:</span> <span className="font-medium">{rec.marshrut || "—"}</span></div>
+          </div>
           <div className="grid grid-cols-3 gap-2">
             <F label="Время ДТП" field="vremya" placeholder="09:35" />
             <F label="Место ДТП" field="mesto" placeholder="ул. Ленина, 10" />
