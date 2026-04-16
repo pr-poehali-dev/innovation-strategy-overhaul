@@ -5,65 +5,72 @@ import { useAppStore } from "@/store/appStore";
 
 interface ProdazhiRow {
   id: number;
-  marGr: string;
   bort: string;
+  marGr: string;
   fioVod: string;
   fioCond: string;
-  reysy: string;
-  faktReys: string;
-  vremya: string;
-  faktVremya: string;
   dt: string;
-  skhody: string;
+  reysy: string;
+  kolBil: string;
+  valid: string;
+  qr: string;
 }
 
-const COLUMNS: { key: keyof Omit<ProdazhiRow, "id">; label: string; width: string }[] = [
-  { key: "marGr",      label: "Мар. Гр",        width: "90px"  },
-  { key: "bort",       label: "Борт №",          width: "70px"  },
-  { key: "fioVod",     label: "ФИО Водителя",   width: "160px" },
-  { key: "fioCond",    label: "ФИО кондуктора", width: "160px" },
-  { key: "reysy",      label: "Рейсы",          width: "70px"  },
-  { key: "faktReys",   label: "Факт рейс",      width: "80px"  },
-  { key: "vremya",     label: "Время",          width: "80px"  },
-  { key: "faktVremya", label: "Факт время",     width: "90px"  },
-  { key: "dt",         label: "ДТ",             width: "70px"  },
-  { key: "skhody",     label: "Сходы",          width: "120px" },
+type ColKey = keyof Omit<ProdazhiRow, "id">;
+
+const COLUMNS: { key: ColKey; label: string; width: string; numeric?: boolean }[] = [
+  { key: "bort",    label: "Борт №",          width: "60px"  },
+  { key: "marGr",   label: "Мар. Гр",         width: "70px"  },
+  { key: "fioVod",  label: "ФИО водителя",    width: "160px" },
+  { key: "fioCond", label: "ФИО кондуктора",  width: "130px" },
+  { key: "dt",      label: "ДТ",              width: "60px",  numeric: true },
+  { key: "reysy",   label: "Рейсы",           width: "65px",  numeric: true },
+  { key: "kolBil",  label: "Кол. бил",        width: "70px",  numeric: true },
+  { key: "valid",   label: "Валид",           width: "65px",  numeric: true },
+  { key: "qr",      label: "QR",              width: "60px",  numeric: true },
 ];
 
 const emptyRow = (): ProdazhiRow => ({
   id: Date.now() + Math.random(),
-  marGr: "", bort: "", fioVod: "", fioCond: "",
-  reysy: "", faktReys: "", vremya: "",
-  faktVremya: "", dt: "", skhody: "",
+  bort: "", marGr: "", fioVod: "", fioCond: "",
+  dt: "", reysy: "", kolBil: "", valid: "", qr: "",
 });
+
+const toNum = (v: string) => parseFloat((v || "0").replace(",", ".")) || 0;
 
 const today = new Date().toLocaleDateString("ru-RU", {
   day: "2-digit", month: "2-digit", year: "numeric",
 });
 
 const Prodazhi = () => {
-  const { naryadEntries } = useAppStore();
+  const { naryadEntries, employees, vehicles } = useAppStore();
 
-  const [rows, setRows] = useState<ProdazhiRow[]>([
-    emptyRow(), emptyRow(), emptyRow(), emptyRow(), emptyRow(),
-  ]);
+  const vodители = employees.filter((e) => e.dolzhnost === "Водитель" && e.status === "active");
+  const кондукторы = employees.filter((e) => e.dolzhnost === "Кондуктор" && e.status === "active");
+
+  // Диспетчер
+  const [dispFio, setDispFio] = useState("");
+  const [reportDate, setReportDate] = useState(today);
+
+  const [rows, setRows] = useState<ProdazhiRow[]>(() =>
+    Array.from({ length: 10 }, emptyRow)
+  );
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
   const [imported, setImported] = useState(false);
 
   const handleImport = () => {
-    if (naryadEntries.length === 0) return;
+    if (!naryadEntries.length) return;
     const newRows: ProdazhiRow[] = naryadEntries.map((e) => ({
-      id:         Date.now() + Math.random(),
-      marGr:      e.marshrut,
-      bort:       e.bortovoy,
-      fioVod:     e.fioVod,
-      fioCond:    e.fioKond,
-      reysy:      "",
-      faktReys:   "",
-      vremya:     "",
-      faktVremya: "",
-      dt:         "",
-      skhody:     "",
+      id:      Date.now() + Math.random(),
+      bort:    e.bortovoy,
+      marGr:   e.marshrut,
+      fioVod:  e.fioVod,
+      fioCond: e.fioKond || "без",
+      dt:      "",
+      reysy:   "",
+      kolBil:  e.biletov,
+      valid:   "",
+      qr:      "",
     }));
     setRows(newRows);
     setImported(true);
@@ -74,135 +81,253 @@ const Prodazhi = () => {
     if (naryadEntries.length > 0) setImported(false);
   }, [naryadEntries]);
 
-  const updateCell = (id: number, col: keyof ProdazhiRow, value: string) => {
+  const updateCell = (id: number, col: ColKey, value: string) =>
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
-  };
 
   const addRow = () => setRows((prev) => [...prev, emptyRow()]);
 
-  const deleteRow = (id: number) => {
-    if (rows.length === 1) return;
+  const deleteRow = (id: number) =>
     setRows((prev) => prev.filter((r) => r.id !== id));
-  };
 
   const handleKeyDown = (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
-    if (e.key === "Tab" || e.key === "Enter") {
-      e.preventDefault();
-      if (colIdx + 1 < COLUMNS.length) {
-        setActiveCell({ rowId: rows[rowIdx].id, col: COLUMNS[colIdx + 1].key });
-      } else if (rowIdx + 1 < rows.length) {
-        setActiveCell({ rowId: rows[rowIdx + 1].id, col: COLUMNS[0].key });
-      } else {
-        addRow();
-        setTimeout(() => {
-          setActiveCell({ rowId: rows[rows.length - 1]?.id, col: COLUMNS[0].key });
-        }, 0);
-      }
+    if (e.key !== "Tab" && e.key !== "Enter") return;
+    e.preventDefault();
+    const editCols = COLUMNS.filter((c) => c.key !== "fioVod" && c.key !== "fioCond" && c.key !== "bort" && c.key !== "marGr");
+    if (colIdx + 1 < COLUMNS.length) {
+      setActiveCell({ rowId: rows[rowIdx].id, col: COLUMNS[colIdx + 1].key });
+    } else if (rowIdx + 1 < rows.length) {
+      setActiveCell({ rowId: rows[rowIdx + 1].id, col: COLUMNS[0].key });
+    } else {
+      addRow();
+      setTimeout(() => setActiveCell({ rowId: rows[rows.length - 1]?.id, col: COLUMNS[0].key }), 0);
     }
   };
 
-  const numericCols: (keyof ProdazhiRow)[] = ["reysy", "faktReys", "dt"];
-  const getSum = (col: keyof ProdazhiRow) =>
-    rows.reduce((acc, r) => acc + (parseFloat((r[col] as string).replace(",", ".")) || 0), 0);
+  const numericCols = COLUMNS.filter((c) => c.numeric).map((c) => c.key);
+  const getSum = (col: ColKey) =>
+    rows.reduce((acc, r) => acc + toNum(r[col] as string), 0);
+
+  // Статистика
+  const vsegoVyshlo = rows.filter((r) => r.fioVod && r.fioVod !== "0" && r.marGr && r.marGr !== "вых" && r.marGr !== "отп" && r.marGr !== "рем").length;
+  const vsegoVykhod = rows.filter((r) => r.marGr === "вых" || r.marGr === "отп" || r.marGr === "рем").length;
+
+  // ФИО из стора — datalist
+  const vodFioList = "vod-fio-list";
+  const condFioList = "cond-fio-list";
+  const bortList = "bort-list";
+
+  const renderCell = (row: ProdazhiRow, col: typeof COLUMNS[number], rowIdx: number, colIdx: number) => {
+    const isActive = activeCell?.rowId === row.id && activeCell?.col === col.key;
+    const isOff = row.marGr === "вых" || row.marGr === "отп" || row.marGr === "рем";
+
+    // ФИО водителя — с datalist
+    if (col.key === "fioVod") {
+      return (
+        <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
+          <input
+            type="text"
+            list={vodFioList}
+            value={row.fioVod}
+            onChange={(e) => updateCell(row.id, "fioVod", e.target.value)}
+            onFocus={() => setActiveCell({ rowId: row.id, col: col.key })}
+            onBlur={() => setActiveCell(null)}
+            onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
+            autoFocus={isActive}
+            className={`w-full h-6 px-1 text-xs text-gray-800 bg-transparent outline-none border-2 ${isActive ? "border-blue-500 bg-blue-50" : "border-transparent"} transition-colors`}
+            placeholder="—"
+          />
+        </td>
+      );
+    }
+    // ФИО кондуктора — с datalist
+    if (col.key === "fioCond") {
+      return (
+        <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
+          <input
+            type="text"
+            list={condFioList}
+            value={row.fioCond}
+            onChange={(e) => updateCell(row.id, "fioCond", e.target.value)}
+            onFocus={() => setActiveCell({ rowId: row.id, col: col.key })}
+            onBlur={() => setActiveCell(null)}
+            onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
+            autoFocus={isActive}
+            className={`w-full h-6 px-1 text-xs text-gray-800 bg-transparent outline-none border-2 ${isActive ? "border-blue-500 bg-blue-50" : "border-transparent"} transition-colors`}
+            placeholder="без"
+          />
+        </td>
+      );
+    }
+    // Борт — с datalist
+    if (col.key === "bort") {
+      return (
+        <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
+          <input
+            type="text"
+            list={bortList}
+            value={row.bort}
+            onChange={(e) => updateCell(row.id, "bort", e.target.value)}
+            onFocus={() => setActiveCell({ rowId: row.id, col: col.key })}
+            onBlur={() => setActiveCell(null)}
+            onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
+            autoFocus={isActive}
+            className={`w-full h-6 px-1 text-xs font-bold text-blue-800 bg-transparent outline-none border-2 ${isActive ? "border-blue-500 bg-blue-50" : "border-transparent"} transition-colors text-center`}
+            placeholder="—"
+          />
+        </td>
+      );
+    }
+
+    return (
+      <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
+        <input
+          type="text"
+          value={row[col.key] as string}
+          onChange={(e) => updateCell(row.id, col.key, e.target.value)}
+          onFocus={() => setActiveCell({ rowId: row.id, col: col.key })}
+          onBlur={() => setActiveCell(null)}
+          onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
+          autoFocus={isActive}
+          disabled={isOff && (col.key === "dt" || col.key === "reysy" || col.key === "kolBil" || col.key === "valid" || col.key === "qr")}
+          className={[
+            "w-full h-6 px-1 text-xs text-gray-800 bg-transparent outline-none border-2 transition-colors text-center",
+            isActive ? "border-blue-500 bg-blue-50" : "border-transparent",
+            isOff ? "text-gray-400" : "",
+          ].join(" ")}
+          placeholder=""
+        />
+      </td>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
       <NavBar title="Продажи" />
 
-      <div className="px-4 py-5 max-w-[1400px] mx-auto">
+      {/* datalists */}
+      <datalist id={vodFioList}>
+        <option value="без" />
+        {vodители.map((e) => <option key={e.id} value={e.fio} />)}
+      </datalist>
+      <datalist id={condFioList}>
+        <option value="без" />
+        {кондукторы.map((e) => <option key={e.id} value={e.fio} />)}
+      </datalist>
+      <datalist id={bortList}>
+        {vehicles.map((v) => <option key={v.id} value={v.bortovoy}>{v.bortovoy} {v.marka}</option>)}
+      </datalist>
+
+      <div className="px-4 py-4 max-w-[1200px] mx-auto">
         <div className="bg-white border border-gray-300 shadow-sm">
+
+          {/* Шапка */}
           <div className="border-b border-gray-300 px-5 py-3 flex items-center justify-between print:hidden">
             <div>
               <h1 className="text-lg font-bold text-gray-800 uppercase tracking-wide">Продажи / Выходы на линию</h1>
               <p className="text-xs text-gray-500 mt-0.5">ООО «Дальавтотранс» · {today}</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               {naryadEntries.length > 0 && (
-                <button
-                  onClick={handleImport}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors ${
-                    imported ? "bg-green-600 text-white" : "bg-indigo-600 text-white hover:bg-indigo-700"
-                  }`}
-                >
+                <button onClick={handleImport}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors ${imported ? "bg-green-600 text-white" : "bg-indigo-600 text-white hover:bg-indigo-700"}`}>
                   <Icon name={imported ? "Check" : "Download"} size={14} />
                   {imported ? "Загружено!" : `Из наряда (${naryadEntries.length})`}
                 </button>
               )}
-              <button onClick={addRow} className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
-                <Icon name="Plus" size={14} />
-                Строка
+              <button onClick={addRow} className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700">
+                <Icon name="Plus" size={12} /> Строка
               </button>
-              <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
-                <Icon name="Printer" size={14} />
-                Печать
+              <button onClick={() => window.print()} className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
+                <Icon name="Printer" size={12} /> Печать
               </button>
             </div>
           </div>
 
+          {/* Дата отчёта */}
+          <div className="px-5 py-2 border-b border-gray-200 flex items-center gap-4 text-xs text-gray-600">
+            <span className="font-semibold">Дата:</span>
+            <input
+              type="text"
+              value={reportDate}
+              onChange={(e) => setReportDate(e.target.value)}
+              className="border border-gray-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-blue-400 w-28"
+            />
+          </div>
+
+          {/* Таблица */}
           <div className="overflow-x-auto">
-            <table className="border-collapse text-xs" style={{ minWidth: "100%" }}>
+            <table className="border-collapse text-xs" style={{ minWidth: "700px" }}>
               <thead>
-                <tr style={{ backgroundColor: "#6fa8dc" }}>
-                  <th className="border border-blue-400 px-1 py-1.5 text-white font-semibold text-center" style={{ width: "28px", minWidth: "28px" }}>№</th>
+                <tr style={{ backgroundColor: "#1a3a6b" }}>
+                  <th className="border border-blue-900 px-1 py-1.5 text-white text-center" style={{ width: "28px" }}>№</th>
                   {COLUMNS.map((col) => (
-                    <th key={col.key} className="border border-blue-400 px-1 py-1.5 text-white font-semibold text-center leading-tight" style={{ width: col.width, minWidth: col.width }}>
+                    <th key={col.key} className="border border-blue-900 px-1 py-1.5 text-white font-semibold text-center leading-tight"
+                      style={{ width: col.width, minWidth: col.width }}>
                       {col.label}
                     </th>
                   ))}
-                  <th className="border border-blue-400 px-1 py-1 text-white print:hidden" style={{ width: "28px" }}></th>
+                  <th className="border border-blue-900 px-1 py-1 print:hidden" style={{ width: "22px" }}></th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, rowIdx) => (
-                  <tr key={row.id} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50"}>
-                    <td className="border border-gray-300 text-center text-gray-400 select-none py-0" style={{ width: "28px" }}>
-                      {rowIdx + 1}
-                    </td>
-                    {COLUMNS.map((col, colIdx) => {
-                      const isActive = activeCell?.rowId === row.id && activeCell?.col === col.key;
-                      return (
-                        <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
-                          <input
-                            type="text"
-                            value={row[col.key] as string}
-                            onChange={(e) => updateCell(row.id, col.key, e.target.value)}
-                            onFocus={() => setActiveCell({ rowId: row.id, col: col.key })}
-                            onBlur={() => setActiveCell(null)}
-                            onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
-                            autoFocus={isActive}
-                            className={`w-full h-7 px-1 text-gray-800 bg-transparent outline-none border-2 ${
-                              isActive ? "border-blue-500 bg-blue-50" : "border-transparent"
-                            } transition-colors`}
-                          />
-                        </td>
-                      );
-                    })}
-                    <td className="border border-gray-300 text-center print:hidden" style={{ width: "28px" }}>
-                      <button onClick={() => deleteRow(row.id)} className="text-gray-300 hover:text-red-500 transition-colors p-0.5">
-                        <Icon name="X" size={12} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {rows.map((row, rowIdx) => {
+                  const isOff = row.marGr === "вых" || row.marGr === "отп" || row.marGr === "рем";
+                  const rowBg = isOff
+                    ? "#f5f5f0"
+                    : rowIdx % 2 === 0 ? "#ffffff" : "#eff6ff";
+                  return (
+                    <tr key={row.id} style={{ backgroundColor: rowBg }}>
+                      <td className="border border-gray-300 text-center text-gray-400 select-none" style={{ width: "28px" }}>
+                        {rowIdx + 1}
+                      </td>
+                      {COLUMNS.map((col, colIdx) => renderCell(row, col, rowIdx, colIdx))}
+                      <td className="border border-gray-300 text-center print:hidden" style={{ width: "22px" }}>
+                        <button onClick={() => deleteRow(row.id)} className="text-gray-300 hover:text-red-500 p-0.5">
+                          <Icon name="X" size={11} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
 
-                <tr style={{ backgroundColor: "#c9daf8" }}>
-                  <td className="border border-gray-400 px-1 py-1 text-center font-bold text-gray-700 text-xs">Σ</td>
-                  {COLUMNS.map((col) => (
-                    <td key={col.key} className="border border-gray-400 px-1 py-1 text-center font-bold text-gray-800 text-xs">
-                      {numericCols.includes(col.key)
+              {/* Итоговая строка */}
+              <tfoot>
+                <tr style={{ backgroundColor: "#1a3a6b" }}>
+                  <td className="border border-blue-900 px-1 py-1.5 text-center text-white font-bold text-xs" colSpan={2}>
+                    Σ
+                  </td>
+                  {COLUMNS.slice(1).map((col) => (
+                    <td key={col.key} className="border border-blue-900 px-1 py-1.5 text-center font-bold text-white text-xs">
+                      {col.numeric
                         ? (() => { const s = getSum(col.key); return s !== 0 ? s.toLocaleString("ru-RU") : ""; })()
                         : ""}
                     </td>
                   ))}
-                  <td className="border border-gray-400 print:hidden"></td>
+                  <td className="border border-blue-900 print:hidden"></td>
                 </tr>
-              </tbody>
+              </tfoot>
             </table>
           </div>
 
-          <div className="border-t border-gray-300 px-5 py-2 bg-gray-50 flex items-center justify-between text-xs text-gray-400 print:hidden">
-            <span>Строк: {rows.length}</span>
-            <span>Tab / Enter — переход между ячейками</span>
+          {/* Подвал: статистика + диспетчер */}
+          <div className="border-t border-gray-300 px-5 py-3 flex items-center justify-between gap-4 text-xs">
+            <div className="flex items-center gap-4 text-gray-600">
+              <span>Вышло на линию: <b className="text-gray-800">{vsegoVyshlo}</b></span>
+              <span>Вых/Отп/Рем: <b className="text-gray-800">{vsegoVykhod}</b></span>
+              <span className="text-gray-400 print:hidden">Tab / Enter — переход</span>
+            </div>
+            <div className="flex items-center gap-2 text-gray-600">
+              <span className="font-semibold">Диспетчер:</span>
+              <input
+                type="text"
+                list={vodFioList}
+                value={dispFio}
+                onChange={(e) => setDispFio(e.target.value)}
+                placeholder="ФИО диспетчера"
+                className="border border-gray-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-blue-400 w-40"
+              />
+            </div>
           </div>
         </div>
       </div>

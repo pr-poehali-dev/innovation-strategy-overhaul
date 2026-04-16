@@ -136,13 +136,28 @@ interface AppStore {
 
 const AppContext = createContext<AppStore | null>(null);
 
+const INITIAL_EMPLOYEES: Employee[] = [
+  { id: 1001, tabNum: "", fio: "Арипов У.Х.",       dolzhnost: "Водитель", bort: "561", kategoriya: "D", telefon: "", dataRozhd: "", dataPriema: "", status: "active" },
+  { id: 1002, tabNum: "", fio: "Вичканов Р.А.",      dolzhnost: "Водитель", bort: "",    kategoriya: "D", telefon: "", dataRozhd: "", dataPriema: "", status: "active" },
+  { id: 1003, tabNum: "", fio: "Волос А.Ю.",         dolzhnost: "Водитель", bort: "527", kategoriya: "D", telefon: "", dataRozhd: "", dataPriema: "", status: "active" },
+  { id: 1004, tabNum: "", fio: "Дувалетиков Ю.Ф.",  dolzhnost: "Водитель", bort: "506", kategoriya: "D", telefon: "", dataRozhd: "", dataPriema: "", status: "active" },
+  { id: 1005, tabNum: "", fio: "Кириченко Н.А.",     dolzhnost: "Водитель", bort: "524", kategoriya: "D", telefon: "", dataRozhd: "", dataPriema: "", status: "active" },
+  { id: 1006, tabNum: "", fio: "Кушнарев А.В.",      dolzhnost: "Водитель", bort: "512", kategoriya: "D", telefon: "", dataRozhd: "", dataPriema: "", status: "active" },
+  { id: 1007, tabNum: "", fio: "Муклецов А.В.",      dolzhnost: "Водитель", bort: "515", kategoriya: "D", telefon: "", dataRozhd: "", dataPriema: "", status: "active" },
+  { id: 1008, tabNum: "", fio: "Самодуров М.Н.",     dolzhnost: "Водитель", bort: "530", kategoriya: "D", telefon: "", dataRozhd: "", dataPriema: "", status: "active" },
+  { id: 1009, tabNum: "", fio: "Сухов И.С.",         dolzhnost: "Водитель", bort: "508", kategoriya: "D", telefon: "", dataRozhd: "", dataPriema: "", status: "active" },
+  { id: 1010, tabNum: "", fio: "Тасмалы М.П.",       dolzhnost: "Водитель", bort: "514", kategoriya: "D", telefon: "", dataRozhd: "", dataPriema: "", status: "active" },
+  { id: 1011, tabNum: "", fio: "Чекотило Д.В.",      dolzhnost: "Водитель", bort: "",    kategoriya: "D", telefon: "", dataRozhd: "", dataPriema: "", status: "active" },
+  { id: 1012, tabNum: "", fio: "Щепачев А.К.",       dolzhnost: "Водитель", bort: "540", kategoriya: "D", telefon: "", dataRozhd: "", dataPriema: "", status: "active" },
+];
+
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [vehicles, setVehicles] = useState<TsVehicle[]>(INITIAL_VEHICLES);
   const [naryadEntries, setNaryadEntries] = useState<NaryadEntry[]>([]);
   const [companies, setCompanies] = useState<CompanySettings[]>(INITIAL_COMPANIES);
   const [activeCompanyIdx, setActiveCompanyIdx] = useState(0);
   const [terminals, setTerminals] = useState<Terminal[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
 
   return (
     <AppContext.Provider value={{
