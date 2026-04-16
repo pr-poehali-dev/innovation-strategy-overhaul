@@ -55,6 +55,7 @@ const Dispatch = () => {
         fioKond:           r.fioKond,
         putevoy:           r.putevoy,
         biletov:           r.biletov,
+        terminal:          r.terminal,
         podrabotkaVod:     calc?.vod  ?? 0,
         podrabotkaKond:    calc?.cond ?? 0,
       };

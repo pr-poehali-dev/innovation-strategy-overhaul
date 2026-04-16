@@ -7,7 +7,8 @@ const LINKS = [
   { to: "/prodazhi", label: "Продажи",    icon: "TrendingUp"    },
   { to: "/kassa",    label: "Касса",      icon: "Wallet"        },
   { to: "/kadry",    label: "Кадры",      icon: "Users"         },
-  { to: "/ts",       label: "ТС",         icon: "Bus"           },
+  { to: "/ts",        label: "ТС",          icon: "Bus"            },
+  { to: "/terminals", label: "Терминалы",  icon: "CreditCard"     },
   { to: "/vedomost", label: "Ведомость",  icon: "FileText"      },
   { to: "/settings", label: "Настройки",  icon: "Settings"      },
 ];

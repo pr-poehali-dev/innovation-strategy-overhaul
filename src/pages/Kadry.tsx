@@ -1,21 +1,9 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
+import { useAppStore, Employee } from "@/store/appStore";
 
 type TabType = "voditely" | "konduktery";
-
-interface Employee {
-  id: number;
-  tabNum: string;
-  fio: string;
-  dolzhnost: string;
-  bort: string;
-  kategoriya: string;
-  telefon: string;
-  dataRozhd: string;
-  dataPriema: string;
-  status: "active" | "inactive";
-}
 
 const emptyEmployee = (dolzhnost: string): Employee => ({
   id: Date.now() + Math.random(),
@@ -67,24 +55,26 @@ const StatusBadge = ({ value, onChange }: { value: "active" | "inactive"; onChan
 const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 
 const Kadry = () => {
+  const { employees, setEmployees } = useAppStore();
   const [tab, setTab] = useState<TabType>("voditely");
-  const [voditely, setVoditely] = useState<Employee[]>([emptyEmployee("Водитель"), emptyEmployee("Водитель")]);
-  const [konduktery, setKonduktery] = useState<Employee[]>([emptyEmployee("Кондуктор"), emptyEmployee("Кондуктор")]);
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
 
-  const rows = tab === "voditely" ? voditely : konduktery;
-  const setRows = tab === "voditely" ? setVoditely : setKonduktery;
+  const voditely   = employees.filter((e) => e.dolzhnost === "Водитель");
+  const konduktery = employees.filter((e) => e.dolzhnost === "Кондуктор");
+
+  const rows    = tab === "voditely" ? voditely : konduktery;
   const columns = tab === "voditely" ? VOD_COLUMNS : COND_COLUMNS;
 
   const updateCell = (id: number, col: keyof Employee, value: string) => {
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
+    setEmployees((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
   };
 
-  const addRow = () => setRows((prev) => [...prev, emptyEmployee(tab === "voditely" ? "Водитель" : "Кондуктор")]);
+  const addRow = () =>
+    setEmployees((prev) => [...prev, emptyEmployee(tab === "voditely" ? "Водитель" : "Кондуктор")]);
 
   const deleteRow = (id: number) => {
     if (rows.length === 1) return;
-    setRows((prev) => prev.filter((r) => r.id !== id));
+    setEmployees((prev) => prev.filter((r) => r.id !== id));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {

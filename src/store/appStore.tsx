@@ -35,6 +35,7 @@ export interface NaryadEntry {
   fioKond: string;
   putevoy: string;
   biletov: string;
+  terminal: string;
   podrabotkaVod: number;
   podrabotkaKond: number;
 }
@@ -92,6 +93,31 @@ export const INITIAL_COMPANIES: CompanySettings[] = [
   { nazvanie: 'ООО "Техника и Технологии"', inn: "", direktor: "", telefon: "", adres: "" },
 ];
 
+// ─── Терминал ───────────────────────────────────────────────────────────────
+export interface Terminal {
+  id: number;
+  nomer: string;        // номер / название терминала
+  serial: string;       // серийный номер
+  model: string;        // модель
+  companyIdx: number;   // привязка к организации (индекс в companies)
+  status: "active" | "inactive";
+  primechanie: string;
+}
+
+// ─── Сотрудник (глобально, из Кадры) ───────────────────────────────────────
+export interface Employee {
+  id: number;
+  tabNum: string;
+  fio: string;
+  dolzhnost: string;   // "Водитель" | "Кондуктор"
+  bort: string;
+  kategoriya: string;
+  telefon: string;
+  dataRozhd: string;
+  dataPriema: string;
+  status: "active" | "inactive";
+}
+
 // ─── Context ───────────────────────────────────────────────────────────────
 interface AppStore {
   vehicles: TsVehicle[];
@@ -102,6 +128,10 @@ interface AppStore {
   setCompanies: React.Dispatch<React.SetStateAction<CompanySettings[]>>;
   activeCompanyIdx: number;
   setActiveCompanyIdx: React.Dispatch<React.SetStateAction<number>>;
+  terminals: Terminal[];
+  setTerminals: React.Dispatch<React.SetStateAction<Terminal[]>>;
+  employees: Employee[];
+  setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>;
 }
 
 const AppContext = createContext<AppStore | null>(null);
@@ -111,6 +141,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [naryadEntries, setNaryadEntries] = useState<NaryadEntry[]>([]);
   const [companies, setCompanies] = useState<CompanySettings[]>(INITIAL_COMPANIES);
   const [activeCompanyIdx, setActiveCompanyIdx] = useState(0);
+  const [terminals, setTerminals] = useState<Terminal[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   return (
     <AppContext.Provider value={{
@@ -118,6 +150,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       naryadEntries, setNaryadEntries,
       companies, setCompanies,
       activeCompanyIdx, setActiveCompanyIdx,
+      terminals, setTerminals,
+      employees, setEmployees,
     }}>
       {children}
     </AppContext.Provider>

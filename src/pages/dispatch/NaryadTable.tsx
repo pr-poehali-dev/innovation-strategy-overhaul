@@ -31,13 +31,13 @@ const NaryadTable = ({
   onSetActiveCell,
   onOpenPutevoy,
 }: Props) => {
-  const { vehicles } = useAppStore();
+  const { vehicles, employees, terminals } = useAppStore();
 
-  const handleKeyDown = (
-    e: React.KeyboardEvent,
-    rowIdx: number,
-    colIdx: number,
-  ) => {
+  const vodители = employees.filter((e) => e.dolzhnost === "Водитель" && e.status === "active");
+  const кондукторы = employees.filter((e) => e.dolzhnost === "Кондуктор" && e.status === "active");
+  const activeTerminals = terminals.filter((t) => t.status === "active");
+
+  const handleKeyDown = (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
     if (e.key === "Tab" || e.key === "Enter") {
       e.preventDefault();
       if (colIdx + 1 < TEXT_COLS.length) {
@@ -59,13 +59,7 @@ const NaryadTable = ({
     if (!v) {
       onUpdateRow(rowId, { vehicleId: null, bortovoy: "", gos: "", marka: "", garazhny: "" });
     } else {
-      onUpdateRow(rowId, {
-        vehicleId: v.id,
-        bortovoy: v.bortovoy,
-        gos: v.gos,
-        marka: v.marka,
-        garazhny: v.garazhny,
-      });
+      onUpdateRow(rowId, { vehicleId: v.id, bortovoy: v.bortovoy, gos: v.gos, marka: v.marka, garazhny: v.garazhny });
     }
   };
 
@@ -73,29 +67,66 @@ const NaryadTable = ({
   const totalVod  = podrabotkaRows.reduce((s, r) => s + (calcPodrabotka(r, settings)?.vod  ?? 0), 0);
   const totalCond = podrabotkaRows.reduce((s, r) => s + (calcPodrabotka(r, settings)?.cond ?? 0), 0);
 
+  // Выпадающий select с поиском через datalist
+  const SelectCell = ({
+    value,
+    options,
+    placeholder,
+    onChange,
+    width,
+  }: {
+    value: string;
+    options: string[];
+    placeholder: string;
+    onChange: (v: string) => void;
+    width: string;
+  }) => {
+    const listId = `dl-${Math.random().toString(36).slice(2)}`;
+    return (
+      <td className="border border-gray-300 p-0" style={{ width }}>
+        <datalist id={listId}>
+          {options.map((o) => <option key={o} value={o} />)}
+        </datalist>
+        <input
+          type="text"
+          list={listId}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors"
+        />
+      </td>
+    );
+  };
+
   return (
     <>
       <div className="overflow-x-auto">
-        <table className="border-collapse text-xs" style={{ minWidth: "1100px" }}>
+        <table className="border-collapse text-xs" style={{ minWidth: "1200px" }}>
           <thead>
             <tr style={{ backgroundColor: "#1a3a6b" }}>
               <th className="border border-blue-900 px-1 py-2 text-white text-center" style={{ width: "28px" }}>№</th>
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "160px" }}>ТС</th>
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "80px" }}>Борт/Гос</th>
+              {/* ТС */}
+              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "150px" }}>ТС</th>
+              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "75px" }}>Борт/Гос</th>
+              {/* ФИО — выпадающие */}
+              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "180px" }}>ФИО водителя</th>
+              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "180px" }}>ФИО кондуктора</th>
+              {/* Текстовые поля */}
               {TEXT_COLS.map((col) => (
-                <th
-                  key={col.key}
-                  className="border border-blue-900 px-2 py-2 text-white font-semibold text-left"
-                  style={{ width: col.width, minWidth: col.width }}
-                >
+                <th key={col.key} className="border border-blue-900 px-2 py-2 text-white font-semibold text-left"
+                  style={{ width: col.width, minWidth: col.width }}>
                   {col.label}
                 </th>
               ))}
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "80px" }}>Подработка</th>
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "80px" }}>Билетов</th>
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "100px" }}>Водитель, ₽</th>
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "100px" }}>Кондуктор, ₽</th>
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "80px" }}>Путевой</th>
+              {/* Терминал */}
+              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "130px" }}>Терминал</th>
+              {/* Подработка */}
+              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "70px" }}>Подработка</th>
+              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "70px" }}>Билетов</th>
+              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "95px" }}>Водитель, ₽</th>
+              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "95px" }}>Кондуктор, ₽</th>
+              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "75px" }}>Путевой</th>
               <th className="border border-blue-900 px-1 py-2" style={{ width: "28px" }}></th>
             </tr>
           </thead>
@@ -109,30 +140,47 @@ const NaryadTable = ({
                   </td>
 
                   {/* Выбор ТС */}
-                  <td className="border border-gray-300 p-0" style={{ width: "160px" }}>
+                  <td className="border border-gray-300 p-0" style={{ width: "150px" }}>
                     <select
                       value={row.vehicleId ?? ""}
                       onChange={(e) => handleSelectVehicle(row.id, e.target.value)}
                       className="w-full h-7 px-1 text-xs text-gray-800 bg-transparent outline-none border-0 cursor-pointer"
                     >
-                      <option value="">— выбрать ТС —</option>
+                      <option value="">— ТС —</option>
                       {vehicles.map((v) => (
                         <option key={v.id} value={v.id}>
-                          {v.marka || "ТС"}{v.bortovoy ? ` (${v.bortovoy})` : ""}
+                          {v.bortovoy}{v.marka ? ` ${v.marka}` : ""}
                         </option>
                       ))}
                     </select>
                   </td>
 
-                  {/* Борт / Гос знак (авто из стора) */}
-                  <td className="border border-gray-300 px-1 py-1 text-xs text-gray-600" style={{ width: "80px" }}>
-                    <div className="leading-tight">
-                      {row.bortovoy && <div className="font-semibold">{row.bortovoy}</div>}
-                      {row.gos && <div className="text-gray-400">{row.gos}</div>}
-                      {!row.bortovoy && !row.gos && <span className="text-gray-300">—</span>}
-                    </div>
+                  {/* Борт / Гос знак */}
+                  <td className="border border-gray-300 px-1 py-1 text-xs text-gray-600 text-center" style={{ width: "75px" }}>
+                    {row.bortovoy && <div className="font-semibold">{row.bortovoy}</div>}
+                    {row.gos && <div className="text-gray-400 text-xs">{row.gos}</div>}
+                    {!row.bortovoy && !row.gos && <span className="text-gray-300">—</span>}
                   </td>
 
+                  {/* ФИО водителя — datalist */}
+                  <SelectCell
+                    value={row.fio}
+                    options={водители.map((e) => e.fio)}
+                    placeholder="— водитель —"
+                    onChange={(v) => onUpdateCell(row.id, "fio", v)}
+                    width="180px"
+                  />
+
+                  {/* ФИО кондуктора — datalist */}
+                  <SelectCell
+                    value={row.fioKond}
+                    options={кондукторы.map((e) => e.fio)}
+                    placeholder="— кондуктор / без —"
+                    onChange={(v) => onUpdateCell(row.id, "fioKond", v)}
+                    width="180px"
+                  />
+
+                  {/* Текстовые поля */}
                   {TEXT_COLS.map((col, colIdx) => {
                     const isActive = activeCell?.rowId === row.id && activeCell?.col === col.key;
                     return (
@@ -154,7 +202,24 @@ const NaryadTable = ({
                     );
                   })}
 
-                  <td className="border border-gray-300 text-center" style={{ width: "80px" }}>
+                  {/* Терминал — выпадающий */}
+                  <td className="border border-gray-300 p-0" style={{ width: "130px" }}>
+                    <select
+                      value={row.terminal}
+                      onChange={(e) => onUpdateCell(row.id, "terminal", e.target.value)}
+                      className="w-full h-7 px-1 text-xs text-gray-800 bg-transparent outline-none border-0 cursor-pointer"
+                    >
+                      <option value="">— терминал —</option>
+                      {activeTerminals.map((t) => (
+                        <option key={t.id} value={t.nomer}>
+                          {t.nomer}{t.model ? ` (${t.model})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+
+                  {/* Подработка */}
+                  <td className="border border-gray-300 text-center" style={{ width: "70px" }}>
                     <input
                       type="checkbox"
                       checked={row.podrabotka}
@@ -163,7 +228,7 @@ const NaryadTable = ({
                     />
                   </td>
 
-                  <td className="border border-gray-300 p-0" style={{ width: "80px" }}>
+                  <td className="border border-gray-300 p-0" style={{ width: "70px" }}>
                     {row.podrabotka ? (
                       <input
                         type="text"
@@ -177,26 +242,19 @@ const NaryadTable = ({
                     )}
                   </td>
 
-                  <td className="border border-gray-300 text-center text-xs font-semibold" style={{ width: "100px" }}>
-                    {calc !== null ? (
-                      <span className="text-green-700">{fmt(calc.vod)}</span>
-                    ) : (
-                      <span className="text-gray-300">—</span>
-                    )}
+                  <td className="border border-gray-300 text-center text-xs font-semibold" style={{ width: "95px" }}>
+                    {calc !== null ? <span className="text-green-700">{fmt(calc.vod)}</span> : <span className="text-gray-300">—</span>}
                   </td>
 
-                  <td className="border border-gray-300 text-center text-xs font-semibold" style={{ width: "100px" }}>
-                    {calc !== null && row.fioKond.trim().length > 0 ? (
-                      <span className="text-green-700">{fmt(calc.cond)}</span>
-                    ) : (
-                      <span className="text-gray-300">—</span>
-                    )}
+                  <td className="border border-gray-300 text-center text-xs font-semibold" style={{ width: "95px" }}>
+                    {calc !== null && row.fioKond.trim().length > 0
+                      ? <span className="text-green-700">{fmt(calc.cond)}</span>
+                      : <span className="text-gray-300">—</span>}
                   </td>
 
-                  <td className="border border-gray-300 text-center" style={{ width: "80px" }}>
+                  <td className="border border-gray-300 text-center" style={{ width: "75px" }}>
                     <button
                       onClick={() => onOpenPutevoy(row)}
-                      title="Открыть путевой лист"
                       className="flex items-center gap-1 mx-auto px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded border border-blue-200 hover:bg-blue-100 transition-colors"
                     >
                       <Icon name="FileText" size={11} />
@@ -205,10 +263,7 @@ const NaryadTable = ({
                   </td>
 
                   <td className="border border-gray-300 text-center" style={{ width: "28px" }}>
-                    <button
-                      onClick={() => onDeleteRow(row.id)}
-                      className="text-gray-300 hover:text-red-500 transition-colors p-0.5"
-                    >
+                    <button onClick={() => onDeleteRow(row.id)} className="text-gray-300 hover:text-red-500 transition-colors p-0.5">
                       <Icon name="X" size={12} />
                     </button>
                   </td>
@@ -220,16 +275,11 @@ const NaryadTable = ({
           {podrabotkaRows.length > 0 && (
             <tfoot>
               <tr className="bg-gray-100 font-semibold text-xs">
-                <td
-                  colSpan={TEXT_COLS.length + 6}
-                  className="border border-gray-300 px-3 py-1.5 text-right text-gray-600"
-                >
+                <td colSpan={TEXT_COLS.length + 8} className="border border-gray-300 px-3 py-1.5 text-right text-gray-600">
                   Итого подработка:
                 </td>
                 <td className="border border-gray-300 text-center text-green-700">{fmt(totalVod)}</td>
-                <td className="border border-gray-300 text-center text-green-700">
-                  {totalCond > 0 ? fmt(totalCond) : "—"}
-                </td>
+                <td className="border border-gray-300 text-center text-green-700">{totalCond > 0 ? fmt(totalCond) : "—"}</td>
                 <td className="border border-gray-300" colSpan={2}></td>
               </tr>
             </tfoot>
@@ -239,7 +289,7 @@ const NaryadTable = ({
 
       <div className="border-t border-gray-300 px-6 py-2 bg-gray-50 flex items-center justify-between text-xs text-gray-400">
         <span>Строк: {rows.length} · Подработка: {podrabotkaRows.length}</span>
-        <span>Tab / Enter — переход между ячейками</span>
+        <span>Tab / Enter — переход между текстовыми ячейками</span>
       </div>
     </>
   );

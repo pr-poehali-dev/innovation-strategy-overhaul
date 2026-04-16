@@ -1,6 +1,6 @@
 export interface NaryadRow {
   id: number;
-  vehicleId: number | null; // ссылка на TsVehicle.id
+  vehicleId: number | null;
   bortovoy: string;
   gos: string;
   marka: string;
@@ -9,6 +9,7 @@ export interface NaryadRow {
   fioKond: string;
   garazhny: string;
   putevoy: string;
+  terminal: string;      // номер/название терминала
   podrabotka: boolean;
   biletov: string;
 }
@@ -33,6 +34,7 @@ export const emptyRow = (): NaryadRow => ({
   fioKond: "",
   garazhny: "",
   putevoy: "",
+  terminal: "",
   podrabotka: false,
   biletov: "",
 });
@@ -47,11 +49,9 @@ export const DEFAULT_SETTINGS: NormaSettings = {
 };
 
 export const TEXT_COLS = [
-  { key: "marshrut", label: "Маршрут",        width: "110px" },
-  { key: "fio",      label: "ФИО водителя",   width: "190px" },
-  { key: "fioKond",  label: "ФИО кондуктора", width: "190px" },
-  { key: "garazhny", label: "Гаражный №",     width: "100px" },
-  { key: "putevoy",  label: "Путевой лист",   width: "130px" },
+  { key: "garazhny", label: "Гаражный №",   width: "90px"  },
+  { key: "marshrut", label: "Маршрут",      width: "90px"  },
+  { key: "putevoy",  label: "Путевой лист", width: "110px" },
 ] as const;
 
 export function calcPodrabotka(

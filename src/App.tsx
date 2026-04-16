@@ -12,6 +12,7 @@ import Kadry from "./pages/Kadry";
 import Settings from "./pages/Settings";
 import Vedomost from "./pages/Vedomost";
 import Ts from "./pages/Ts";
+import Terminals from "./pages/Terminals";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/settings" element={<Settings />} />
             <Route path="/vedomost" element={<Vedomost />} />
             <Route path="/ts" element={<Ts />} />
+            <Route path="/terminals" element={<Terminals />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
