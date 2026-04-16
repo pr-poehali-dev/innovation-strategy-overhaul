@@ -233,9 +233,10 @@ const NaryadTable = ({
                       list={COND_LIST}
                       value={row.fioKond}
                       onChange={(e) => onUpdateCell(row.id, "fioKond", e.target.value)}
+                      onBlur={() => { if (!row.fioKond.trim()) onUpdateCell(row.id, "fioKond", "без"); }}
                       onKeyDown={(e) => handleKeyDown(e, rowIdx, TEXT_COLS.length + 1)}
                       className="w-full h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors"
-                      placeholder=""
+                      placeholder="без"
                       autoComplete="off"
                     />
                   </td>
