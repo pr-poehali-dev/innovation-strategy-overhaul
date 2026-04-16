@@ -43,10 +43,10 @@ export interface KassaRow {
   rashodDt: string;
   chek: string;
   vozvrat: string;
-  podrVod: string;    // начислено водителю
-  podrCond: string;   // начислено кондуктору
-  podrVydVod: string; // выдано водителю
-  podrVydCond: string;// выдано кондуктору
+  podrVod: string;         // начислено водителю
+  podrCond: string;        // начислено кондуктору
+  podrVodVydano: boolean;  // галочка: подработка водителя выдана
+  podrCondVydano: boolean; // галочка: подработка кондуктора выдана
   vPlus: string;
   itogo: string;
 }
@@ -98,12 +98,12 @@ export const MAIN_COLS: { key: keyof Omit<KassaRow, "id" | "type">; label: strin
   { key: "rashodDt",     label: "Расх. ДТ",          width: "65px",  numeric: true },
   { key: "chek",         label: "Чек",               width: "55px",  numeric: true },
   { key: "vozvrat",      label: "Возврат",           width: "65px",  numeric: true },
-  { key: "podrVod",      label: "Подр. вод ⟳",      width: "75px",  numeric: true },
-  { key: "podrCond",     label: "Подр. конд ⟳",     width: "80px",  numeric: true },
-  { key: "podrVydVod",   label: "Выд. вод",          width: "65px",  numeric: true },
-  { key: "podrVydCond",  label: "Выд. конд",         width: "70px",  numeric: true },
-  { key: "vPlus",        label: "В плюс",            width: "65px",  numeric: true },
-  { key: "itogo",        label: "ИТОГО",             width: "75px",  numeric: true },
+  { key: "podrVod",         label: "Подр. вод ⟳",   width: "75px",  numeric: true },
+  { key: "podrVodVydano",  label: "✓ вод",           width: "40px"  },
+  { key: "podrCond",        label: "Подр. конд ⟳",  width: "80px",  numeric: true },
+  { key: "podrCondVydano", label: "✓ конд",          width: "45px"  },
+  { key: "vPlus",           label: "В плюс",         width: "65px",  numeric: true },
+  { key: "itogo",           label: "ИТОГО",          width: "75px",  numeric: true },
 ];
 
 export const VYP_COLS: { key: keyof Omit<VyplataRow, "id">; label: string; width: string }[] = [
@@ -124,7 +124,7 @@ export const emptyRow = (type: KassaRow["type"] = "route"): KassaRow => ({
   prodBilety: "", kolBil: "", beznal: "", qr: "",
   viruchka: "", obed: "", rashodDt: "", chek: "",
   vozvrat: "", podrVod: "", podrCond: "",
-  podrVydVod: "", podrVydCond: "",
+  podrVodVydano: false, podrCondVydano: false,
   vPlus: "", itogo: "",
 });
 

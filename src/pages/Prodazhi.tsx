@@ -116,7 +116,8 @@ const Prodazhi = () => {
 
     type KassaRowMin = {
       bort?: string; rashodDt?: string;
-      podrVydVod?: string; podrVydCond?: string;
+      podrVod?: string; podrCond?: string;
+      podrVodVydano?: boolean; podrCondVydano?: boolean;
       prodBilety?: string;
     };
     const byBort = new Map<string, { dt?: string; podVod?: string; podCond?: string; kolBil?: string }>();
@@ -127,9 +128,9 @@ const Prodazhi = () => {
       if (r.rashodDt && parseFloat(r.rashodDt) > 0 && cenaTopliva > 0) {
         entry.dt = String(Math.round(parseFloat(r.rashodDt) / cenaTopliva * 100) / 100);
       }
-      // Выданная подработка (не начисленная)
-      if (r.podrVydVod  && parseFloat(r.podrVydVod)  > 0) entry.podVod  = r.podrVydVod;
-      if (r.podrVydCond && parseFloat(r.podrVydCond) > 0) entry.podCond = r.podrVydCond;
+      // Переносим подработку только если отмечена как выданная (галочка)
+      if (r.podrVodVydano  && r.podrVod  && parseFloat(r.podrVod)  > 0) entry.podVod  = r.podrVod;
+      if (r.podrCondVydano && r.podrCond && parseFloat(r.podrCond) > 0) entry.podCond = r.podrCond;
       // Проданные билеты из кассы → Кол. бил в Продажах
       if (r.prodBilety && parseFloat(r.prodBilety) > 0) entry.kolBil = r.prodBilety;
       if (Object.keys(entry).length > 0) byBort.set(r.bort, entry);

@@ -45,7 +45,7 @@ const toDateKey = (d: Date): string => {
 const Kassa = () => {
   const { weeklyNaryady, naryadSettings, employees } = useAppStore();
 
-  const [tab, setTab] = useState<"kassa" | "chast" | "monthly">("kassa");
+  const [tab, setTab] = useState<"kassa" | "chast" | "podrab" | "monthly">("kassa");
   const [selectedKey, setSelectedKey] = useState(() => toDateKey(new Date()));
   const [monthKey, setMonthKey] = useState(() => {
     const d = new Date();
@@ -143,9 +143,9 @@ const Kassa = () => {
           fioVod: r.fio, fioCond: r.fioKond || "без",
           kolBil, viruchka, prodBilety, obed: obedAuto,
           podrVod, podrCond,
-          // Выданную подработку не трогаем — только ручной ввод
-          podrVydVod:  existingRow.podrVydVod  ?? "",
-          podrVydCond: existingRow.podrVydCond ?? "",
+          // Галочки выдачи не трогаем
+          podrVodVydano:  existingRow.podrVodVydano  ?? false,
+          podrCondVydano: existingRow.podrCondVydano ?? false,
           itogo,
         };
       });
@@ -234,38 +234,6 @@ const Kassa = () => {
         }
       }
 
-      // При изменении выданной подработки — переносим в Продажи и Ведомость
-      if ((col === "podrVydVod" || col === "podrVydCond") && r.bort && toNum(value) > 0) {
-        const isVod = col === "podrVydVod";
-        const fio = isVod ? r.fioVod : r.fioCond;
-        // → Продажи
-        const prodAll = loadProdazhiAll();
-        const prodDay = prodAll[selectedKey];
-        if (prodDay?.rows) {
-          prodDay.rows = (prodDay.rows as Array<Record<string, string>>).map((pr) =>
-            pr.bort === r.bort
-              ? { ...pr, [isVod ? "podVod" : "podCond"]: value }
-              : pr
-          );
-          prodAll[selectedKey] = prodDay;
-          try { localStorage.setItem(LS_PRODAZHI, JSON.stringify(prodAll)); } catch (e) { console.warn(e); }
-        }
-        // → Ведомость (поле poluchPodrab)
-        if (fio) {
-          const LS_VED = "dat_vedomost_rows_v1";
-          try {
-            const vedRaw = localStorage.getItem(LS_VED);
-            if (vedRaw) {
-              const vedRows = JSON.parse(vedRaw) as Array<Record<string, string>>;
-              const updated2 = vedRows.map((vr) =>
-                vr.fio === fio ? { ...vr, poluchPodrab: value } : vr
-              );
-              localStorage.setItem(LS_VED, JSON.stringify(updated2));
-            }
-          } catch (e) { console.warn(e); }
-        }
-      }
-
       return updated;
     }));
 
@@ -350,6 +318,78 @@ const Kassa = () => {
       return { ...r, beznal: val };
     }));
   };
+
+  // ─── Помечаем подработку как выданную + синхронизируем в Ведомость ──────────
+  const LS_VEDOMOST = "dat_vedomost_v1";
+
+  const syncPodrToVedomost = (fio: string, summa: string) => {
+    if (!fio || !summa) return;
+    try {
+      const raw = localStorage.getItem(LS_VEDOMOST);
+      if (!raw) return;
+      const vedRows = JSON.parse(raw) as Array<Record<string, string>>;
+      const cur = vedRows.find((v) => v.fio === fio);
+      if (!cur) return;
+      const prev = parseFloat(cur.poluchPodrab || "0") || 0;
+      const add  = parseFloat(summa) || 0;
+      cur.poluchPodrab = String(Math.round(prev + add));
+      localStorage.setItem(LS_VEDOMOST, JSON.stringify(vedRows));
+    } catch (e) { console.warn(e); }
+  };
+
+  const toggleVydano = (id: number, who: "vod" | "cond") => {
+    setRows((prev) => prev.map((r) => {
+      if (r.id !== id) return r;
+      const field   = who === "vod" ? "podrVodVydano"  : "podrCondVydano";
+      const sumField = who === "vod" ? "podrVod" : "podrCond";
+      const fio     = who === "vod" ? r.fioVod : r.fioCond;
+      const newVal  = !r[field];
+      // При включении — добавляем сумму в Ведомость; при выключении — вычитаем
+      const summa = r[sumField];
+      if (newVal) {
+        syncPodrToVedomost(fio, summa);
+      } else {
+        // Отмена: вычитаем из Ведомости
+        try {
+          const raw = localStorage.getItem(LS_VEDOMOST);
+          if (raw) {
+            const vedRows = JSON.parse(raw) as Array<Record<string, string>>;
+            const cur = vedRows.find((v) => v.fio === fio);
+            if (cur) {
+              const prev = parseFloat(cur.poluchPodrab || "0") || 0;
+              const sub  = parseFloat(summa) || 0;
+              cur.poluchPodrab = String(Math.max(0, Math.round(prev - sub)));
+              localStorage.setItem(LS_VEDOMOST, JSON.stringify(vedRows));
+            }
+          }
+        } catch (e) { console.warn(e); }
+      }
+      return { ...r, [field]: newVal };
+    }));
+  };
+
+  // ─── Журнал выдачи подработок за месяц ──────────────────────────────────────
+  const podrabJournal = useMemo(() => {
+    const kassaAll = loadKassa();
+    type JEntry = { dateKey: string; bort: string; mar: string; fioVod: string; fioCond: string; podrVod: string; podrCond: string; vodVyd: boolean; condVyd: boolean };
+    const result: JEntry[] = [];
+    Object.entries(kassaAll).forEach(([dateKey, dayData]) => {
+      if (!dateKey.startsWith(monthKey)) return;
+      const dayRows: KassaRow[] = dayData?.rows ?? [];
+      dayRows.forEach((r) => {
+        if (!r.bort || r.type === "disp") return;
+        if (!toNum(r.podrVod) && !toNum(r.podrCond)) return;
+        result.push({
+          dateKey, bort: r.bort, mar: r.mar,
+          fioVod: r.fioVod, fioCond: r.fioCond,
+          podrVod: r.podrVod, podrCond: r.podrCond,
+          vodVyd: r.podrVodVydano ?? false,
+          condVyd: r.podrCondVydano ?? false,
+        });
+      });
+    });
+    return result.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+  }, [rows, monthKey]);
 
   // ─── Месячный отчёт: строим из сохранённых кассовых данных за выбранный месяц
   const monthlyRows = useMemo((): MonthlyKassaRow[] => {
@@ -474,9 +514,10 @@ const Kassa = () => {
           {/* Вкладки */}
           <div className="border-b border-gray-300 flex print:hidden">
             {([
-              ["kassa",   "Кассовый отчёт",    "Wallet"    ],
-              ["chast",   "Частичная выдача",  "UserCheck" ],
-              ["monthly", "Отчёт за месяц",    "BarChart3" ],
+              ["kassa",   "Кассовый отчёт",         "Wallet"      ],
+              ["chast",   "Частичная выдача",        "UserCheck"   ],
+              ["podrab",  "Журнал подработок",       "BadgeDollarSign"],
+              ["monthly", "Отчёт за месяц",          "BarChart3"   ],
             ] as const).map(([key, label, icon]) => (
               <button
                 key={key}
@@ -516,7 +557,7 @@ const Kassa = () => {
                   Начислено ← Ведомость
                 </button>
               )}
-              {tab === "monthly" && (
+              {(tab === "monthly") && (
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-gray-500">Месяц:</span>
                   <input
@@ -538,6 +579,7 @@ const Kassa = () => {
               activeCell={activeCell}
               activeVyp={activeVyp}
               onUpdateCell={updateCell}
+              onToggleVydano={toggleVydano}
               onDeleteRow={deleteRow}
               onSetActiveCell={setActiveCell}
               onUpdateVyp={updateVyp}
@@ -559,6 +601,95 @@ const Kassa = () => {
               onUpdateChastDay={updateChastDay}
               onAddChastRow={addChastRow}
             />
+          )}
+
+          {/* ═══ ВКЛАДКА: Журнал выдачи подработок ═══ */}
+          {tab === "podrab" && (
+            <div>
+              <div className="px-5 py-2 bg-amber-50 border-b border-amber-100 flex items-center justify-between text-xs text-amber-700">
+                <span><Icon name="Info" size={13} className="inline mr-1" />Зелёный ✓ — подработка выдана. При отметке сумма попадает в Ведомость (Получ. Подраб.)</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">Месяц:</span>
+                  <input type="month" value={monthKey} onChange={(e) => setMonthKey(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-blue-400" />
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="border-collapse text-xs w-full">
+                  <thead>
+                    <tr style={{ backgroundColor: "#1a3a6b" }}>
+                      {["Дата", "Борт", "Маршрут", "Водитель", "Кондуктор", "Подр. вод, ₽", "Выд. вод", "Подр. конд, ₽", "Выд. конд"].map((h) => (
+                        <th key={h} className="border border-blue-900 px-2 py-1.5 text-white font-semibold text-center leading-tight">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {podrabJournal.length === 0 && (
+                      <tr><td colSpan={9} className="text-center py-8 text-gray-400">Нет данных о подработках за выбранный месяц</td></tr>
+                    )}
+                    {podrabJournal.map((e, i) => {
+                      const d = new Date(e.dateKey + "T00:00:00");
+                      const dateStr = d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+                      const bg = i % 2 === 0 ? "#fff" : "#f5f8ff";
+                      return (
+                        <tr key={`${e.dateKey}-${e.bort}`} style={{ backgroundColor: bg }}>
+                          <td className="border border-gray-300 px-2 py-1 text-center">{dateStr}</td>
+                          <td className="border border-gray-300 px-2 py-1 text-center font-bold text-blue-800">{e.bort}</td>
+                          <td className="border border-gray-300 px-2 py-1 text-center">{e.mar}</td>
+                          <td className="border border-gray-300 px-2 py-1">{e.fioVod}</td>
+                          <td className="border border-gray-300 px-2 py-1 text-gray-500">{e.fioCond || "—"}</td>
+                          {/* Подр. вод */}
+                          <td className="border border-gray-300 px-2 py-1 text-center text-orange-700 font-semibold">
+                            {toNum(e.podrVod) > 0 ? e.podrVod : "—"}
+                          </td>
+                          {/* Галочка вод */}
+                          <td className="border border-gray-300 text-center"
+                            style={{ backgroundColor: e.vodVyd ? "#dcfce7" : toNum(e.podrVod) > 0 ? "#fef9c3" : undefined }}>
+                            {toNum(e.podrVod) > 0 && (
+                              <span className={`text-base font-bold ${e.vodVyd ? "text-green-600" : "text-gray-300"}`}>
+                                {e.vodVyd ? "✓" : "○"}
+                              </span>
+                            )}
+                          </td>
+                          {/* Подр. конд */}
+                          <td className="border border-gray-300 px-2 py-1 text-center text-orange-700 font-semibold">
+                            {toNum(e.podrCond) > 0 ? e.podrCond : "—"}
+                          </td>
+                          {/* Галочка конд */}
+                          <td className="border border-gray-300 text-center"
+                            style={{ backgroundColor: e.condVyd ? "#dcfce7" : toNum(e.podrCond) > 0 ? "#fef9c3" : undefined }}>
+                            {toNum(e.podrCond) > 0 && (
+                              <span className={`text-base font-bold ${e.condVyd ? "text-green-600" : "text-gray-300"}`}>
+                                {e.condVyd ? "✓" : "○"}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  {podrabJournal.length > 0 && (
+                    <tfoot>
+                      <tr style={{ backgroundColor: "#1a3a6b" }}>
+                        <td colSpan={5} className="border border-blue-900 px-2 py-1 text-white text-xs font-bold">ИТОГО</td>
+                        <td className="border border-blue-900 px-2 py-1 text-white text-center font-bold">
+                          {podrabJournal.reduce((s, e) => s + toNum(e.podrVod), 0).toLocaleString("ru-RU")}
+                        </td>
+                        <td className="border border-blue-900 px-2 py-1 text-white text-center text-xs">
+                          {podrabJournal.filter((e) => e.vodVyd).length} / {podrabJournal.filter((e) => toNum(e.podrVod) > 0).length}
+                        </td>
+                        <td className="border border-blue-900 px-2 py-1 text-white text-center font-bold">
+                          {podrabJournal.reduce((s, e) => s + toNum(e.podrCond), 0).toLocaleString("ru-RU")}
+                        </td>
+                        <td className="border border-blue-900 px-2 py-1 text-white text-center text-xs">
+                          {podrabJournal.filter((e) => e.condVyd).length} / {podrabJournal.filter((e) => toNum(e.podrCond) > 0).length}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
           )}
 
           {/* ═══ ВКЛАДКА: Отчёт за месяц ═══ */}

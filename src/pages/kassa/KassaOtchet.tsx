@@ -11,6 +11,7 @@ interface Props {
   activeCell: { rowId: number; col: string } | null;
   activeVyp: { rowId: number; col: string } | null;
   onUpdateCell: (id: number, col: keyof KassaRow, value: string) => void;
+  onToggleVydano: (id: number, who: "vod" | "cond") => void;
   onDeleteRow: (id: number) => void;
   onSetActiveCell: (cell: { rowId: number; col: string } | null) => void;
   onUpdateVyp: (id: number, col: keyof VyplataRow, val: string) => void;
@@ -26,7 +27,7 @@ interface Props {
 const KassaOtchet = ({
   rows, vyplaty,
   activeCell, activeVyp,
-  onUpdateCell, onDeleteRow, onSetActiveCell,
+  onUpdateCell, onToggleVydano, onDeleteRow, onSetActiveCell,
   onUpdateVyp, onAddVyp, onDeleteVyp, onSetActiveVyp,
   onKeyDown, onVypKeyDown,
   rowCount, vyplatCount,
@@ -40,18 +41,16 @@ const KassaOtchet = ({
   const vypItogo = vyplaty.reduce((s, v) => s + toNum(v.itogo), 0);
 
   // Колонки только для просмотра (авторасчёт)
-  const READONLY_COLS = new Set(["prodBilety", "itogo"]);
-  // Колонки «начислено» (авто из наряда, но показываем)
+  const READONLY_COLS   = new Set(["prodBilety", "itogo"]);
   const NARAD_AUTO_COLS = new Set(["podrVod", "podrCond"]);
-  // Колонки «выдано» (ручной ввод, переносятся в Продажи и Ведомость)
-  const VYDANO_COLS = new Set(["podrVydVod", "podrVydCond"]);
+  const CHECK_COLS      = new Set(["podrVodVydano", "podrCondVydano"]);
 
   const renderCell = (row: KassaRow, col: typeof MAIN_COLS[number], rowIdx: number, colIdx: number) => {
-    const isActive     = activeCell?.rowId === row.id && activeCell?.col === col.key;
-    const isViruchka   = col.key === "viruchka";
-    const isReadonly   = READONLY_COLS.has(col.key);
-    const isNaradAuto  = NARAD_AUTO_COLS.has(col.key);
-    const isVydano     = VYDANO_COLS.has(col.key);
+    const isActive    = activeCell?.rowId === row.id && activeCell?.col === col.key;
+    const isViruchka  = col.key === "viruchka";
+    const isReadonly  = READONLY_COLS.has(col.key);
+    const isNaradAuto = NARAD_AUTO_COLS.has(col.key);
+    const isCheck     = CHECK_COLS.has(col.key);
 
     // Readonly ячейки — только просмотр
     if (isReadonly) {
@@ -98,27 +97,29 @@ const KassaOtchet = ({
       );
     }
 
-    // Выдано (ручной ввод → автоперенос в Продажи и Ведомость)
-    if (isVydano) {
-      const val = row[col.key] as string;
+    // Галочка выдачи подработки
+    if (isCheck) {
+      const who     = col.key === "podrVodVydano" ? "vod" : "cond";
+      const checked = row[col.key] as boolean;
+      const hasPod  = toNum(who === "vod" ? row.podrVod : row.podrCond) > 0;
       return (
-        <td key={col.key} className="border border-gray-300 p-0"
-          style={{ width: col.width, backgroundColor: "#f0fdf4" }}
-          title="Выдано — переносится в Продажи и Ведомость"
+        <td key={col.key} className="border border-gray-300 p-0 text-center"
+          style={{ width: col.width, backgroundColor: checked ? "#dcfce7" : hasPod ? "#fef9c3" : undefined }}
+          title={checked ? "Подработка выдана" : "Нажмите — отметить как выданную"}
         >
-          <input
-            type="text"
-            value={val}
-            onChange={(e) => onUpdateCell(row.id, col.key, e.target.value)}
-            onFocus={() => onSetActiveCell({ rowId: row.id, col: col.key })}
-            onBlur={() => onSetActiveCell(null)}
-            onKeyDown={(e) => onKeyDown(e, rowIdx, colIdx)}
+          <button
+            onClick={() => hasPod && onToggleVydano(row.id, who)}
+            disabled={!hasPod}
             className={[
-              "w-full h-6 px-1 bg-transparent outline-none border-2 transition-colors text-center text-green-700 font-bold text-xs",
-              isActive ? "border-green-500 bg-green-50" : "border-transparent",
+              "w-full h-6 flex items-center justify-center transition-colors",
+              !hasPod ? "cursor-default opacity-30" : "cursor-pointer hover:bg-green-100",
             ].join(" ")}
-            placeholder="—"
-          />
+          >
+            {checked
+              ? <span className="text-green-600 font-bold text-sm">✓</span>
+              : <span className="text-gray-300 text-sm">○</span>
+            }
+          </button>
         </td>
       );
     }
