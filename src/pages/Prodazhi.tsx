@@ -307,9 +307,28 @@ const Prodazhi = () => {
       );
     }
 
-    const isPod = col.key === "podVod" || col.key === "podCond";
+    const isPod      = col.key === "podVod" || col.key === "podCond";
+    const isReadonly = col.key === "kolBil" || col.key === "qr" || col.key === "podVod" || col.key === "podCond";
+
+    // Readonly: только просмотр — данные приходят из Кассы
+    if (isReadonly) {
+      const val = row[col.key] as string;
+      const bg  = isPod ? "#fff7ed" : "#eff6ff";
+      const tc  = isPod ? "text-orange-700 font-semibold" : "text-blue-700 font-semibold";
+      return (
+        <td key={col.key} className="border border-gray-300 p-0"
+          style={{ width: col.width, backgroundColor: bg }}
+          title="Авто из Кассы — только просмотр"
+        >
+          <div className={`w-full h-6 px-1 flex items-center justify-center text-xs select-none ${tc}`}>
+            {val || "—"}
+          </div>
+        </td>
+      );
+    }
+
     return (
-      <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width, background: isPod ? "#fff8f0" : undefined }}>
+      <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
         <input
           type="text"
           value={row[col.key] as string}
@@ -317,12 +336,11 @@ const Prodazhi = () => {
           onFocus={() => setActiveCell({ rowId: row.id, col: col.key })}
           onBlur={() => setActiveCell(null)}
           onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
-          disabled={isOff && (col.key === "dt" || col.key === "reysy" || col.key === "kolBil" || col.key === "valid" || col.key === "qr")}
+          disabled={isOff && (col.key === "dt" || col.key === "reysy" || col.key === "valid")}
           className={[
             "w-full h-6 px-1 text-xs bg-transparent outline-none border-2 transition-colors text-center",
             isActive ? "border-blue-500 bg-blue-50" : "border-transparent",
-            isPod ? "text-orange-700 font-semibold" : "text-gray-800",
-            isOff ? "text-gray-400" : "",
+            isOff ? "text-gray-400" : "text-gray-800",
           ].join(" ")}
           placeholder=""
         />

@@ -10,7 +10,6 @@ import JurnalMed from "./dispatch/JurnalMed";
 import JurnalVypusk from "./dispatch/JurnalVypusk";
 import JurnalDisp from "./dispatch/JurnalDisp";
 import JurnalPostSmen from "./dispatch/JurnalPostSmen";
-import JurnalDocs from "./dispatch/JurnalDocs";
 
 // ─── Утилиты дат ────────────────────────────────────────────────────────────
 const toDateKey = (d: Date): string => {
@@ -75,7 +74,7 @@ const makeRowsFromRoutes = (routes: Route[]): NaryadRowStore[] => {
   return rows.length > 0 ? rows : [makeEmptyRow(), makeEmptyRow(), makeEmptyRow()];
 };
 
-type TabType = "narad" | "med" | "postSmen" | "vypusk" | "disp" | "docs";
+type TabType = "narad" | "med" | "postSmen" | "vypusk" | "disp";
 
 // ─── Панель дежурных ────────────────────────────────────────────────────────
 const DayMetaPanel = ({
@@ -287,7 +286,6 @@ const Dispatch = () => {
     { key: "postSmen", label: "Послесменный медосмотр",            icon: "HeartPulse"    },
     { key: "vypusk",   label: "Журнал выпуска",                    icon: "Truck"         },
     { key: "disp",     label: "Журнал путевых (ПГ-1)",             icon: "BookOpen"      },
-    { key: "docs",     label: "Разрешительные документы",          icon: "ScrollText"    },
   ];
 
   return (
@@ -479,10 +477,6 @@ const Dispatch = () => {
               displayDate={displayDate}
               monthYear={monthYear}
             />
-          )}
-
-          {activeTab === "docs" && (
-            <JurnalDocs />
           )}
 
         </div>

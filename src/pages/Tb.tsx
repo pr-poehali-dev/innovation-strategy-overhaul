@@ -403,8 +403,15 @@ const Tb = () => {
     return saved.length > 0 ? saved : [emptyEntry()];
   });
   const [activeCell, setActiveCell] = useState<{ idx: number; field: string } | null>(null);
+  const [globalVid, setGlobalVid] = useState("Повторный инструктаж");
 
   useEffect(() => { saveTbEntries(entries); }, [entries]);
+
+  // Применить один вид инструктажа ко всем записям
+  const applyGlobalVid = (vid: string) => {
+    setGlobalVid(vid);
+    setEntries((prev) => prev.map((e) => ({ ...e, vidInstruktazha: vid })));
+  };
 
   const updateEntry = (idx: number, field: keyof TbEntry, value: string) =>
     setEntries((prev) => prev.map((e, i) => (i === idx ? { ...e, [field]: value } : e)));
@@ -442,66 +449,48 @@ const Tb = () => {
   const fillFromNaryadMonth = () => {
     const days = getDaysInMonth(monthKey);
     const newEntries: TbEntry[] = [];
+    // Ключи уже существующих записей + новых (дедупликация)
+    const existingKeys = new Set(entries.map((e) => `${e.dateKey}::${e.fio}`));
+
+    const addEntry = (day: string, fio: string, dolzhnost: string, marshrut: string) => {
+      const key = `${day}::${fio}`;
+      if (existingKeys.has(key)) return;
+      existingKeys.add(key);
+      const emp = employees.find((e) => e.fio === fio);
+      newEntries.push({
+        dateKey: day,
+        fio,
+        dolzhnost,
+        tabNum: emp?.tabNum ?? "",
+        vidInstruktazha: globalVid,
+        rukovoditel: company.direktor || "",
+        podpisInstr: "",
+        primechanie: marshrut,
+      });
+    };
 
     days.forEach((day) => {
       const rows = weeklyNaryady[day] ?? [];
       rows.forEach((r) => {
+        if (!r.fio && !r.fioKond) return;
+        // Только маршруты этой организации
         const routeNum = r.marshrut.split("/")[0].trim();
         if (!companyRouteNomers.has(routeNum)) return;
-        if (!r.fio && !r.fioKond) return; // пустые строки пропускаем
-
-        // Водитель
-        if (r.fio) {
-          const emp = employees.find((e) => e.fio === r.fio);
-          // Не дублируем если уже есть запись за этот день для этого сотрудника
-          const alreadyExists = entries.some(
-            (e) => e.dateKey === day && e.fio === r.fio
-          );
-          if (!alreadyExists) {
-            newEntries.push({
-              dateKey: day,
-              fio: r.fio,
-              dolzhnost: "Водитель",
-              tabNum: emp?.tabNum ?? "",
-              vidInstruktazha: "Повторный инструктаж",
-              rukovoditel: company.direktor || "",
-              podpisInstr: "",
-              primechanie: r.marshrut,
-            });
-          }
-        }
-
-        // Кондуктор
-        if (r.fioKond) {
-          const emp = employees.find((e) => e.fio === r.fioKond);
-          const alreadyExists = entries.some(
-            (e) => e.dateKey === day && e.fio === r.fioKond
-          );
-          if (!alreadyExists) {
-            newEntries.push({
-              dateKey: day,
-              fio: r.fioKond,
-              dolzhnost: "Кондуктор",
-              tabNum: emp?.tabNum ?? "",
-              vidInstruktazha: "Повторный инструктаж",
-              rukovoditel: company.direktor || "",
-              podpisInstr: "",
-              primechanie: r.marshrut,
-            });
-          }
-        }
+        // Только работающие (без статуса отсутствия)
+        if (r.statusOtsutstviya) return;
+        if (r.fio)    addEntry(day, r.fio,    "Водитель",   r.marshrut);
+        if (r.fioKond) addEntry(day, r.fioKond, "Кондуктор", r.marshrut);
       });
     });
 
     if (newEntries.length === 0) {
-      alert("Нет данных из наряда за выбранный месяц для этой организации");
+      alert("Нет новых данных из наряда за выбранный месяц для этой организации");
       return;
     }
 
-    // Сортируем по дате, потом по ФИО
     newEntries.sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.fio.localeCompare(b.fio, "ru"));
     setEntries((prev) => {
-      const filtered = prev.filter((e) => e.fio !== ""); // убираем пустые
+      const filtered = prev.filter((e) => e.fio !== "");
       return [...filtered, ...newEntries];
     });
   };
@@ -590,6 +579,19 @@ const Tb = () => {
           {/* ── Журнал инструктажей ───────────────────────────────────────── */}
           {tab === "journal" && (
             <div>
+              {/* Глобальный вид инструктажа */}
+              <div className="px-5 py-2 bg-amber-50 border-b border-amber-200 flex items-center gap-3 text-xs">
+                <Icon name="ClipboardList" size={13} className="text-amber-600 flex-shrink-0" />
+                <span className="text-amber-800 font-semibold whitespace-nowrap">Вид инструктажа для всех:</span>
+                <select
+                  value={globalVid}
+                  onChange={(e) => applyGlobalVid(e.target.value)}
+                  className="border border-amber-300 rounded px-2 py-0.5 text-xs bg-white focus:outline-none focus:border-blue-400 text-gray-800 flex-shrink-0"
+                >
+                  {INSTRUKTAZHI.map((v) => <option key={v} value={v}>{v}</option>)}
+                </select>
+                <span className="text-amber-600 text-xs">← изменит вид инструктажа у всех записей</span>
+              </div>
               {/* Подсказка */}
               <div className="px-5 py-2 bg-blue-50 border-b border-blue-100 flex items-center gap-2 text-xs text-blue-700">
                 <Icon name="Info" size={13} />

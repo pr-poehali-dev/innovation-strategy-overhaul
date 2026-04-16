@@ -41,58 +41,42 @@ const KassaOtchet = ({
   const vypItogo = vyplaty.reduce((s, v) => s + toNum(v.itogo), 0);
 
   // Колонки только для просмотра (авторасчёт)
-  const READONLY_COLS   = new Set(["prodBilety", "itogo"]);
-  const NARAD_AUTO_COLS = new Set(["podrVod", "podrCond"]);
-  const CHECK_COLS      = new Set(["podrVodVydano", "podrCondVydano"]);
+  // prodBilety, podrVod, podrCond, itogo — авторасчёт, только просмотр
+  const READONLY_COLS = new Set(["prodBilety", "podrVod", "podrCond", "itogo"]);
+  const CHECK_COLS    = new Set(["podrVodVydano", "podrCondVydano"]);
 
   const renderCell = (row: KassaRow, col: typeof MAIN_COLS[number], rowIdx: number, colIdx: number) => {
-    const isActive    = activeCell?.rowId === row.id && activeCell?.col === col.key;
-    const isViruchka  = col.key === "viruchka";
-    const isReadonly  = READONLY_COLS.has(col.key);
-    const isNaradAuto = NARAD_AUTO_COLS.has(col.key);
-    const isCheck     = CHECK_COLS.has(col.key);
+    const isActive   = activeCell?.rowId === row.id && activeCell?.col === col.key;
+    const isViruchka = col.key === "viruchka";
+    const isReadonly = READONLY_COLS.has(col.key);
+    const isCheck    = CHECK_COLS.has(col.key);
 
     // Readonly ячейки — только просмотр
     if (isReadonly) {
       const val = row[col.key] as string;
-      const bg = col.key === "prodBilety" ? "#eff6ff" : col.key === "itogo" ? "#f0fdf4" : "#fafafa";
-      const textColor = col.key === "prodBilety" ? "text-blue-700 font-semibold" :
-                        col.key === "itogo"       ? "text-green-800 font-bold" : "text-gray-500";
+      const bg =
+        col.key === "prodBilety" ? "#eff6ff" :
+        col.key === "podrVod"    ? "#fff7ed" :
+        col.key === "podrCond"   ? "#fff7ed" :
+        col.key === "itogo"      ? "#f0fdf4" : "#fafafa";
+      const textColor =
+        col.key === "prodBilety" ? "text-blue-700 font-semibold" :
+        col.key === "podrVod"    ? "text-orange-700 font-semibold" :
+        col.key === "podrCond"   ? "text-orange-700 font-semibold" :
+        col.key === "itogo"      ? "text-green-800 font-bold" : "text-gray-500";
+      const title =
+        col.key === "itogo"      ? "Авто: Выручка − Безнал − QR − Обед − Расх.ДТ − Чек − Возврат − Подр.вод − Подр.конд + В плюс" :
+        col.key === "prodBilety" ? "Авто: Выручка ÷ Стоимость проезда" :
+        col.key === "podrVod"    ? "Авто из наряда (настройки → % водителя)" :
+        col.key === "podrCond"   ? "Авто из наряда (настройки → % кондуктора)" : undefined;
       return (
         <td key={col.key} className="border border-gray-300 p-0"
           style={{ width: col.width, backgroundColor: bg }}
-          title={col.key === "itogo"
-            ? "Авто: Выручка − Безнал − QR − Обед − Расх.ДТ − Чек − Возврат − Подр.вод − Подр.конд + В плюс"
-            : "Авто: Выручка ÷ Стоимость проезда"}
+          title={title}
         >
           <div className={`w-full h-6 px-1 flex items-center justify-center text-xs select-none ${textColor}`}>
             {val || "—"}
           </div>
-        </td>
-      );
-    }
-
-    // Начислено из наряда (показываем, можно скорректировать)
-    if (isNaradAuto) {
-      const val = row[col.key] as string;
-      return (
-        <td key={col.key} className="border border-gray-300 p-0"
-          style={{ width: col.width, backgroundColor: "#fff7ed" }}
-          title="Начислено из наряда — можно скорректировать"
-        >
-          <input
-            type="text"
-            value={val}
-            onChange={(e) => onUpdateCell(row.id, col.key, e.target.value)}
-            onFocus={() => onSetActiveCell({ rowId: row.id, col: col.key })}
-            onBlur={() => onSetActiveCell(null)}
-            onKeyDown={(e) => onKeyDown(e, rowIdx, colIdx)}
-            className={[
-              "w-full h-6 px-1 bg-transparent outline-none border-2 transition-colors text-center text-orange-700 font-semibold text-xs",
-              isActive ? "border-orange-400 bg-orange-50" : "border-transparent",
-            ].join(" ")}
-            placeholder="—"
-          />
         </td>
       );
     }
