@@ -193,6 +193,15 @@ const NaryadTable = ({
                     {rowIdx + 1}
                   </td>
 
+                  {/* Маршрут — select, исключает занятые графики */}
+                  <ExclSelect
+                    value={row.marshrut}
+                    options={freeGrafiki}
+                    placeholder="— График —"
+                    onChange={(v) => onUpdateCell(row.id, "marshrut", v)}
+                    width="90px"
+                  />
+
                   {/* Борт № — select, исключает занятые */}
                   <ExclSelect
                     value={row.bortovoy}
@@ -201,15 +210,6 @@ const NaryadTable = ({
                     onChange={(v) => onUpdateCell(row.id, "bortovoy", v)}
                     width="90px"
                     bold
-                  />
-
-                  {/* Маршрут — select, исключает занятые графики */}
-                  <ExclSelect
-                    value={row.marshrut}
-                    options={freeGrafiki}
-                    placeholder="— График —"
-                    onChange={(v) => onUpdateCell(row.id, "marshrut", v)}
-                    width="90px"
                   />
 
                   {/* ФИО водителя */}

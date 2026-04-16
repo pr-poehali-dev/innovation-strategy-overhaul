@@ -62,8 +62,8 @@ export const DEFAULT_SETTINGS: NormaSettings = {
 
 // Порядок в таблице: Борт № → Маршрут (остальные — отдельные ячейки)
 export const TEXT_COLS = [
-  { key: "bortovoy", label: "Борт №",  width: "90px" },
   { key: "marshrut", label: "Маршрут", width: "90px" },
+  { key: "bortovoy", label: "Борт №",  width: "90px" },
 ] as const;
 
 export function calcPodrabotka(
