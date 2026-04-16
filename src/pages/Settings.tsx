@@ -194,14 +194,23 @@ const PercentTable = ({
   );
 };
 
+const COMPANIES: CompanySettings[] = [
+  { nazvanie: 'ООО "Дальавтотранс"',          inn: "", direktor: "", telefon: "", adres: "" },
+  { nazvanie: 'ООО "Техника и Технологии"',   inn: "", direktor: "", telefon: "", adres: "" },
+];
+
 const Settings = () => {
   const [tab, setTab] = useState<TabType>("company");
   const [saved, setSaved] = useState(false);
+  const [companyIdx, setCompanyIdx] = useState(0);
 
-  const [company, setCompany] = useState<CompanySettings>({
-    nazvanie: 'ООО "Дальавтотранс"',
-    inn: "", direktor: "", telefon: "", adres: "",
-  });
+  const [companies, setCompanies] = useState<CompanySettings[]>(COMPANIES);
+  const company = companies[companyIdx];
+
+  const updateCompany = (key: keyof CompanySettings, value: string) => {
+    setCompanies((prev) => prev.map((c, i) => i === companyIdx ? { ...c, [key]: value } : c));
+    setSaved(false);
+  };
   const [routes, setRoutes] = useState<Route[]>([emptyRoute(), emptyRoute()]);
   const [routeActiveCell, setRouteActiveCell] = useState<{ rowId: number; col: string } | null>(null);
 
@@ -239,10 +248,7 @@ const Settings = () => {
     };
   };
 
-  const updateCompany = (key: keyof CompanySettings, value: string) => {
-    setCompany((prev) => ({ ...prev, [key]: value }));
-    setSaved(false);
-  };
+
 
   const addRoute = () => setRoutes((prev) => [...prev, emptyRoute()]);
   const deleteRoute = (id: number) => {
@@ -305,6 +311,23 @@ const Settings = () => {
           {/* Company tab */}
           {tab === "company" && (
             <div className="px-6 py-6">
+              {/* Переключатель организаций */}
+              <div className="flex gap-2 mb-6">
+                {companies.map((c, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCompanyIdx(i)}
+                    className={`px-4 py-2 text-sm rounded-lg border-2 transition-colors font-semibold ${
+                      companyIdx === i
+                        ? "border-blue-600 bg-blue-600 text-white"
+                        : "border-gray-300 text-gray-600 hover:border-blue-400 hover:text-blue-600"
+                    }`}
+                  >
+                    <Icon name="Building2" size={13} className="inline mr-1.5" />
+                    {c.nazvanie}
+                  </button>
+                ))}
+              </div>
               <div className="grid grid-cols-1 gap-4 max-w-lg">
                 {[
                   { key: "nazvanie" as keyof CompanySettings, label: "Название организации" },
