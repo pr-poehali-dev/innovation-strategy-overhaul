@@ -183,7 +183,10 @@ export const useKassaLogic = () => {
               pr.bort === r.bort ? { ...pr, dt: litry } : pr
             );
             prodAll[selectedKey] = prodDay;
-            try { localStorage.setItem(LS_PRODAZHI, JSON.stringify(prodAll)); } catch (e) { console.warn(e); }
+            try {
+              localStorage.setItem(LS_PRODAZHI, JSON.stringify(prodAll));
+              window.dispatchEvent(new StorageEvent("storage", { key: LS_PRODAZHI }));
+            } catch (e) { console.warn(e); }
           }
         }
       }

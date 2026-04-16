@@ -166,6 +166,21 @@ const Prodazhi = () => {
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === LS_KASSA) applyFromKassa(selectedKey);
+      if (e.key === LS_PRODAZHI) {
+        // Касса записала dt напрямую в Продажи — точечно обновляем только dt по борту
+        if (isLoadingRef.current) return;
+        const fresh = loadProdazhi()[selectedKey];
+        if (!fresh?.rows) return;
+        const dtByBort = new Map<string, string>();
+        (fresh.rows as Array<{ bort?: string; dt?: string }>).forEach((r) => {
+          if (r.bort && r.dt) dtByBort.set(r.bort, r.dt);
+        });
+        if (dtByBort.size === 0) return;
+        setRows((prev) => prev.map((r) => {
+          const dt = dtByBort.get(r.bort);
+          return dt !== undefined ? { ...r, dt } : r;
+        }));
+      }
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
