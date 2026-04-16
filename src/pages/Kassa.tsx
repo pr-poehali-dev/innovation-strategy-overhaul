@@ -58,23 +58,21 @@ const Kassa = () => {
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
   const [activeVyp, setActiveVyp] = useState<{ rowId: number; col: string } | null>(null);
 
-  // Флаг: идёт смена даты, не сохранять в этом цикле
-  const isDateChangingRef = useRef(false);
+  // Ключ, для которого rows/vyplaty сейчас актуальны
+  const activeKeyRef = useRef(selectedKey);
 
-  // При смене даты — загружаем сохранённые данные
-  useEffect(() => {
-    isDateChangingRef.current = true;
-    const saved = loadKassa()[selectedKey];
+  // При смене даты — синхронно загружаем данные без useEffect
+  const handleDateChange = (newKey: string) => {
+    activeKeyRef.current = newKey;
+    setSelectedKey(newKey);
+    const saved = loadKassa()[newKey];
     setRows(saved?.rows ?? Array.from({ length: 12 }, () => emptyRow()));
     setVyplaty(saved?.vyplaty ?? Array.from({ length: 10 }, emptyVyp));
-    // Сбрасываем флаг после следующего рендера
-    setTimeout(() => { isDateChangingRef.current = false; }, 0);
-   
-  }, [selectedKey]);
+  };
 
-  // Сохранение при изменении данных (не при смене даты)
+  // Сохранение — только когда ключ совпадает с активным
   useEffect(() => {
-    if (isDateChangingRef.current) return;
+    if (activeKeyRef.current !== selectedKey) return;
     const data = loadKassa();
     data[selectedKey] = { rows, vyplaty };
     saveKassa(data);
@@ -91,35 +89,52 @@ const Kassa = () => {
   // Строки наряда за выбранный день
   const naryadRows = useMemo(() => weeklyNaryady[selectedKey] ?? [], [weeklyNaryady, selectedKey]);
 
-  // Синхронизация напрямую из weeklyNaryady — не зависит от открытия Dispatch
+  // Синхронизация из наряда — заполняет только поля из наряда,
+  // НЕ затрагивает поля ручного ввода (beznal, qr, viruchka, rashodDt и т.д.)
   useEffect(() => {
     if (!naryadRows.length) return;
     setRows((currentRows) => {
       const existingByBort = new Map(currentRows.map((r) => [r.bort, r]));
       const syncedRows: KassaRow[] = naryadRows.map((r) => {
         const existing = existingByBort.get(r.bortovoy);
+        const existingRow = existing ?? emptyRow();
         const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
-        // Обед: если водитель работает (не отсутствует), автоначисляем
         const isWorking = !r.statusOtsutstviya && r.fio;
         const hasCond = !!(r.fioKond && r.fioKond.trim());
-        const obedAuto = isWorking
-          ? hasCond
-            ? (naryadSettings.obedVodKond ?? "300")
-            : (naryadSettings.obedVod ?? "150")
-          : "";
-        const newKolBil = r.biletov;
-        const existingRow = existing ?? emptyRow();
-        // Пересчитываем выручку если есть данные из наряда
+        // Обед — только если строка новая (нет в сохранённых)
+        const obedAuto = !existing && isWorking
+          ? hasCond ? (naryadSettings.obedVodKond ?? "300") : (naryadSettings.obedVod ?? "150")
+          : existingRow.obed;
+        // Подработка — пересчитываем всегда (зависит от настроек)
+        const podrVod  = calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : existingRow.podrVod;
+        const podrCond = calc && calc.cond > 0 ? String(Math.round(calc.cond)) : existingRow.podrCond;
+        // kolBil из наряда (количество билетов)
+        const kolBil = r.biletov || existingRow.kolBil;
+        // Выручку НЕ трогаем если строка уже есть — пользователь мог ввести вручную
         const cena = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
-        const kol  = parseFloat(newKolBil) || 0;
-        const bez  = toNum(existingRow.beznal);
-        const qrV  = toNum(existingRow.qr);
-        const viruchkaAuto = (kol || bez || qrV)
-          ? String(Math.round(kol * cena + bez + qrV))
-          : existingRow.viruchka;
-        const prodBiletyAuto = viruchkaAuto && cena
-          ? String(Math.round(toNum(viruchkaAuto) / cena))
+        const viruchka = existing
+          ? existingRow.viruchka
+          : (() => {
+              const kol = parseFloat(kolBil) || 0;
+              const bez = toNum(existingRow.beznal);
+              const qrV = toNum(existingRow.qr);
+              return (kol || bez || qrV) ? String(Math.round(kol * cena + bez + qrV)) : "";
+            })();
+        const prodBilety = viruchka && cena
+          ? String(Math.round(toNum(viruchka) / cena))
           : existingRow.prodBilety;
+        const itogo = (() => {
+          const v    = toNum(viruchka);
+          const o    = toNum(obedAuto);
+          const rDt  = toNum(existingRow.rashodDt);
+          const chek = toNum(existingRow.chek);
+          const vozv = toNum(existingRow.vozvrat);
+          const pv   = toNum(podrVod);
+          const pk   = toNum(podrCond);
+          return (v || o || rDt || chek || vozv || pv || pk)
+            ? String(Math.round(v - o - rDt - chek - vozv - pv - pk))
+            : existingRow.itogo;
+        })();
         return {
           ...existingRow,
           type:       "route" as const,
@@ -127,12 +142,13 @@ const Kassa = () => {
           bort:       r.bortovoy,
           fioVod:     r.fio,
           fioCond:    r.fioKond || "без",
-          kolBil:     newKolBil,
-          viruchka:   viruchkaAuto,
-          prodBilety: prodBiletyAuto,
-          obed:     obedAuto || (existingRow.obed ?? ""),
-          podrVod:  calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : (existingRow.podrVod  ?? ""),
-          podrCond: calc && calc.cond > 0 ? String(Math.round(calc.cond)) : (existingRow.podrCond ?? ""),
+          kolBil,
+          viruchka,
+          prodBilety,
+          obed:       obedAuto,
+          podrVod,
+          podrCond,
+          itogo,
         };
       });
       const dispRows = currentRows.filter((r) => r.type === "disp");
@@ -160,6 +176,23 @@ const Kassa = () => {
     return String(Math.round(v / cena));
   };
 
+  // ИТОГО = Выручка − Обед − РасходДТ − Чек − Возврат − ПодрВод − ПодрКонд
+  const calcItogo = (r: KassaRow, overrides: Partial<KassaRow> = {}): string => {
+    const row    = { ...r, ...overrides };
+    const v      = toNum(row.viruchka);
+    const obed   = toNum(row.obed);
+    const rashod = toNum(row.rashodDt);
+    const chek   = toNum(row.chek);
+    const vozv   = toNum(row.vozvrat);
+    const pvod   = toNum(row.podrVod);
+    const pkond  = toNum(row.podrCond);
+    if (!v && !obed && !rashod && !chek && !vozv && !pvod && !pkond) return "";
+    return String(Math.round(v - obed - rashod - chek - vozv - pvod - pkond));
+  };
+
+  // Поля, влияющие на ИТОГО
+  const ITOGO_DEPS = new Set<keyof KassaRow>(["viruchka", "obed", "rashodDt", "chek", "vozvrat", "podrVod", "podrCond"]);
+
   // ─── Обработчики кассы ───────────────────────────────────────────────────
   const updateCell = (id: number, col: keyof KassaRow, value: string) =>
     setRows((prev) => prev.map((r) => {
@@ -167,11 +200,18 @@ const Kassa = () => {
       const updated: KassaRow = { ...r, [col]: value };
       // При изменении kolBil / beznal / qr — пересчитываем выручку
       if (col === "kolBil" || col === "beznal" || col === "qr") {
-        updated.viruchka = calcViruchka(r, { [col]: value });
+        updated.viruchka   = calcViruchka(r, { [col]: value });
+        updated.prodBilety = calcProdBilety(updated.viruchka);
+        updated.itogo      = calcItogo(r, { [col]: value, viruchka: updated.viruchka });
       }
-      // При изменении выручки — пересчитываем проданные билеты
+      // При изменении выручки — пересчитываем производные
       if (col === "viruchka") {
         updated.prodBilety = calcProdBilety(value);
+        updated.itogo      = calcItogo(r, { viruchka: value });
+      }
+      // При изменении любого вычета — пересчитываем итого
+      if (ITOGO_DEPS.has(col) && col !== "viruchka") {
+        updated.itogo = calcItogo(r, { [col]: value });
       }
       return updated;
     }));
@@ -227,6 +267,32 @@ const Kassa = () => {
     setChastRows((prev) => prev.map((r) => r.id === id ? { ...r, vyplaty: { ...r.vyplaty, [day]: val } } : r));
 
   const addChastRow = () => setChastRows((prev) => [...prev, emptyChastRow()]);
+
+  // ─── Перенос Расх.ДТ из кассы → Продажи (поле ДТ = rashodDt / stoimostTopliva) ──
+  const syncRashodDtToProdazhi = () => {
+    const cenaTopliva = parseFloat(naryadSettings.stoimostTopliva) || 0;
+    if (!cenaTopliva) { alert("Укажите стоимость топлива в Настройках"); return; }
+    // Строим карту борт → расходДТ из текущих кассовых строк
+    const rashodByBort = new Map<string, string>();
+    rows.forEach((r) => {
+      if (r.bort && toNum(r.rashodDt) > 0) {
+        const litry = Math.round(toNum(r.rashodDt) / cenaTopliva * 100) / 100;
+        rashodByBort.set(r.bort, String(litry));
+      }
+    });
+    if (rashodByBort.size === 0) return;
+    // Обновляем Продажи за тот же день
+    const prodAll = loadProdazhiAll();
+    const prodDay = prodAll[selectedKey];
+    if (!prodDay?.rows) return;
+    prodDay.rows = (prodDay.rows as Array<Record<string, string>>).map((r) => {
+      const litry = rashodByBort.get(r.bort ?? "");
+      if (!litry) return r;
+      return { ...r, dt: litry };
+    });
+    prodAll[selectedKey] = prodDay;
+    try { localStorage.setItem(LS_PRODAZHI, JSON.stringify(prodAll)); } catch (e) { console.warn(e); }
+  };
 
   // ─── Синхронизация "Начислено" в ЧастичнаяВыдача ← Ведомость.ostatok ────
   const syncFromVedomost = () => {
@@ -344,7 +410,7 @@ const Kassa = () => {
                   <input
                     type="date"
                     value={selectedKey}
-                    onChange={(e) => setSelectedKey(e.target.value)}
+                    onChange={(e) => handleDateChange(e.target.value)}
                     className="border border-gray-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-blue-400"
                   />
                   {naryadRows.length > 0 && (
@@ -401,14 +467,24 @@ const Kassa = () => {
             {/* Кнопки синхронизации — зависят от активной вкладки */}
             <div className="ml-auto flex items-center gap-2 px-3">
               {tab === "kassa" && (
-                <button
-                  onClick={syncBeznal}
-                  title="Заполнить Безнал из Продаж (колонка Валид) по текущей дате"
-                  className="flex items-center gap-1.5 px-2 py-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100"
-                >
-                  <Icon name="ArrowDownToLine" size={12} />
-                  Безнал ← Продажи
-                </button>
+                <>
+                  <button
+                    onClick={syncBeznal}
+                    title="Заполнить Безнал из Продаж (колонка Валид) по текущей дате"
+                    className="flex items-center gap-1.5 px-2 py-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100"
+                  >
+                    <Icon name="ArrowDownToLine" size={12} />
+                    Безнал ← Продажи
+                  </button>
+                  <button
+                    onClick={syncRashodDtToProdazhi}
+                    title="Перенести Расход ДТ (₽) в Продажи — ДТ (литры): Расх.ДТ ÷ Стоимость топлива"
+                    className="flex items-center gap-1.5 px-2 py-1 text-xs bg-orange-50 text-orange-700 border border-orange-200 rounded hover:bg-orange-100"
+                  >
+                    <Icon name="Droplets" size={12} />
+                    ДТ → Продажи
+                  </button>
+                </>
               )}
               {tab === "chast" && (
                 <button

@@ -39,35 +39,43 @@ const KassaOtchet = ({
 
   const vypItogo = vyplaty.reduce((s, v) => s + toNum(v.itogo), 0);
 
+  // Колонки только для просмотра (авторасчёт)
+  const READONLY_COLS = new Set(["prodBilety", "podrVod", "podrCond", "itogo"]);
+
   const renderCell = (row: KassaRow, col: typeof MAIN_COLS[number], rowIdx: number, colIdx: number) => {
     const isActive     = activeCell?.rowId === row.id && activeCell?.col === col.key;
-    const isPodr       = col.key === "podrVod" || col.key === "podrCond";
     const isViruchka   = col.key === "viruchka";
-    const isProdBilety = col.key === "prodBilety";
-    const isRashodDt   = col.key === "rashodDt";
+    const isReadonly   = READONLY_COLS.has(col.key);
 
-    // rashodDt — только для просмотра (читается из настроек, не редактируется)
-    if (isRashodDt) {
+    // Readonly ячейки — только просмотр, не редактируются
+    if (isReadonly) {
+      const val = row[col.key] as string;
+      const bg =
+        col.key === "prodBilety" ? "#eff6ff" :
+        col.key === "podrVod"    ? "#fff7ed" :
+        col.key === "podrCond"   ? "#fff7ed" :
+        col.key === "itogo"      ? "#f0fdf4" : "#fafafa";
+      const textColor =
+        col.key === "prodBilety" ? "text-blue-700 font-semibold" :
+        col.key === "podrVod"    ? "text-orange-700 font-semibold" :
+        col.key === "podrCond"   ? "text-orange-700 font-semibold" :
+        col.key === "itogo"      ? "text-green-800 font-bold" : "text-gray-500";
       return (
-        <td
-          key={col.key}
-          className="border border-gray-300 p-0"
-          style={{ width: col.width, backgroundColor: "#fafafa" }}
-          title="Расход ДТ — только для просмотра"
+        <td key={col.key} className="border border-gray-300 p-0"
+          style={{ width: col.width, backgroundColor: bg }}
+          title={col.key === "itogo" ? "Авто: Выручка − Обед − Расх.ДТ − Чек − Возврат − Подр.вод − Подр.конд" :
+                 col.key === "prodBilety" ? "Авто: Выручка ÷ Стоимость проезда" :
+                 "Авто из наряда"}
         >
-          <div className="w-full h-6 px-1 flex items-center justify-center text-xs text-gray-500 select-none">
-            {row[col.key] as string || "—"}
+          <div className={`w-full h-6 px-1 flex items-center justify-center text-xs select-none ${textColor}`}>
+            {val || "—"}
           </div>
         </td>
       );
     }
 
-    const calcBg    = isViruchka ? "#f0fdf4" : isProdBilety ? "#eff6ff" : undefined;
-    const calcTitle = isViruchka
-      ? "Авто: Кол.бил × Стоимость проезда + Безнал + QR"
-      : isProdBilety
-        ? "Авто: Выручка ÷ Стоимость проезда"
-        : undefined;
+    const calcBg    = isViruchka ? "#f0fdf4" : undefined;
+    const calcTitle = isViruchka ? "Авто: Кол.бил × Стоимость проезда + Безнал + QR" : undefined;
     return (
       <td
         key={col.key}
@@ -85,10 +93,7 @@ const KassaOtchet = ({
           className={[
             "w-full h-6 px-1 bg-transparent outline-none border-2 transition-colors text-center",
             isActive ? "border-blue-500 bg-blue-50" : "border-transparent",
-            isPodr       ? "text-orange-700" : "",
-            isViruchka   ? "text-green-800 font-semibold" : "",
-            isProdBilety ? "text-blue-700 font-semibold" : "",
-            col.key === "itogo" ? "font-bold text-gray-800" : "text-gray-800",
+            isViruchka ? "text-green-800 font-semibold" : "text-gray-800",
           ].join(" ")}
           placeholder=""
         />
@@ -112,19 +117,21 @@ const KassaOtchet = ({
                     className="border border-blue-900 px-1 py-1 text-white font-semibold text-center leading-tight"
                     style={{
                       width: col.width, minWidth: col.width,
-                      backgroundColor: col.key === "viruchka"
-                        ? "#166534"
-                        : col.key === "prodBilety"
-                          ? "#1e3a5f"
-                          : undefined,
+                      backgroundColor:
+                        col.key === "viruchka"   ? "#166534" :
+                        col.key === "prodBilety" ? "#1e3a5f" :
+                        col.key === "podrVod" || col.key === "podrCond" ? "#7c3d0a" :
+                        col.key === "itogo"      ? "#14532d" : undefined,
                     }}
                     title={
                       col.key === "viruchka"   ? "Авто: Кол.бил × Стоимость проезда + Безнал + QR" :
                       col.key === "prodBilety" ? "Авто: Выручка ÷ Стоимость проезда" :
-                      col.key === "rashodDt"   ? "Только для просмотра" : undefined
+                      col.key === "podrVod" || col.key === "podrCond" ? "Авто из наряда" :
+                      col.key === "itogo"      ? "Авто: Выручка − Обед − Расх.ДТ − Чек − Возврат − Подр.вод − Подр.конд" :
+                      col.key === "rashodDt"   ? "Ручной ввод → автоперенос в Продажи (ДТ)" : undefined
                     }
                   >
-                    {col.label}{col.key === "viruchka" || col.key === "prodBilety" ? " ⟳" : ""}
+                    {col.label}{"viruchka prodBilety podrVod podrCond itogo".includes(col.key) ? " ⟳" : ""}
                   </th>
                 ))}
                 <th className="border border-blue-900 px-1 py-1 text-white font-semibold text-center" style={{ width: "36px" }} title="Право на подработку">Подр.</th>
