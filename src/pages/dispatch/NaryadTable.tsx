@@ -120,6 +120,14 @@ const NaryadTable = ({
     [employees]
   );
   const activeTerminals = useMemo(() => terminals.filter((t) => t.status === "active"), [terminals]);
+
+  // Терминалы только той организации, которой принадлежит маршрут строки
+  const getRowTerminals = useCallback((marshrut: string) => {
+    const routeNum = marshrut.split("/")[0].trim();
+    const route = routes.find((r) => r.nomer === routeNum);
+    if (!route) return activeTerminals; // маршрут не найден — показать все
+    return activeTerminals.filter((t) => t.companyIdx === route.companyIdx);
+  }, [activeTerminals, routes]);
   const allGrafiki      = useMemo(() => routes.flatMap((r) => getGrafiki(r)), [routes]);
   const allBorts        = useMemo(
     () => [...new Set(vehicles.map((v) => v.bortovoy).filter(Boolean))].sort((a, b) => Number(a) - Number(b)),
@@ -270,7 +278,7 @@ const NaryadTable = ({
                       }`}
                     >
                       <option value="">—</option>
-                      {activeTerminals.map((t) => (
+                      {getRowTerminals(row.marshrut).map((t) => (
                         <option key={t.id} value={t.nomer}>{t.nomer}</option>
                       ))}
                     </select>
