@@ -10,9 +10,10 @@ interface Props {
   today: string;
   dayMeta: DayMeta;
   onClose: () => void;
+  onSaveOdometr?: (vyezd: string, vozv: string) => void;
 }
 
-const PutevoyModal = ({ row, today, dayMeta, onClose }: Props) => {
+const PutevoyModal = ({ row, today, dayMeta, onClose, onSaveOdometr }: Props) => {
   const { companies, employees, routes, vehicles, routeSchedule } = useAppStore();
   const sched = routeSchedule[row.marshrut];
 
@@ -54,8 +55,8 @@ const PutevoyModal = ({ row, today, dayMeta, onClose }: Props) => {
     marshrut:        matchedRoute ? `№${matchedRoute.nomer} ${matchedRoute.nazvanie}` : row.marshrut,
     vodUdostVerenie: vodInfo?.udostoverenie ?? "",
     vodKategoria:    vodInfo?.kategoriya  || "D",
-    odometrVyezd:    "",
-    odometrVozv:     "",
+    odometrVyezd:    row.odometrVyezd ?? "",
+    odometrVozv:     row.odometrVozv  ?? "",
     toplivoMarka:    "ДТ",
     toplivoVydano:   "",
     toplivoOstVyezd: "",
@@ -139,7 +140,13 @@ const PutevoyModal = ({ row, today, dayMeta, onClose }: Props) => {
             <span className="font-semibold text-gray-800">Путевой лист</span>
             <span className="text-gray-500 text-sm ml-2">— {row.fio || "водитель"}</span>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
+          <button
+            onClick={() => {
+              onSaveOdometr?.(extra.odometrVyezd ?? "", extra.odometrVozv ?? "");
+              onClose();
+            }}
+            className="text-gray-400 hover:text-gray-700"
+          >
             <Icon name="X" size={18} />
           </button>
         </div>

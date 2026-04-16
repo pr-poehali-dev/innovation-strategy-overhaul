@@ -50,11 +50,11 @@ const JurnalMed = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
       ? Array.from(byCompany.entries()).map(([companyIdx, rows]) => ({ companyIdx, rows }))
       : [{ companyIdx: 0, rows: [] }];
 
-  const renderBlock = (companyIdx: number, blockRows: NaryadRow[]) => {
+  const renderBlock = (companyIdx: number, blockRows: NaryadRow[], isFirst: boolean) => {
     const company = companies[companyIdx];
     const startNum = 1;
     return (
-      <div key={companyIdx} className="mb-8">
+      <div key={companyIdx} className={`mb-8 print-no-break${isFirst ? "" : " print-page-break"}`}>
         {/* Шапка блока */}
         <div className="text-center mb-3">
           <div className="font-bold text-[12px]">{company?.nazvanie || "___________________________"}</div>
@@ -150,7 +150,7 @@ const JurnalMed = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
         </button>
       </div>
       <div className="bg-white font-serif text-[10px] leading-tight" style={{ minWidth: "900px" }}>
-        {companyGroups.map(({ companyIdx, rows }) => renderBlock(companyIdx, rows))}
+        {companyGroups.map(({ companyIdx, rows }, i) => renderBlock(companyIdx, rows, i === 0))}
       </div>
     </div>
   );

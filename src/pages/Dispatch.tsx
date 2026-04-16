@@ -50,7 +50,17 @@ const makeEmptyRow = (): NaryadRowStore => ({
   vehicleId: null, bortovoy: "", gos: "", marka: "",
   marshrut: "", fio: "", fioKond: "",
   putevoy: "", terminal: "", podrabotka: false, biletov: "", statusOtsutstviya: "", dtp: false,
+  odometrVyezd: "", odometrVozv: "",
 });
+
+// Инкрементирует номер путевого листа: "001" → "002", "AT-15" → "AT-16"
+const nextPutevoy = (p: string): string => {
+  if (!p) return p;
+  const m = p.match(/^(.*?)(\d+)(\D*)$/);
+  if (!m) return p;
+  const num = String(parseInt(m[2], 10) + 1).padStart(m[2].length, "0");
+  return m[1] + num + m[3];
+};
 
 const makeRowsFromRoutes = (routes: Route[]): NaryadRowStore[] => {
   const sorted = [...routes].sort((a, b) => Number(a.nomer) - Number(b.nomer));
@@ -245,6 +255,11 @@ const Dispatch = () => {
       podrabotka: false,
       biletov: "",
       dtp: false,
+      // Путевой: +1 к номеру
+      putevoy: nextPutevoy(r.putevoy),
+      // Одометр: возврат предыдущего дня → выезд следующего
+      odometrVyezd: r.odometrVozv || r.odometrVyezd,
+      odometrVozv: "",
     }));
     saveRows(selectedKey, copied);
   };
@@ -281,6 +296,9 @@ const Dispatch = () => {
           today={displayDate}
           dayMeta={dayMeta}
           onClose={() => setPutevoyRow(null)}
+          onSaveOdometr={(vyezd, vozv) => {
+            updateRow(putevoyRow.id, { odometrVyezd: vyezd, odometrVozv: vozv });
+          }}
         />
       )}
 

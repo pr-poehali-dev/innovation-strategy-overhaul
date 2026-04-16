@@ -293,7 +293,9 @@ export interface NaryadRowStore {
   podrabotka: boolean;
   biletov: string;
   statusOtsutstviya: string;
-  dtp: boolean;          // отметка о ДТП
+  dtp: boolean;
+  odometrVyezd: string;   // показание одометра при выезде
+  odometrVozv: string;    // показание одометра при возврате
 }
 
 export interface NaryadSettingsStore {
@@ -311,6 +313,7 @@ const makeEmptyNaryadRow = (): NaryadRowStore => ({
   vehicleId: null, bortovoy: "", gos: "", marka: "",
   marshrut: "", fio: "", fioKond: "",
   putevoy: "", terminal: "", podrabotka: false, biletov: "", statusOtsutstviya: "", dtp: false,
+  odometrVyezd: "", odometrVozv: "",
 });
 
 const DEFAULT_NARAD_SETTINGS: NaryadSettingsStore = {

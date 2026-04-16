@@ -4,7 +4,13 @@
 
 @layer base {
   html {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family:
+      "Inter",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
   }
 
   :root {
@@ -101,5 +107,36 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* ─── Печать: каждый блок-документ на отдельном листе ─── */
+@media print {
+  .print-hidden,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Каждый блок с этим классом — с новой страницы */
+  .print-page-break {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  /* Не разрывать таблицы внутри блока */
+  .print-no-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Общие отступы страницы */
+  @page {
+    margin: 10mm 12mm;
+    size: A4 landscape;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }

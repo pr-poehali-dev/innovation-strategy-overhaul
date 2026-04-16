@@ -11,7 +11,7 @@ export type StatusOtsutstviya = typeof STATUS_OTSUTSTVIYA[number] | "";
 export interface NaryadRow {
   id: number;
   vehicleId: number | null;
-  bortovoy: string;   // Борт №
+  bortovoy: string;
   gos: string;
   marka: string;
   marshrut: string;
@@ -24,6 +24,8 @@ export interface NaryadRow {
   statusOtsutstviya: StatusOtsutstviya;
   dtp: boolean;
   garazhny?: string;
+  odometrVyezd: string;
+  odometrVozv: string;
 }
 
 export interface NormaSettings {
@@ -51,6 +53,8 @@ export const emptyRow = (): NaryadRow => ({
   biletov: "",
   statusOtsutstviya: "",
   dtp: false,
+  odometrVyezd: "",
+  odometrVozv: "",
 });
 
 export const DEFAULT_SETTINGS: NormaSettings = {
