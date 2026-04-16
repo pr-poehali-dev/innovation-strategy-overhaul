@@ -50,8 +50,10 @@ const makeEmptyRow = (): NaryadRowStore => ({
 
 // Строки по маршрутам: одна строка на каждый график в порядке маршрутов
 const makeRowsFromRoutes = (routes: Route[]): NaryadRowStore[] => {
+  // Сортируем маршруты по числовому номеру (1, 3, 6, 15, 24...)
+  const sorted = [...routes].sort((a, b) => Number(a.nomer) - Number(b.nomer));
   const rows: NaryadRowStore[] = [];
-  routes.forEach((route) => {
+  sorted.forEach((route) => {
     for (let i = 1; i <= route.grafikov; i++) {
       rows.push({
         ...makeEmptyRow(),
