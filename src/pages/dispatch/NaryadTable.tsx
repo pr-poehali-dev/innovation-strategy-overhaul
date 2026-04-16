@@ -78,7 +78,6 @@ const TextCell = ({
   listId?: string;
 }) => (
   <td className="border border-gray-300 p-0" style={{ width }}>
-    {listId && <datalist id={listId} />}
     <input
       type="text"
       list={listId}
