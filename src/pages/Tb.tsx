@@ -431,8 +431,80 @@ const Tb = () => {
     [entries, monthKey]
   );
 
-  // ─── Выбор дня для ежедневного вида ──────────────────────────────────────
-  const todayKey = toDateKey(new Date());
+  // ─── Маршруты активной организации ───────────────────────────────────────
+  const { routes } = useAppStore();
+  const companyRouteNomers = useMemo(
+    () => new Set(routes.filter((r) => r.companyIdx === activeCompanyIdx).map((r) => r.nomer)),
+    [routes, activeCompanyIdx]
+  );
+
+  // ─── Заполнить журнал из наряда за выбранный месяц ───────────────────────
+  const fillFromNaryadMonth = () => {
+    const days = getDaysInMonth(monthKey);
+    const newEntries: TbEntry[] = [];
+
+    days.forEach((day) => {
+      const rows = weeklyNaryady[day] ?? [];
+      rows.forEach((r) => {
+        const routeNum = r.marshrut.split("/")[0].trim();
+        if (!companyRouteNomers.has(routeNum)) return;
+        if (!r.fio && !r.fioKond) return; // пустые строки пропускаем
+
+        // Водитель
+        if (r.fio) {
+          const emp = employees.find((e) => e.fio === r.fio);
+          // Не дублируем если уже есть запись за этот день для этого сотрудника
+          const alreadyExists = entries.some(
+            (e) => e.dateKey === day && e.fio === r.fio
+          );
+          if (!alreadyExists) {
+            newEntries.push({
+              dateKey: day,
+              fio: r.fio,
+              dolzhnost: "Водитель",
+              tabNum: emp?.tabNum ?? "",
+              vidInstruktazha: "Повторный инструктаж",
+              rukovoditel: company.direktor || "",
+              podpisInstr: "",
+              primechanie: r.marshrut,
+            });
+          }
+        }
+
+        // Кондуктор
+        if (r.fioKond) {
+          const emp = employees.find((e) => e.fio === r.fioKond);
+          const alreadyExists = entries.some(
+            (e) => e.dateKey === day && e.fio === r.fioKond
+          );
+          if (!alreadyExists) {
+            newEntries.push({
+              dateKey: day,
+              fio: r.fioKond,
+              dolzhnost: "Кондуктор",
+              tabNum: emp?.tabNum ?? "",
+              vidInstruktazha: "Повторный инструктаж",
+              rukovoditel: company.direktor || "",
+              podpisInstr: "",
+              primechanie: r.marshrut,
+            });
+          }
+        }
+      });
+    });
+
+    if (newEntries.length === 0) {
+      alert("Нет данных из наряда за выбранный месяц для этой организации");
+      return;
+    }
+
+    // Сортируем по дате, потом по ФИО
+    newEntries.sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.fio.localeCompare(b.fio, "ru"));
+    setEntries((prev) => {
+      const filtered = prev.filter((e) => e.fio !== ""); // убираем пустые
+      return [...filtered, ...newEntries];
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
@@ -475,12 +547,21 @@ const Tb = () => {
                 className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-400"
               />
               {tab === "journal" && (
-                <button
-                  onClick={() => setShowPrint(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  <Icon name="Printer" size={13} /> Печать
-                </button>
+                <>
+                  <button
+                    onClick={fillFromNaryadMonth}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                    title="Загрузить водителей и кондукторов из наряда за выбранный месяц"
+                  >
+                    <Icon name="Download" size={13} /> Из наряда
+                  </button>
+                  <button
+                    onClick={() => setShowPrint(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    <Icon name="Printer" size={13} /> Печать
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -512,7 +593,8 @@ const Tb = () => {
               {/* Подсказка */}
               <div className="px-5 py-2 bg-blue-50 border-b border-blue-100 flex items-center gap-2 text-xs text-blue-700">
                 <Icon name="Info" size={13} />
-                Форма по ГОСТ 12.0.004-2015 · Записи сохраняются автоматически
+                Форма по ГОСТ 12.0.004-2015 · Записи сохраняются автоматически ·
+                <span className="font-semibold">Кнопка «Из наряда»</span> — автозаполнение из данных наряда за выбранный месяц
               </div>
 
               <div className="overflow-x-auto">

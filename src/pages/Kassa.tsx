@@ -97,6 +97,14 @@ const Kassa = () => {
       const syncedRows: KassaRow[] = naryadRows.map((r) => {
         const existing = existingByBort.get(r.bortovoy);
         const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
+        // Обед: если водитель работает (не отсутствует), автоначисляем
+        const isWorking = !r.statusOtsutstviya && r.fio;
+        const hasCond = !!(r.fioKond && r.fioKond.trim());
+        const obedAuto = isWorking
+          ? hasCond
+            ? (naryadSettings.obedVodKond ?? "300")
+            : (naryadSettings.obedVod ?? "150")
+          : "";
         return {
           ...(existing ?? emptyRow()),
           type:     "route" as const,
@@ -105,6 +113,7 @@ const Kassa = () => {
           fioVod:   r.fio,
           fioCond:  r.fioKond || "без",
           kolBil:   r.biletov,
+          obed:     obedAuto || (existing?.obed ?? ""),
           podrVod:  calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : (existing?.podrVod  ?? ""),
           podrCond: calc && calc.cond > 0 ? String(Math.round(calc.cond)) : (existing?.podrCond ?? ""),
         };

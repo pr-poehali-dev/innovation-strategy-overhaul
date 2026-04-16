@@ -30,6 +30,7 @@ type TabType =
   | "procentVodBezCond"
   | "procentVodSCond"
   | "procentCond"
+  | "obed"
   | "zpVodDezhurki"
   | "dezhDt"
   | "hozNuzhdyGarazh";
@@ -43,6 +44,7 @@ const TABS: { key: TabType; label: string; icon: string; unit?: string }[] = [
   { key: "procentVodBezCond", label: "% водителя без кондуктора",       icon: "Percent",    unit: "%"  },
   { key: "procentVodSCond",   label: "% водителя с кондуктором",        icon: "Percent",    unit: "%"  },
   { key: "procentCond",       label: "% кондуктора",                    icon: "Percent",    unit: "%"  },
+  { key: "obed",              label: "Обеды",                           icon: "UtensilsCrossed", unit: "₽" },
   { key: "zpVodDezhurki",     label: "ЗП водителя дежурки",             icon: "Banknote",   unit: "₽"  },
   { key: "dezhDt",            label: "Дежурка ДТ",                      icon: "Droplets",   unit: "л"  },
   { key: "hozNuzhdyGarazh",   label: "Хоз. нужды гараж",               icon: "Wrench",     unit: "₽"  },
@@ -510,6 +512,51 @@ const Settings = () => {
           )}
           {tab === "hozNuzhdyGarazh" && (
             <FixedValueTab label="Хоз. нужды гараж" unit="₽" value={hozNuzhdyGarazh} onChange={(v) => { setHozNuzhdyGarazh(v); setSaved(false); }} />
+          )}
+
+          {/* Обеды */}
+          {tab === "obed" && (
+            <div className="px-6 py-6 max-w-lg">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-5 text-xs text-amber-800 flex items-start gap-2">
+                <Icon name="Info" size={14} className="mt-0.5 flex-shrink-0" />
+                <div>
+                  Суммы обедов автоматически попадают в поле <b>Обед</b> кассового отчёта при синхронизации из наряда.<br />
+                  Если водитель едет <b>один</b> — начисляется первая сумма. Если <b>с кондуктором</b> — вторая.
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 border border-gray-200 rounded-lg px-4 py-3 bg-white">
+                  <div className="flex-1">
+                    <div className="text-xs font-semibold text-gray-700">Водитель без кондуктора</div>
+                    <div className="text-xs text-gray-400 mt-0.5">Один в рейсе</div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={naryadSettings.obedVod}
+                      onChange={(e) => { setNaryadSettings({ ...naryadSettings, obedVod: e.target.value }); setSaved(false); }}
+                      className="w-24 h-8 px-2 text-sm font-semibold text-gray-800 border border-gray-300 rounded outline-none focus:border-blue-500 focus:bg-blue-50 text-right"
+                    />
+                    <span className="text-xs text-gray-500">₽</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 border border-gray-200 rounded-lg px-4 py-3 bg-white">
+                  <div className="flex-1">
+                    <div className="text-xs font-semibold text-gray-700">Водитель с кондуктором</div>
+                    <div className="text-xs text-gray-400 mt-0.5">Вдвоём в рейсе (суммарно)</div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={naryadSettings.obedVodKond}
+                      onChange={(e) => { setNaryadSettings({ ...naryadSettings, obedVodKond: e.target.value }); setSaved(false); }}
+                      className="w-24 h-8 px-2 text-sm font-semibold text-gray-800 border border-gray-300 rounded outline-none focus:border-blue-500 focus:bg-blue-50 text-right"
+                    />
+                    <span className="text-xs text-gray-500">₽</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Блок фиксированных исключений для вкладки "% водителя без кондуктора" */}
