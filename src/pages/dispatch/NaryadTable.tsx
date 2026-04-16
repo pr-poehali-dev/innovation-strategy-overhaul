@@ -197,7 +197,7 @@ const NaryadTable = ({
 
   return (
     <>
-      {/* datalist — глобальные (полный список, фильтрация через динамические id на строку) */}
+      {/* datalist глобальные — вне таблицы, валидный HTML */}
       <datalist id={VOD_LIST}>
         {driverFios.map((f) => <option key={f} value={f} />)}
       </datalist>
@@ -205,6 +205,22 @@ const NaryadTable = ({
         <option value="без" />
         {condFios.map((f) => <option key={f} value={f} />)}
       </datalist>
+      {/* per-row datalists — вне таблицы, но доступны по id из строк */}
+      {rows.map((row) => {
+        const freeDriversForRow = driverFios.filter((f) => f === row.fio || !dupFios.has(f));
+        const freeCondsForRow   = condFios.filter((f)  => f === row.fioKond || !dupKonds.has(f));
+        return (
+          <span key={row.id} style={{ display: "none" }}>
+            <datalist id={`dl-vod-${row.id}`}>
+              {freeDriversForRow.map((f) => <option key={f} value={f} />)}
+            </datalist>
+            <datalist id={`dl-cond-${row.id}`}>
+              <option value="без" />
+              {freeCondsForRow.map((f) => <option key={f} value={f} />)}
+            </datalist>
+          </span>
+        );
+      })}
 
       <div className="overflow-x-auto">
         <table className="border-collapse text-xs" style={{ minWidth: "900px" }}>
@@ -240,19 +256,8 @@ const NaryadTable = ({
               // Уникальные datalist id для строки — исключаем уже занятых другими
               const vodListId  = `dl-vod-${row.id}`;
               const condListId = `dl-cond-${row.id}`;
-              const freeDriversForRow = driverFios.filter((f) => f === row.fio || !dupFios.has(f));
-              const freeCondsForRow   = condFios.filter((f)  => f === row.fioKond || !dupKonds.has(f));
-
               return (
                 <tr key={row.id} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50/40"}>
-                  {/* Per-row datalist — показывает только свободных */}
-                  <datalist id={vodListId}>
-                    {freeDriversForRow.map((f) => <option key={f} value={f} />)}
-                  </datalist>
-                  <datalist id={condListId}>
-                    <option value="без" />
-                    {freeCondsForRow.map((f) => <option key={f} value={f} />)}
-                  </datalist>
                   <td className="border border-gray-300 text-center text-gray-400 select-none" style={{ width: "28px" }}>
                     {rowIdx + 1}
                   </td>

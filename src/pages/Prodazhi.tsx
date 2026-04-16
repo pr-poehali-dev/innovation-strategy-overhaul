@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 import { useAppStore, getGrafiki } from "@/store/appStore";
@@ -79,33 +79,39 @@ const Prodazhi = () => {
   const driverList = employees.filter((e) => e.dolzhnost === "Водитель"  && e.status === "active");
   const condList   = employees.filter((e) => e.dolzhnost === "Кондуктор" && e.status === "active");
 
-  // Загрузка сохранённых данных
-  const [allData, setAllData] = useState<Record<string, { rows: ProdazhiRow[]; dispFio: string }>>(() => loadProdazhi());
-
   const [selectedKey, setSelectedKey] = useState(() => toDateKey(new Date()));
   const [reportDate, setReportDate] = useState(today);
 
-  // Диспетчер и строки — берём из сохранённых данных за выбранный день
-  const [dispFio, setDispFio] = useState(() => allData[toDateKey(new Date())]?.dispFio ?? "");
+  // Флаг смены даты — не сохраняем пока rows/dispFio ещё не обновились
+  const isLoadingRef = useRef(false);
+
+  const initDay = toDateKey(new Date());
+  const initData = loadProdazhi()[initDay];
+  const [dispFio, setDispFio] = useState(() => initData?.dispFio ?? "");
   const [rows, setRows] = useState<ProdazhiRow[]>(() =>
-    allData[toDateKey(new Date())]?.rows ?? Array.from({ length: 10 }, emptyRow)
+    initData?.rows ?? Array.from({ length: 10 }, emptyRow)
   );
 
-  // При смене даты — читаем свежие данные из localStorage (включая обновления из Кассы)
-  useEffect(() => {
-    const fresh = loadProdazhi()[selectedKey];
+  // При смене даты — синхронно загружаем из localStorage
+  const handleDateChange = (newKey: string) => {
+    isLoadingRef.current = true;
+    setSelectedKey(newKey);
+    const fresh = loadProdazhi()[newKey];
     setRows(fresh?.rows ?? Array.from({ length: 10 }, emptyRow));
     setDispFio(fresh?.dispFio ?? "");
-   
-  }, [selectedKey]);
+    setTimeout(() => { isLoadingRef.current = false; }, 0);
+    // Обновляем reportDate для отображения
+    if (newKey) {
+      setReportDate(new Date(newKey + "T00:00:00").toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" }));
+    }
+  };
 
-  // Сохранение при каждом изменении строк или диспетчера
+  // Сохранение — только при реальных изменениях данных (не при загрузке)
   useEffect(() => {
-    setAllData((prev) => {
-      const updated = { ...prev, [selectedKey]: { rows, dispFio } };
-      saveProdazhi(updated);
-      return updated;
-    });
+    if (isLoadingRef.current) return;
+    const data = loadProdazhi();
+    data[selectedKey] = { rows, dispFio };
+    saveProdazhi(data);
   }, [rows, dispFio, selectedKey]);
 
   // Читает из Кассы: ДТ, выданная подработка, продБилеты → kolBil
@@ -396,12 +402,7 @@ const Prodazhi = () => {
             <input
               type="date"
               value={selectedKey}
-              onChange={(e) => {
-                setSelectedKey(e.target.value);
-                setReportDate(e.target.value
-                  ? new Date(e.target.value + "T00:00:00").toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" })
-                  : today);
-              }}
+              onChange={(e) => handleDateChange(e.target.value)}
               className="border border-gray-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-blue-400"
             />
             {naryadRows.length > 0 && (

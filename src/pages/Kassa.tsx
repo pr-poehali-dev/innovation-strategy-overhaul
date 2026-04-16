@@ -62,21 +62,22 @@ const Kassa = () => {
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
   const [activeVyp, setActiveVyp] = useState<{ rowId: number; col: string } | null>(null);
 
-  // Ключ, для которого rows/vyplaty сейчас актуальны
-  const activeKeyRef = useRef(selectedKey);
+  // Флаг смены даты — не сохранять пока rows/vyplaty не обновились
+  const isLoadingRef = useRef(false);
 
-  // При смене даты — синхронно загружаем данные без useEffect
+  // При смене даты — синхронно загружаем данные, потом сохранение безопасно
   const handleDateChange = (newKey: string) => {
-    activeKeyRef.current = newKey;
+    isLoadingRef.current = true;
     setSelectedKey(newKey);
     const saved = loadKassa()[newKey];
     setRows(saved?.rows ?? Array.from({ length: 12 }, () => emptyRow()));
     setVyplaty(saved?.vyplaty ?? Array.from({ length: 10 }, emptyVyp));
+    setTimeout(() => { isLoadingRef.current = false; }, 0);
   };
 
-  // Сохранение — только когда ключ совпадает с активным
+  // Сохранение — пропускаем один цикл после смены даты
   useEffect(() => {
-    if (activeKeyRef.current !== selectedKey) return;
+    if (isLoadingRef.current) return;
     const data = loadKassa();
     data[selectedKey] = { rows, vyplaty };
     saveKassa(data);
