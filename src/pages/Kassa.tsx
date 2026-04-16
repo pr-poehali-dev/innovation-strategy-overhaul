@@ -96,15 +96,49 @@ const emptyVyp = (): VyplataRow => ({
 
 const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 
+// ─── Частичная выдача ───────────────────────────────────────────────────────
+const DAYS = [5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31] as const;
+type Day = typeof DAYS[number];
+
+interface ChastRow {
+  id: number;
+  fio: string;
+  nachisleno: string;
+  vyplaty: Record<Day, string>;
+}
+
+const emptyChastRow = (fio = "", nach = ""): ChastRow => ({
+  id: Math.random() * 1e15 + performance.now(),
+  fio,
+  nachisleno: nach,
+  vyplaty: Object.fromEntries(DAYS.map((d) => [d, ""])) as Record<Day, string>,
+});
+
+const calcOstatok = (row: ChastRow) => {
+  const nach = toNum(row.nachisleno);
+  const vydan = DAYS.reduce((s, d) => s + toNum(row.vyplaty[d]), 0);
+  return nach - vydan;
+};
+
 // ─── Компонент ─────────────────────────────────────────────────────────────
 const Kassa = () => {
-  const { naryadEntries } = useAppStore();
+  const { naryadEntries, employees } = useAppStore();
 
+  const [tab, setTab] = useState<"kassa" | "chast">("kassa");
   const [rows, setRows] = useState<KassaRow[]>(() => Array.from({ length: 12 }, () => emptyRow()));
   const [vyplaty, setVyplaty] = useState<VyplataRow[]>(() => Array.from({ length: 10 }, emptyVyp));
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
   const [activeVyp, setActiveVyp] = useState<{ rowId: number; col: string } | null>(null);
   const prevEntriesRef = useRef<typeof naryadEntries>([]);
+
+  // Частичная выдача — инициализируем из списка сотрудников
+  const [chastRows, setChastRows] = useState<ChastRow[]>(() =>
+    employees
+      .filter((e) => e.status === "active")
+      .sort((a, b) => a.fio.localeCompare(b.fio, "ru"))
+      .map((e) => emptyChastRow(e.fio, ""))
+      .concat(Array.from({ length: 30 }, () => emptyChastRow()))
+  );
 
   // Автоматическая синхронизация из наряда
   useEffect(() => {
@@ -187,6 +221,20 @@ const Kassa = () => {
     }
   };
 
+  // Частичная выдача — обновление
+  const updateChast = (id: number, field: "fio" | "nachisleno", val: string) =>
+    setChastRows((prev) => prev.map((r) => r.id === id ? { ...r, [field]: val } : r));
+
+  const updateChastDay = (id: number, day: Day, val: string) =>
+    setChastRows((prev) => prev.map((r) => r.id === id ? { ...r, vyplaty: { ...r.vyplaty, [day]: val } } : r));
+
+  const addChastRow = () => setChastRows((prev) => [...prev, emptyChastRow()]);
+
+  // Итоги частичной выдачи
+  const chastTotalNach = chastRows.reduce((s, r) => s + toNum(r.nachisleno), 0);
+  const chastTotalByDay = (day: Day) => chastRows.reduce((s, r) => s + toNum(r.vyplaty[day]), 0);
+  const chastTotalOst = chastRows.reduce((s, r) => s + calcOstatok(r), 0);
+
   // Итоги основной таблицы
   const numericKeys = MAIN_COLS.filter((c) => c.numeric).map((c) => c.key);
   const getSum = (col: keyof KassaRow) =>
@@ -234,7 +282,7 @@ const Kassa = () => {
           {/* Шапка */}
           <div className="border-b border-gray-300 px-4 py-3 flex items-center justify-between print:hidden">
             <div>
-              <h1 className="text-lg font-bold text-gray-800 uppercase tracking-wide">Кассовый отчёт</h1>
+              <h1 className="text-lg font-bold text-gray-800 uppercase tracking-wide">Касса</h1>
               <p className="text-xs text-gray-500 mt-0.5">ООО «Дальавтотранс» · {today}</p>
             </div>
             <div className="flex items-center gap-2">
@@ -259,7 +307,25 @@ const Kassa = () => {
             </div>
           </div>
 
-          {/* Основной блок: таблица + выплаты рядом */}
+          {/* Вкладки */}
+          <div className="border-b border-gray-300 flex print:hidden">
+            {([["kassa", "Кассовый отчёт"], ["chast", "Частичная выдача"]] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`px-5 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  tab === key
+                    ? "border-blue-600 text-blue-700 bg-blue-50"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* ═══ ВКЛАДКА: Кассовый отчёт ═══ */}
+          {tab === "kassa" && (<>
           <div className="flex gap-0 overflow-x-auto">
 
             {/* ── Левая таблица кассы ── */}
@@ -434,11 +500,109 @@ const Kassa = () => {
             </div>
           </div>
 
-          {/* Подвал */}
+          {/* Подвал кассы */}
           <div className="border-t border-gray-300 px-4 py-2 bg-gray-50 flex items-center justify-between text-xs text-gray-400 print:hidden">
             <span>Строк: {rows.length} · Выплат: {vyplaty.length}</span>
             <span>Tab / Enter — переход между ячейками</span>
           </div>
+          </>)}
+
+          {/* ═══ ВКЛАДКА: Частичная выдача ═══ */}
+          {tab === "chast" && (
+            <div>
+              <div className="px-4 py-2 border-b border-gray-200 flex items-center justify-between print:hidden">
+                <span className="text-xs text-gray-500">Дни выдачи — с 5 по 31 число месяца</span>
+                <button onClick={addChastRow}
+                  className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700">
+                  <Icon name="Plus" size={12} /> Строка
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="border-collapse text-xs" style={{ tableLayout: "fixed" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#1a3a6b" }}>
+                      <th className="border border-blue-900 px-1 py-2 text-white text-center sticky left-0 z-10" style={{ width: "28px", backgroundColor: "#1a3a6b" }}>№</th>
+                      <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left sticky left-7 z-10" style={{ width: "160px", backgroundColor: "#1a3a6b" }}>Ф.И.О.</th>
+                      <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "80px" }}>начислено</th>
+                      {DAYS.map((d) => (
+                        <th key={d} className="border border-blue-900 px-1 py-2 text-white font-semibold text-center" style={{ width: "48px" }}>{d}</th>
+                      ))}
+                      <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "80px" }}>остаток к выдаче</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {chastRows.map((row, idx) => {
+                      const ost = calcOstatok(row);
+                      const rowBg = idx % 2 === 0 ? "#ffffff" : "#f0f4ff";
+                      return (
+                        <tr key={row.id} style={{ backgroundColor: rowBg }}>
+                          <td className="border border-gray-300 text-center text-gray-400 select-none sticky left-0 z-10 text-xs" style={{ width: "28px", backgroundColor: rowBg }}>{idx + 1}</td>
+                          <td className="border border-gray-300 p-0 sticky left-7 z-10" style={{ width: "160px", backgroundColor: rowBg }}>
+                            <input
+                              type="text"
+                              value={row.fio}
+                              onChange={(e) => updateChast(row.id, "fio", e.target.value)}
+                              className="w-full h-6 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors font-medium"
+                              placeholder="—"
+                            />
+                          </td>
+                          <td className="border border-gray-300 p-0" style={{ width: "80px" }}>
+                            <input
+                              type="text"
+                              value={row.nachisleno}
+                              onChange={(e) => updateChast(row.id, "nachisleno", e.target.value)}
+                              className="w-full h-6 px-1 text-xs text-center font-bold text-blue-900 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors"
+                              placeholder="0"
+                            />
+                          </td>
+                          {DAYS.map((d) => {
+                            const val = row.vyplaty[d];
+                            return (
+                              <td key={d} className="border border-gray-300 p-0" style={{ width: "48px" }}>
+                                <input
+                                  type="text"
+                                  value={val}
+                                  onChange={(e) => updateChastDay(row.id, d, e.target.value)}
+                                  className="w-full h-6 px-0.5 text-xs text-center text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors"
+                                  placeholder=""
+                                />
+                              </td>
+                            );
+                          })}
+                          <td
+                            className="border border-gray-300 px-1 text-center text-xs font-bold"
+                            style={{ width: "80px", color: ost < 0 ? "#dc2626" : ost === 0 ? "#6b7280" : "#15803d" }}
+                          >
+                            {ost !== 0 ? ost.toLocaleString("ru-RU") : "0"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ backgroundColor: "#1a3a6b" }}>
+                      <td colSpan={2} className="border border-blue-900 px-2 py-1.5 text-right text-white font-bold text-xs sticky left-0 z-10" style={{ backgroundColor: "#1a3a6b" }}>ИТОГО:</td>
+                      <td className="border border-blue-900 px-1 py-1.5 text-center text-white font-bold text-xs" style={{ width: "80px" }}>
+                        {chastTotalNach > 0 ? chastTotalNach.toLocaleString("ru-RU") : ""}
+                      </td>
+                      {DAYS.map((d) => {
+                        const s = chastTotalByDay(d);
+                        return (
+                          <td key={d} className="border border-blue-900 px-0.5 py-1.5 text-center text-white font-bold text-xs" style={{ width: "48px" }}>
+                            {s > 0 ? s.toLocaleString("ru-RU") : ""}
+                          </td>
+                        );
+                      })}
+                      <td className="border border-blue-900 px-1 py-1.5 text-center font-bold text-xs" style={{ width: "80px", color: chastTotalOst < 0 ? "#fca5a5" : "#86efac" }}>
+                        {chastTotalOst.toLocaleString("ru-RU")}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>
