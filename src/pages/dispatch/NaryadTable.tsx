@@ -8,6 +8,37 @@ import {
   fmt,
 } from "./types";
 
+// SelectCell — вне компонента, чтобы не нарушать правила хуков
+const SelectCell = ({
+  value,
+  options,
+  placeholder,
+  onChange,
+  width,
+  listId,
+}: {
+  value: string;
+  options: string[];
+  placeholder: string;
+  onChange: (v: string) => void;
+  width: string;
+  listId: string;
+}) => (
+  <td className="border border-gray-300 p-0" style={{ width }}>
+    <datalist id={listId}>
+      {options.map((o) => <option key={o} value={o} />)}
+    </datalist>
+    <input
+      type="text"
+      list={listId}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors"
+    />
+  </td>
+);
+
 interface Props {
   rows: NaryadRow[];
   activeCell: { rowId: number; col: string } | null;
@@ -33,9 +64,13 @@ const NaryadTable = ({
 }: Props) => {
   const { vehicles, employees, terminals } = useAppStore();
 
-  const vodители = employees.filter((e) => e.dolzhnost === "Водитель" && e.status === "active");
-  const кондукторы = employees.filter((e) => e.dolzhnost === "Кондуктор" && e.status === "active");
+  const driverFios      = employees.filter((e) => e.dolzhnost === "Водитель"  && e.status === "active").map((e) => e.fio);
+  const condFios        = employees.filter((e) => e.dolzhnost === "Кондуктор" && e.status === "active").map((e) => e.fio);
   const activeTerminals = terminals.filter((t) => t.status === "active");
+
+  // Стабильные id для datalist
+  const vodListId  = "narad-vod-datalist";
+  const condListId = "narad-cond-datalist";
 
   const handleKeyDown = (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
     if (e.key === "Tab" || e.key === "Enter") {
@@ -67,61 +102,33 @@ const NaryadTable = ({
   const totalVod  = podrabotkaRows.reduce((s, r) => s + (calcPodrabotka(r, settings)?.vod  ?? 0), 0);
   const totalCond = podrabotkaRows.reduce((s, r) => s + (calcPodrabotka(r, settings)?.cond ?? 0), 0);
 
-  // Выпадающий select с поиском через datalist
-  const SelectCell = ({
-    value,
-    options,
-    placeholder,
-    onChange,
-    width,
-  }: {
-    value: string;
-    options: string[];
-    placeholder: string;
-    onChange: (v: string) => void;
-    width: string;
-  }) => {
-    const listId = `dl-${Math.random().toString(36).slice(2)}`;
-    return (
-      <td className="border border-gray-300 p-0" style={{ width }}>
-        <datalist id={listId}>
-          {options.map((o) => <option key={o} value={o} />)}
-        </datalist>
-        <input
-          type="text"
-          list={listId}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors"
-        />
-      </td>
-    );
-  };
-
   return (
     <>
+      {/* Глобальные datalist для ФИО */}
+      <datalist id={vodListId}>
+        {driverFios.map((f) => <option key={f} value={f} />)}
+      </datalist>
+      <datalist id={condListId}>
+        <option value="без" />
+        {condFios.map((f) => <option key={f} value={f} />)}
+      </datalist>
+
       <div className="overflow-x-auto">
         <table className="border-collapse text-xs" style={{ minWidth: "1200px" }}>
           <thead>
             <tr style={{ backgroundColor: "#1a3a6b" }}>
               <th className="border border-blue-900 px-1 py-2 text-white text-center" style={{ width: "28px" }}>№</th>
-              {/* ТС */}
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "150px" }}>ТС</th>
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "75px" }}>Борт/Гос</th>
-              {/* ФИО — выпадающие */}
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "180px" }}>ФИО водителя</th>
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "180px" }}>ФИО кондуктора</th>
-              {/* Текстовые поля */}
               {TEXT_COLS.map((col) => (
                 <th key={col.key} className="border border-blue-900 px-2 py-2 text-white font-semibold text-left"
                   style={{ width: col.width, minWidth: col.width }}>
                   {col.label}
                 </th>
               ))}
-              {/* Терминал */}
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "130px" }}>Терминал</th>
-              {/* Подработка */}
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "70px" }}>Подработка</th>
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "70px" }}>Билетов</th>
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "95px" }}>Водитель, ₽</th>
@@ -162,22 +169,24 @@ const NaryadTable = ({
                     {!row.bortovoy && !row.gos && <span className="text-gray-300">—</span>}
                   </td>
 
-                  {/* ФИО водителя — datalist */}
+                  {/* ФИО водителя */}
                   <SelectCell
                     value={row.fio}
-                    options={водители.map((e) => e.fio)}
+                    options={driverFios}
                     placeholder="— водитель —"
                     onChange={(v) => onUpdateCell(row.id, "fio", v)}
                     width="180px"
+                    listId={vodListId}
                   />
 
-                  {/* ФИО кондуктора — datalist */}
+                  {/* ФИО кондуктора */}
                   <SelectCell
                     value={row.fioKond}
-                    options={кондукторы.map((e) => e.fio)}
-                    placeholder="— кондуктор / без —"
+                    options={condFios}
+                    placeholder="без"
                     onChange={(v) => onUpdateCell(row.id, "fioKond", v)}
                     width="180px"
+                    listId={condListId}
                   />
 
                   {/* Текстовые поля */}
@@ -202,7 +211,7 @@ const NaryadTable = ({
                     );
                   })}
 
-                  {/* Терминал — выпадающий */}
+                  {/* Терминал */}
                   <td className="border border-gray-300 p-0" style={{ width: "130px" }}>
                     <select
                       value={row.terminal}
