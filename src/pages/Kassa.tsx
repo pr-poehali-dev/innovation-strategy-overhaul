@@ -322,7 +322,7 @@ const Kassa = () => {
       return an !== bn ? an - bn : a.bort.localeCompare(b.bort);
     });
    
-  }, [allData, monthKey]);
+  }, [rows, monthKey]);
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
