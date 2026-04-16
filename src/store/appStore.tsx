@@ -178,6 +178,45 @@ export const INITIAL_ROUTES: Route[] = [
   { id: 105, nomer: "6",  nazvanie: "мкр. Индустриальный - ул. Уральская",nachalo: "мкр. Индустриальный",  konets: "ул. Уральская",      grafikov: 4,  intervalMin: "", rabochieChasy: "", companyIdx: 1 },
 ];
 
+// ─── Расписание выпуска / захода по графику ─────────────────────────────────
+// ключ — "marshrut" строки наряда, например "1/1", "3/5"
+export interface GrafikSchedule {
+  vypusk: string;   // время выезда на линию, "HH:MM"
+  zakhod: string;   // время захода с линии, "HH:MM"
+}
+export type RouteSchedule = Record<string, GrafikSchedule>;
+
+export const INITIAL_ROUTE_SCHEDULE: RouteSchedule = {
+  // Маршрут №1
+  "1/1":  { vypusk: "06:00", zakhod: "18:52" },
+  "1/2":  { vypusk: "05:55", zakhod: "19:05" },
+  "1/3":  { vypusk: "05:50", zakhod: "19:25" },
+  "1/4":  { vypusk: "05:40", zakhod: "18:10" },
+  "1/5":  { vypusk: "05:30", zakhod: "18:20" },
+  "1/6":  { vypusk: "05:10", zakhod: "19:00" },
+  "1/7":  { vypusk: "05:20", zakhod: "19:30" },
+  "1/8":  { vypusk: "06:30", zakhod: "19:40" },
+  "1/9":  { vypusk: "06:20", zakhod: "19:45" },
+  "1/10": { vypusk: "06:10", zakhod: "19:48" },
+  // Маршрут №3
+  "3/1":  { vypusk: "05:47", zakhod: "19:15" },
+  "3/2":  { vypusk: "05:22", zakhod: "19:35" },
+  "3/3":  { vypusk: "05:32", zakhod: "18:45" },
+  "3/4":  { vypusk: "06:22", zakhod: "18:48" },
+  "3/5":  { vypusk: "06:43", zakhod: "19:50" },
+  "3/6":  { vypusk: "05:17", zakhod: "18:15" },
+  "3/7":  { vypusk: "05:12", zakhod: "18:25" },
+  "3/8":  { vypusk: "05:27", zakhod: "18:30" },
+  "3/9":  { vypusk: "06:03", zakhod: "19:35" },
+  "3/10": { vypusk: "06:32", zakhod: "18:40" },
+  "3/11": { vypusk: "",      zakhod: ""       },
+  // Маршрут №6
+  "6/1":  { vypusk: "05:40", zakhod: "19:38" },
+  "6/2":  { vypusk: "05:34", zakhod: "19:45" },
+  "6/3":  { vypusk: "",      zakhod: ""       },
+  "6/4":  { vypusk: "",      zakhod: ""       },
+};
+
 // dateKey format: "YYYY-MM-DD"
 export type WeeklyNaryady = Record<string, NaryadRowStore[]>;
 
@@ -217,6 +256,8 @@ interface AppStore {
   setDtpRecords: React.Dispatch<React.SetStateAction<DtpRecord[]>>;
   weeklyDayMeta: WeeklyDayMeta;
   setWeeklyDayMeta: React.Dispatch<React.SetStateAction<WeeklyDayMeta>>;
+  routeSchedule: RouteSchedule;
+  setRouteSchedule: React.Dispatch<React.SetStateAction<RouteSchedule>>;
 }
 
 // ─── ДТП ────────────────────────────────────────────────────────────────────
@@ -369,6 +410,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [routes,          setRoutes]          = usePersist<Route[]>               ("routes",          INITIAL_ROUTES);
   const [dtpRecords,      setDtpRecords]      = usePersist<DtpRecord[]>           ("dtpRecords",      []);
   const [weeklyDayMeta,   setWeeklyDayMeta]   = usePersist<WeeklyDayMeta>         ("weeklyDayMeta",   {});
+  const [routeSchedule,   setRouteSchedule]   = usePersist<RouteSchedule>         ("routeSchedule",   INITIAL_ROUTE_SCHEDULE);
 
   return (
     <AppContext.Provider value={{
@@ -384,6 +426,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       routes, setRoutes,
       dtpRecords, setDtpRecords,
       weeklyDayMeta, setWeeklyDayMeta,
+      routeSchedule, setRouteSchedule,
     }}>
       {children}
     </AppContext.Provider>

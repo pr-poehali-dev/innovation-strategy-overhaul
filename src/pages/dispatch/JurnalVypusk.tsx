@@ -10,7 +10,7 @@ interface Props {
 }
 
 const JurnalVypusk = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
-  const { companies, employees, vehicles, routes } = useAppStore();
+  const { companies, employees, vehicles, routes, routeSchedule } = useAppStore();
 
   const mekhFio = dayMeta.mekhFio || employees.find((e) => e.dolzhnost === "Механик по выпуску" && e.status === "active")?.fio || "_______________";
   const dispFio = dayMeta.dispFio || employees.find((e) => e.dolzhnost === "Диспетчер"          && e.status === "active")?.fio || "_______________";
@@ -92,7 +92,8 @@ const JurnalVypusk = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
           <tbody>
             {blockRows.map((row, idx) => {
               const veh = getVehicle(row.bortovoy);
-              const vod = getVodInfo(row.fio);
+              const vod   = getVodInfo(row.fio);
+              const sched = routeSchedule[row.marshrut];
               return (
                 <tr key={row.id} style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f0f4ff" }}>
                   <td className="border border-gray-300 text-center py-2.5 text-gray-400">{idx + 1}</td>
@@ -104,12 +105,12 @@ const JurnalVypusk = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
                   <td className="border border-gray-300 px-1 font-medium">{row.fio}</td>
                   <td className="border border-gray-300 px-1 text-center text-[8px]">{vod?.udostoverenie || ""}</td>
                   <td className="border border-gray-300 px-1">{row.fioKond && row.fioKond !== "без" ? row.fioKond : ""}</td>
-                  <td className="border border-gray-300"></td>
+                  <td className="border border-gray-300 px-1 text-center font-semibold text-blue-900">{sched?.vypusk || ""}</td>
                   <td className="border border-gray-300"></td>
                   <td className="border border-gray-300"></td>
                   <td className="border border-gray-300 text-center text-green-800 font-semibold">✓</td>
                   <td className="border border-gray-300"></td>
-                  <td className="border border-gray-300"></td>
+                  <td className="border border-gray-300 px-1 text-center font-semibold text-red-700">{sched?.zakhod || ""}</td>
                   <td className="border border-gray-300"></td>
                   <td className="border border-gray-300"></td>
                 </tr>

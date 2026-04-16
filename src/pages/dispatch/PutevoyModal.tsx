@@ -4,6 +4,7 @@ import PutevoyList, { PutevoyData } from "@/components/PutevoyList";
 import { useAppStore, DayMeta } from "@/store/appStore";
 import { NaryadRow } from "./types";
 
+
 interface Props {
   row: NaryadRow;
   today: string;
@@ -12,7 +13,8 @@ interface Props {
 }
 
 const PutevoyModal = ({ row, today, dayMeta, onClose }: Props) => {
-  const { companies, employees, routes, vehicles } = useAppStore();
+  const { companies, employees, routes, vehicles, routeSchedule } = useAppStore();
+  const sched = routeSchedule[row.marshrut];
 
   // Определяем организацию по маршруту
   const routeNum = row.marshrut.split("/")[0].trim();
@@ -58,8 +60,8 @@ const PutevoyModal = ({ row, today, dayMeta, onClose }: Props) => {
     toplivoVydano:   "",
     toplivoOstVyezd: "",
     toplivoOstVozv:  "",
-    vremyaVyezdPlan: "",
-    vremyaVozvPlan:  "",
+    vremyaVyezdPlan: sched?.vypusk ?? "",
+    vremyaVozvPlan:  sched?.zakhod ?? "",
     vremyaVyezdFakt: "",
     vremyaVozvFakt:  "",
     medDopusk:       "",
