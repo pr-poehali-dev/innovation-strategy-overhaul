@@ -510,7 +510,7 @@ const Settings = () => {
             <FixedValueTab label="ЗП водителя дежурки" unit="₽" value={zpVodDezhurki} onChange={(v) => upd("zpVodDezhurki", v)} />
           )}
           {tab === "dezhDt" && (
-            <FixedValueTab label="Дежурка ДТ" unit="л" value={dezhDt} onChange={(v) => upd("dezhDt", v)} />
+            <FixedValueTab label="Дежурка ДТ" unit="₽" value={dezhDt} onChange={(v) => upd("dezhDt", v)} />
           )}
           {tab === "hozNuzhdyGarazh" && (
             <FixedValueTab label="Хоз. нужды гараж" unit="₽" value={hozNuzhdyGarazh} onChange={(v) => upd("hozNuzhdyGarazh", v)} />

@@ -41,11 +41,29 @@ const KassaOtchet = ({
 
   const renderCell = (row: KassaRow, col: typeof MAIN_COLS[number], rowIdx: number, colIdx: number) => {
     const isActive     = activeCell?.rowId === row.id && activeCell?.col === col.key;
-    const isPodr       = col.key === "podrVod" || col.key === "podrCond" || col.key === "rashodDt";
+    const isPodr       = col.key === "podrVod" || col.key === "podrCond";
     const isViruchka   = col.key === "viruchka";
     const isProdBilety = col.key === "prodBilety";
-    const calcBg       = isViruchka ? "#f0fdf4" : isProdBilety ? "#eff6ff" : undefined;
-    const calcTitle    = isViruchka
+    const isRashodDt   = col.key === "rashodDt";
+
+    // rashodDt — только для просмотра (читается из настроек, не редактируется)
+    if (isRashodDt) {
+      return (
+        <td
+          key={col.key}
+          className="border border-gray-300 p-0"
+          style={{ width: col.width, backgroundColor: "#fafafa" }}
+          title="Расход ДТ — только для просмотра"
+        >
+          <div className="w-full h-6 px-1 flex items-center justify-center text-xs text-gray-500 select-none">
+            {row[col.key] as string || "—"}
+          </div>
+        </td>
+      );
+    }
+
+    const calcBg    = isViruchka ? "#f0fdf4" : isProdBilety ? "#eff6ff" : undefined;
+    const calcTitle = isViruchka
       ? "Авто: Кол.бил × Стоимость проезда + Безнал + QR"
       : isProdBilety
         ? "Авто: Выручка ÷ Стоимость проезда"
@@ -64,7 +82,6 @@ const KassaOtchet = ({
           onFocus={() => onSetActiveCell({ rowId: row.id, col: col.key })}
           onBlur={() => onSetActiveCell(null)}
           onKeyDown={(e) => onKeyDown(e, rowIdx, colIdx)}
-          autoFocus={isActive}
           className={[
             "w-full h-6 px-1 bg-transparent outline-none border-2 transition-colors text-center",
             isActive ? "border-blue-500 bg-blue-50" : "border-transparent",
@@ -103,7 +120,8 @@ const KassaOtchet = ({
                     }}
                     title={
                       col.key === "viruchka"   ? "Авто: Кол.бил × Стоимость проезда + Безнал + QR" :
-                      col.key === "prodBilety" ? "Авто: Выручка ÷ Стоимость проезда" : undefined
+                      col.key === "prodBilety" ? "Авто: Выручка ÷ Стоимость проезда" :
+                      col.key === "rashodDt"   ? "Только для просмотра" : undefined
                     }
                   >
                     {col.label}{col.key === "viruchka" || col.key === "prodBilety" ? " ⟳" : ""}
