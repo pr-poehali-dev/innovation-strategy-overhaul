@@ -5,6 +5,7 @@ import { useAppStore, getGrafiki } from "@/store/appStore";
 import { calcPodrabotka } from "@/pages/dispatch/types";
 
 const LS_PRODAZHI = "dat_prodazhi_v1";
+const LS_KASSA    = "dat_kassa_v1";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function loadProdazhi(): Record<string, any> {
   try { const r = localStorage.getItem(LS_PRODAZHI); return r ? JSON.parse(r) : {}; } catch (e) { console.warn(e); return {}; }
@@ -12,6 +13,10 @@ function loadProdazhi(): Record<string, any> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function saveProdazhi(data: Record<string, any>): void {
   try { localStorage.setItem(LS_PRODAZHI, JSON.stringify(data)); } catch (e) { console.warn(e); }
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function loadKassaForProdazhi(): Record<string, any> {
+  try { const r = localStorage.getItem(LS_KASSA); return r ? JSON.parse(r) : {}; } catch (e) { console.warn(e); return {}; }
 }
 
 interface ProdazhiRow {
@@ -86,12 +91,12 @@ const Prodazhi = () => {
     allData[toDateKey(new Date())]?.rows ?? Array.from({ length: 10 }, emptyRow)
   );
 
-  // При смене даты — загружаем сохранённые данные
+  // При смене даты — читаем свежие данные из localStorage (включая обновления из Кассы)
   useEffect(() => {
-    const saved = allData[selectedKey];
-    setRows(saved?.rows ?? Array.from({ length: 10 }, emptyRow));
-    setDispFio(saved?.dispFio ?? "");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    const fresh = loadProdazhi()[selectedKey];
+    setRows(fresh?.rows ?? Array.from({ length: 10 }, emptyRow));
+    setDispFio(fresh?.dispFio ?? "");
+   
   }, [selectedKey]);
 
   // Сохранение при каждом изменении строк или диспетчера
@@ -102,6 +107,41 @@ const Prodazhi = () => {
       return updated;
     });
   }, [rows, dispFio, selectedKey]);
+
+  // Читает rashodDt из Кассы и вычисляет DT (литры) для Продаж
+  const applyDtFromKassa = (key: string) => {
+    const kassaData = loadKassaForProdazhi()[key];
+    if (!kassaData?.rows) return;
+    const cenaTopliva = parseFloat(naryadSettings.stoimostTopliva) || 0;
+    if (!cenaTopliva) return;
+    const dtByBort = new Map<string, string>();
+    (kassaData.rows as Array<{ bort?: string; rashodDt?: string }>).forEach((r) => {
+      if (r.bort && r.rashodDt && parseFloat(r.rashodDt) > 0) {
+        dtByBort.set(r.bort, String(Math.round(parseFloat(r.rashodDt) / cenaTopliva * 100) / 100));
+      }
+    });
+    if (dtByBort.size === 0) return;
+    setRows((prev) => prev.map((r) => {
+      const newDt = dtByBort.get(r.bort);
+      return newDt !== undefined ? { ...r, dt: newDt } : r;
+    }));
+  };
+
+  // Обновляем DT при смене даты и при изменении стоимости топлива
+  useEffect(() => {
+    applyDtFromKassa(selectedKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey, naryadSettings.stoimostTopliva]);
+
+  // Обновляем DT при изменении Кассы в другой вкладке браузера
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === LS_KASSA) applyDtFromKassa(selectedKey);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey]);
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
 
   // Строки наряда за выбранный день

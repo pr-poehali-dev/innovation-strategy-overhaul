@@ -28,7 +28,11 @@ function loadKassa(): Record<string, any> {
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function saveKassa(data: Record<string, any>): void {
-  try { localStorage.setItem(LS_KASSA, JSON.stringify(data)); } catch (e) { console.warn(e); }
+  try {
+    localStorage.setItem(LS_KASSA, JSON.stringify(data));
+    // Уведомляем другие компоненты на той же вкладке (storage event не срабатывает автоматически)
+    window.dispatchEvent(new StorageEvent("storage", { key: LS_KASSA }));
+  } catch (e) { console.warn(e); }
 }
 
 const toDateKey = (d: Date): string => {
