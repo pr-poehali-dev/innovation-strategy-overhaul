@@ -250,7 +250,6 @@ const KassaOtchet = ({
                           onFocus={() => onSetActiveVyp({ rowId: vRow.id, col: col.key })}
                           onBlur={() => onSetActiveVyp(null)}
                           onKeyDown={(e) => onVypKeyDown(e, rowIdx, colIdx)}
-                          autoFocus={isActive}
                           className={[
                             "w-full h-6 px-1 text-gray-800 bg-transparent outline-none border-2 transition-colors text-center",
                             isActive ? "border-amber-400 bg-amber-50" : "border-transparent",

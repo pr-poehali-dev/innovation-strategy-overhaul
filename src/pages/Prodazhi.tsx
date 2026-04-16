@@ -107,23 +107,25 @@ const Prodazhi = () => {
   // Строки наряда за выбранный день
   const naryadRows = useMemo(() => weeklyNaryady[selectedKey] ?? [], [weeklyNaryady, selectedKey]);
 
-  // Синхронизация напрямую из weeklyNaryady — не зависит от открытия Dispatch
+  // Синхронизация из наряда: только работающие экипажи (без статуса отсутствия)
   useEffect(() => {
     if (!naryadRows.length) return;
     setRows((currentRows) => {
       const existingByBort = new Map(currentRows.map((r) => [r.bort, r]));
-      return naryadRows.map((r) => {
+      // Фильтруем: только с ФИО и без статуса отсутствия
+      const workingRows = naryadRows.filter((r) => r.fio && !r.statusOtsutstviya);
+      return workingRows.map((r) => {
         const existing = existingByBort.get(r.bortovoy);
         const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
         return {
           ...(existing ?? emptyRow()),
-          bort:     r.bortovoy,
-          marGr:    r.marshrut,
-          fioVod:   r.fio,
-          fioCond:  r.fioKond || "без",
-          kolBil:   r.biletov || (existing?.kolBil ?? ""),
-          podVod:   calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : (existing?.podVod  ?? ""),
-          podCond:  calc && calc.cond > 0 ? String(Math.round(calc.cond)) : (existing?.podCond ?? ""),
+          bort:    r.bortovoy,
+          marGr:   r.marshrut,
+          fioVod:  r.fio,
+          fioCond: r.fioKond || "без",
+          kolBil:  r.biletov || (existing?.kolBil ?? ""),
+          podVod:  calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : (existing?.podVod  ?? ""),
+          podCond: calc && calc.cond > 0 ? String(Math.round(calc.cond)) : (existing?.podCond ?? ""),
         };
       });
     });
@@ -181,7 +183,6 @@ const Prodazhi = () => {
             onFocus={() => setActiveCell({ rowId: row.id, col: col.key })}
             onBlur={() => setActiveCell(null)}
             onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
-            autoFocus={isActive}
             className={`w-full h-6 px-1 text-xs text-gray-800 bg-transparent outline-none border-2 ${isActive ? "border-blue-500 bg-blue-50" : "border-transparent"} transition-colors`}
             placeholder="—"
           />
@@ -200,7 +201,6 @@ const Prodazhi = () => {
             onFocus={() => setActiveCell({ rowId: row.id, col: col.key })}
             onBlur={() => setActiveCell(null)}
             onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
-            autoFocus={isActive}
             className={`w-full h-6 px-1 text-xs text-gray-800 bg-transparent outline-none border-2 ${isActive ? "border-blue-500 bg-blue-50" : "border-transparent"} transition-colors`}
             placeholder="без"
           />
@@ -219,7 +219,6 @@ const Prodazhi = () => {
             onFocus={() => setActiveCell({ rowId: row.id, col: col.key })}
             onBlur={() => setActiveCell(null)}
             onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
-            autoFocus={isActive}
             className={`w-full h-6 px-1 text-xs text-gray-800 bg-transparent outline-none border-2 ${isActive ? "border-blue-500 bg-blue-50" : "border-transparent"} transition-colors text-center`}
             placeholder="1/1"
           />
@@ -238,7 +237,6 @@ const Prodazhi = () => {
             onFocus={() => setActiveCell({ rowId: row.id, col: col.key })}
             onBlur={() => setActiveCell(null)}
             onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
-            autoFocus={isActive}
             className={`w-full h-6 px-1 text-xs font-bold text-blue-800 bg-transparent outline-none border-2 ${isActive ? "border-blue-500 bg-blue-50" : "border-transparent"} transition-colors text-center`}
             placeholder="—"
           />
@@ -256,7 +254,6 @@ const Prodazhi = () => {
           onFocus={() => setActiveCell({ rowId: row.id, col: col.key })}
           onBlur={() => setActiveCell(null)}
           onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
-          autoFocus={isActive}
           disabled={isOff && (col.key === "dt" || col.key === "reysy" || col.key === "kolBil" || col.key === "valid" || col.key === "qr")}
           className={[
             "w-full h-6 px-1 text-xs bg-transparent outline-none border-2 transition-colors text-center",

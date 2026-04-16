@@ -89,29 +89,29 @@ const Kassa = () => {
   // Строки наряда за выбранный день
   const naryadRows = useMemo(() => weeklyNaryady[selectedKey] ?? [], [weeklyNaryady, selectedKey]);
 
-  // Синхронизация из наряда — заполняет только поля из наряда,
-  // НЕ затрагивает поля ручного ввода (beznal, qr, viruchka, rashodDt и т.д.)
+  // Синхронизация из наряда: только работающие экипажи (без статуса отсутствия)
   useEffect(() => {
     if (!naryadRows.length) return;
+    const cena = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
     setRows((currentRows) => {
       const existingByBort = new Map(currentRows.map((r) => [r.bort, r]));
-      const syncedRows: KassaRow[] = naryadRows.map((r) => {
+      // Только строки с фио и без статуса отсутствия
+      const workingRows = naryadRows.filter((r) => r.fio && !r.statusOtsutstviya);
+      const syncedRows: KassaRow[] = workingRows.map((r) => {
         const existing = existingByBort.get(r.bortovoy);
         const existingRow = existing ?? emptyRow();
         const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
-        const isWorking = !r.statusOtsutstviya && r.fio;
         const hasCond = !!(r.fioKond && r.fioKond.trim());
-        // Обед — только если строка новая (нет в сохранённых)
-        const obedAuto = !existing && isWorking
-          ? hasCond ? (naryadSettings.obedVodKond ?? "300") : (naryadSettings.obedVod ?? "150")
-          : existingRow.obed;
-        // Подработка — пересчитываем всегда (зависит от настроек)
+        // Обед — всегда проставляем (при изменении кондуктора тоже обновляется)
+        const obedAuto = hasCond
+          ? (naryadSettings.obedVodKond ?? "300")
+          : (naryadSettings.obedVod ?? "150");
+        // Подработка из настроек
         const podrVod  = calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : existingRow.podrVod;
         const podrCond = calc && calc.cond > 0 ? String(Math.round(calc.cond)) : existingRow.podrCond;
-        // kolBil из наряда (количество билетов)
+        // kolBil из наряда
         const kolBil = r.biletov || existingRow.kolBil;
-        // Выручку НЕ трогаем если строка уже есть — пользователь мог ввести вручную
-        const cena = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
+        // Выручку не трогаем если строка уже есть (пользователь мог ввести вручную)
         const viruchka = existing
           ? existingRow.viruchka
           : (() => {
@@ -123,32 +123,22 @@ const Kassa = () => {
         const prodBilety = viruchka && cena
           ? String(Math.round(toNum(viruchka) / cena))
           : existingRow.prodBilety;
+        const rashodDt = existingRow.rashodDt;
         const itogo = (() => {
-          const v    = toNum(viruchka);
-          const o    = toNum(obedAuto);
-          const rDt  = toNum(existingRow.rashodDt);
-          const chek = toNum(existingRow.chek);
-          const vozv = toNum(existingRow.vozvrat);
-          const pv   = toNum(podrVod);
-          const pk   = toNum(podrCond);
-          return (v || o || rDt || chek || vozv || pv || pk)
-            ? String(Math.round(v - o - rDt - chek - vozv - pv - pk))
+          const v = toNum(viruchka), o = toNum(obedAuto), rd = toNum(rashodDt);
+          const ch = toNum(existingRow.chek), vz = toNum(existingRow.vozvrat);
+          const pv = toNum(podrVod), pk = toNum(podrCond);
+          return (v || o || rd || ch || vz || pv || pk)
+            ? String(Math.round(v - o - rd - ch - vz - pv - pk))
             : existingRow.itogo;
         })();
         return {
           ...existingRow,
-          type:       "route" as const,
-          mar:        r.marshrut,
-          bort:       r.bortovoy,
-          fioVod:     r.fio,
-          fioCond:    r.fioKond || "без",
-          kolBil,
-          viruchka,
-          prodBilety,
-          obed:       obedAuto,
-          podrVod,
-          podrCond,
-          itogo,
+          type: "route" as const,
+          mar: r.marshrut, bort: r.bortovoy,
+          fioVod: r.fio, fioCond: r.fioKond || "без",
+          kolBil, viruchka, prodBilety, obed: obedAuto,
+          podrVod, podrCond, itogo,
         };
       });
       const dispRows = currentRows.filter((r) => r.type === "disp");
@@ -213,6 +203,22 @@ const Kassa = () => {
       if (ITOGO_DEPS.has(col) && col !== "viruchka") {
         updated.itogo = calcItogo(r, { [col]: value });
       }
+      // При изменении Расх.ДТ — сразу переносим в Продажи
+      if (col === "rashodDt" && r.bort) {
+        const cenaTopliva = parseFloat(naryadSettings.stoimostTopliva) || 0;
+        if (cenaTopliva && toNum(value) > 0) {
+          const litry = String(Math.round(toNum(value) / cenaTopliva * 100) / 100);
+          const prodAll = loadProdazhiAll();
+          const prodDay = prodAll[selectedKey];
+          if (prodDay?.rows) {
+            prodDay.rows = (prodDay.rows as Array<Record<string, string>>).map((pr) =>
+              pr.bort === r.bort ? { ...pr, dt: litry } : pr
+            );
+            prodAll[selectedKey] = prodDay;
+            try { localStorage.setItem(LS_PRODAZHI, JSON.stringify(prodAll)); } catch (e) { console.warn(e); }
+          }
+        }
+      }
       return updated;
     }));
 
@@ -267,32 +273,6 @@ const Kassa = () => {
     setChastRows((prev) => prev.map((r) => r.id === id ? { ...r, vyplaty: { ...r.vyplaty, [day]: val } } : r));
 
   const addChastRow = () => setChastRows((prev) => [...prev, emptyChastRow()]);
-
-  // ─── Перенос Расх.ДТ из кассы → Продажи (поле ДТ = rashodDt / stoimostTopliva) ──
-  const syncRashodDtToProdazhi = () => {
-    const cenaTopliva = parseFloat(naryadSettings.stoimostTopliva) || 0;
-    if (!cenaTopliva) { alert("Укажите стоимость топлива в Настройках"); return; }
-    // Строим карту борт → расходДТ из текущих кассовых строк
-    const rashodByBort = new Map<string, string>();
-    rows.forEach((r) => {
-      if (r.bort && toNum(r.rashodDt) > 0) {
-        const litry = Math.round(toNum(r.rashodDt) / cenaTopliva * 100) / 100;
-        rashodByBort.set(r.bort, String(litry));
-      }
-    });
-    if (rashodByBort.size === 0) return;
-    // Обновляем Продажи за тот же день
-    const prodAll = loadProdazhiAll();
-    const prodDay = prodAll[selectedKey];
-    if (!prodDay?.rows) return;
-    prodDay.rows = (prodDay.rows as Array<Record<string, string>>).map((r) => {
-      const litry = rashodByBort.get(r.bort ?? "");
-      if (!litry) return r;
-      return { ...r, dt: litry };
-    });
-    prodAll[selectedKey] = prodDay;
-    try { localStorage.setItem(LS_PRODAZHI, JSON.stringify(prodAll)); } catch (e) { console.warn(e); }
-  };
 
   // ─── Синхронизация "Начислено" в ЧастичнаяВыдача ← Ведомость.ostatok ────
   const syncFromVedomost = () => {
@@ -476,14 +456,7 @@ const Kassa = () => {
                     <Icon name="ArrowDownToLine" size={12} />
                     Безнал ← Продажи
                   </button>
-                  <button
-                    onClick={syncRashodDtToProdazhi}
-                    title="Перенести Расход ДТ (₽) в Продажи — ДТ (литры): Расх.ДТ ÷ Стоимость топлива"
-                    className="flex items-center gap-1.5 px-2 py-1 text-xs bg-orange-50 text-orange-700 border border-orange-200 rounded hover:bg-orange-100"
-                  >
-                    <Icon name="Droplets" size={12} />
-                    ДТ → Продажи
-                  </button>
+
                 </>
               )}
               {tab === "chast" && (
