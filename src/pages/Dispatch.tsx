@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
+import NavBar from "@/components/NavBar";
 
 interface NaryadRow {
   id: number;
@@ -65,18 +66,7 @@ const Dispatch = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
-      {/* Top bar */}
-      <div className="bg-gray-800 text-white px-6 py-3 flex items-center justify-between shadow">
-        <div className="flex items-center gap-3">
-          <span className="font-bold text-lg tracking-tight">Дальавтотранс</span>
-          <span className="text-gray-400 text-sm">|</span>
-          <span className="text-gray-300 text-sm">Наряд на работу</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-gray-300">
-          <Icon name="Calendar" size={14} />
-          {today}
-        </div>
-      </div>
+      <NavBar title="Наряд на работу" />
 
       <div className="px-6 py-6 max-w-6xl mx-auto">
         {/* Document header */}
