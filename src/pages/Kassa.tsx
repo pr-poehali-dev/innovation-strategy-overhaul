@@ -258,13 +258,14 @@ const Kassa = () => {
     }));
   };
 
-  // ─── Месячный отчёт: строим из allData за выбранный месяц ────────────────
+  // ─── Месячный отчёт: строим из сохранённых кассовых данных за выбранный месяц
   const monthlyRows = useMemo((): MonthlyKassaRow[] => {
     const prodAll = loadProdazhiAll();
+    const kassaAll = loadKassa();
     const map = new Map<string, MonthlyKassaRow>();
 
     // Перебираем все дни месяца из сохранённых кассовых данных
-    Object.entries(allData).forEach(([dateKey, dayData]) => {
+    Object.entries(kassaAll).forEach(([dateKey, dayData]) => {
       if (!dateKey.startsWith(monthKey)) return;
       const dayRows: KassaRow[] = dayData?.rows ?? [];
 
