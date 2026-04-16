@@ -154,6 +154,10 @@ interface AppStore {
   setVehicles: React.Dispatch<React.SetStateAction<TsVehicle[]>>;
   naryadEntries: NaryadEntry[];
   setNaryadEntries: React.Dispatch<React.SetStateAction<NaryadEntry[]>>;
+  naryadRows: NaryadRowStore[];
+  setNaryadRows: React.Dispatch<React.SetStateAction<NaryadRowStore[]>>;
+  naryadSettings: NaryadSettingsStore;
+  setNaryadSettings: React.Dispatch<React.SetStateAction<NaryadSettingsStore>>;
   companies: CompanySettings[];
   setCompanies: React.Dispatch<React.SetStateAction<CompanySettings[]>>;
   activeCompanyIdx: number;
@@ -165,6 +169,44 @@ interface AppStore {
   routes: Route[];
   setRoutes: React.Dispatch<React.SetStateAction<Route[]>>;
 }
+
+// ─── Типы для наряда (хранятся в сторе) ────────────────────────────────────
+export interface NaryadRowStore {
+  id: number;
+  vehicleId: number | null;
+  bortovoy: string;
+  gos: string;
+  marka: string;
+  garazhny: string;
+  marshrut: string;
+  fio: string;
+  fioKond: string;
+  putevoy: string;
+  terminal: string;
+  podrabotka: boolean;
+  biletov: string;
+}
+
+export interface NaryadSettingsStore {
+  stoimostBileta: string;
+  stoimostTopliva: string;
+  rashod: string;
+  procentBez: string;
+  procentVodS: string;
+  procentCondS: string;
+}
+
+const makeEmptyNaryadRow = (): NaryadRowStore => ({
+  id: Date.now() + Math.random(),
+  vehicleId: null, bortovoy: "", gos: "", marka: "",
+  garazhny: "", marshrut: "", fio: "", fioKond: "",
+  putevoy: "", terminal: "", podrabotka: false, biletov: "",
+});
+
+const DEFAULT_NARAD_SETTINGS: NaryadSettingsStore = {
+  stoimostBileta: "40", stoimostTopliva: "75", rashod: "30",
+  procentBez: "37", procentVodS: "22", procentCondS: "15",
+};
 
 const AppContext = createContext<AppStore | null>(null);
 
@@ -186,6 +228,10 @@ const INITIAL_EMPLOYEES: Employee[] = [
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [vehicles, setVehicles] = useState<TsVehicle[]>(INITIAL_VEHICLES);
   const [naryadEntries, setNaryadEntries] = useState<NaryadEntry[]>([]);
+  const [naryadRows, setNaryadRows] = useState<NaryadRowStore[]>([
+    makeEmptyNaryadRow(), makeEmptyNaryadRow(), makeEmptyNaryadRow(),
+  ]);
+  const [naryadSettings, setNaryadSettings] = useState<NaryadSettingsStore>(DEFAULT_NARAD_SETTINGS);
   const [companies, setCompanies] = useState<CompanySettings[]>(INITIAL_COMPANIES);
   const [activeCompanyIdx, setActiveCompanyIdx] = useState(0);
   const [terminals, setTerminals] = useState<Terminal[]>([]);
@@ -196,6 +242,8 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     <AppContext.Provider value={{
       vehicles, setVehicles,
       naryadEntries, setNaryadEntries,
+      naryadRows, setNaryadRows,
+      naryadSettings, setNaryadSettings,
       companies, setCompanies,
       activeCompanyIdx, setActiveCompanyIdx,
       terminals, setTerminals,

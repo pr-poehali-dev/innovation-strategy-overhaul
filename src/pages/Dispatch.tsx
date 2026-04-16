@@ -1,28 +1,38 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
-import { useAppStore, NaryadEntry } from "@/store/appStore";
-import { NaryadRow, NormaSettings, emptyRow, DEFAULT_SETTINGS, calcPodrabotka } from "./dispatch/types";
+import { useAppStore, NaryadEntry, NaryadRowStore } from "@/store/appStore";
+import { NaryadRow, NormaSettings, emptyRow, calcPodrabotka } from "./dispatch/types";
 import NormaPanel from "./dispatch/NormaPanel";
 import PutevoyModal from "./dispatch/PutevoyModal";
 import NaryadTable from "./dispatch/NaryadTable";
+
+// Совместимость: NaryadRowStore === NaryadRow по структуре, приводим типы
+const toNaryadRow = (r: NaryadRowStore): NaryadRow => r as unknown as NaryadRow;
+const toStoreRow  = (r: NaryadRow): NaryadRowStore => r as unknown as NaryadRowStore;
 
 const Dispatch = () => {
   const today = new Date().toLocaleDateString("ru-RU", {
     day: "2-digit", month: "2-digit", year: "numeric",
   });
 
-  const { setNaryadEntries } = useAppStore();
+  const {
+    setNaryadEntries,
+    naryadRows, setNaryadRows,
+    naryadSettings, setNaryadSettings,
+  } = useAppStore();
 
-  const [rows, setRows] = useState<NaryadRow[]>([emptyRow(), emptyRow(), emptyRow()]);
+  // Адаптеры — приводим хранимый тип к локальному
+  const rows: NaryadRow[] = naryadRows.map(toNaryadRow);
+  const settings: NormaSettings = naryadSettings;
+
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
-  const [settings, setSettings] = useState<NormaSettings>(DEFAULT_SETTINGS);
   const [showSettings, setShowSettings] = useState(false);
   const [putevoyRow, setPutevoyRow] = useState<NaryadRow | null>(null);
 
-  const buildEntries = useCallback((currentRows: NaryadRow[], currentSettings: NormaSettings): NaryadEntry[] =>
+  const buildEntries = useCallback((currentRows: NaryadRow[], s: NormaSettings): NaryadEntry[] =>
     currentRows.map((r) => {
-      const calc = calcPodrabotka(r, currentSettings);
+      const calc = calcPodrabotka(r, s);
       return {
         date:           today,
         bortovoy:       r.bortovoy,
@@ -40,28 +50,27 @@ const Dispatch = () => {
       };
     }), [today]);
 
-  // Автоматическое разнесение при любом изменении наряда
   useEffect(() => {
     setNaryadEntries(buildEntries(rows, settings));
-  }, [rows, settings, buildEntries, setNaryadEntries]);
+  }, [naryadRows, naryadSettings]); // eslint-disable-line
 
   const updateCell = (id: number, col: keyof NaryadRow, value: string | boolean) => {
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
+    setNaryadRows((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
   };
 
   const updateRow = (id: number, partial: Partial<NaryadRow>) => {
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...partial } : r)));
+    setNaryadRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...partial } : r)));
   };
 
-  const addRow = () => setRows((prev) => [...prev, emptyRow()]);
+  const addRow = () => setNaryadRows((prev) => [...prev, toStoreRow(emptyRow())]);
 
   const deleteRow = (id: number) => {
-    if (rows.length === 1) return;
-    setRows((prev) => prev.filter((r) => r.id !== id));
+    if (naryadRows.length === 1) return;
+    setNaryadRows((prev) => prev.filter((r) => r.id !== id));
   };
 
   const setSetting = (key: keyof NormaSettings, val: string) =>
-    setSettings((prev) => ({ ...prev, [key]: val }));
+    setNaryadSettings((prev) => ({ ...prev, [key]: val }));
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">

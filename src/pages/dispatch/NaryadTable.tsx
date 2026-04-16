@@ -62,18 +62,22 @@ const NaryadTable = ({
   onSetActiveCell,
   onOpenPutevoy,
 }: Props) => {
-  const { employees, terminals, routes } = useAppStore();
+  const { vehicles, employees, terminals, routes } = useAppStore();
 
   const driverFios      = employees.filter((e) => e.dolzhnost === "Водитель"  && e.status === "active").map((e) => e.fio);
   const condFios        = employees.filter((e) => e.dolzhnost === "Кондуктор" && e.status === "active").map((e) => e.fio);
   const activeTerminals = terminals.filter((t) => t.status === "active");
   const allGrafiki      = routes.flatMap((r) => getGrafiki(r));
 
+  // Гаражные номера из ТС (уникальные)
+  const garazhnyOptions = [...new Set(vehicles.map((v) => v.garazhny).filter(Boolean))].sort();
+
   // Стабильные id для datalist
   const vodListId    = "narad-vod-datalist";
   const condListId   = "narad-cond-datalist";
   const grafikListId = "narad-grafik-datalist";
   const termListId   = "narad-term-datalist";
+  const garazhListId = "narad-garazh-datalist";
 
   const handleKeyDown = (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
     if (e.key === "Tab" || e.key === "Enter") {
@@ -109,6 +113,9 @@ const NaryadTable = ({
       <datalist id={termListId}>
         {activeTerminals.map((t) => <option key={t.id} value={t.nomer}>{t.nomer}{t.model ? ` (${t.model})` : ""}</option>)}
       </datalist>
+      <datalist id={garazhListId}>
+        {garazhnyOptions.map((g) => <option key={g} value={g} />)}
+      </datalist>
 
       <div className="overflow-x-auto">
         <table className="border-collapse text-xs" style={{ minWidth: "900px" }}>
@@ -142,6 +149,20 @@ const NaryadTable = ({
                   {TEXT_COLS.map((col, colIdx) => {
                     const isActive = activeCell?.rowId === row.id && activeCell?.col === col.key;
 
+                    // Гаражный № — datalist из списка ТС
+                    if (col.key === "garazhny") {
+                      return (
+                        <SelectCell
+                          key={col.key}
+                          value={row.garazhny}
+                          options={garazhnyOptions}
+                          placeholder=""
+                          onChange={(v) => onUpdateCell(row.id, "garazhny", v)}
+                          width={col.width}
+                          listId={garazhListId}
+                        />
+                      );
+                    }
                     // Маршрут — datalist с графиками
                     if (col.key === "marshrut") {
                       return (
