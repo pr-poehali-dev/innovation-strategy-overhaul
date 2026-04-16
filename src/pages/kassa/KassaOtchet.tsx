@@ -40,10 +40,16 @@ const KassaOtchet = ({
   const vypItogo = vyplaty.reduce((s, v) => s + toNum(v.itogo), 0);
 
   const renderCell = (row: KassaRow, col: typeof MAIN_COLS[number], rowIdx: number, colIdx: number) => {
-    const isActive = activeCell?.rowId === row.id && activeCell?.col === col.key;
-    const isPodr   = col.key === "podrVod" || col.key === "podrCond" || col.key === "rashodDt";
+    const isActive   = activeCell?.rowId === row.id && activeCell?.col === col.key;
+    const isPodr     = col.key === "podrVod" || col.key === "podrCond" || col.key === "rashodDt";
+    const isViruchka = col.key === "viruchka";
     return (
-      <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
+      <td
+        key={col.key}
+        className="border border-gray-300 p-0"
+        style={{ width: col.width, backgroundColor: isViruchka ? "#f0fdf4" : undefined }}
+        title={isViruchka ? "Кол.бил × Стоимость проезда + Безнал + QR (авто)" : undefined}
+      >
         <input
           type="text"
           value={row[col.key] as string}
@@ -53,9 +59,10 @@ const KassaOtchet = ({
           onKeyDown={(e) => onKeyDown(e, rowIdx, colIdx)}
           autoFocus={isActive}
           className={[
-            "w-full h-6 px-1 text-gray-800 bg-transparent outline-none border-2 transition-colors text-center",
+            "w-full h-6 px-1 bg-transparent outline-none border-2 transition-colors text-center",
             isActive ? "border-blue-500 bg-blue-50" : "border-transparent",
-            isPodr ? "text-orange-700" : "",
+            isPodr     ? "text-orange-700 text-gray-800" : "",
+            isViruchka ? "text-green-800 font-semibold" : "text-gray-800",
             col.key === "itogo" ? "font-bold" : "",
           ].join(" ")}
           placeholder=""
@@ -75,9 +82,16 @@ const KassaOtchet = ({
               <tr style={{ backgroundColor: "#1a3a6b" }}>
                 <th className="border border-blue-900 px-1 py-1 text-white text-center" style={{ width: "24px" }}>№</th>
                 {MAIN_COLS.map((col) => (
-                  <th key={col.key} className="border border-blue-900 px-1 py-1 text-white font-semibold text-center leading-tight"
-                    style={{ width: col.width, minWidth: col.width }}>
-                    {col.label}
+                  <th
+                    key={col.key}
+                    className="border border-blue-900 px-1 py-1 text-white font-semibold text-center leading-tight"
+                    style={{
+                      width: col.width, minWidth: col.width,
+                      backgroundColor: col.key === "viruchka" ? "#166534" : undefined,
+                    }}
+                    title={col.key === "viruchka" ? "Авторасчёт: Кол.бил × Стоимость проезда + Безнал + QR" : undefined}
+                  >
+                    {col.label}{col.key === "viruchka" ? " ⟳" : ""}
                   </th>
                 ))}
                 <th className="border border-blue-900 px-1 py-1 text-white font-semibold text-center" style={{ width: "36px" }} title="Право на подработку">Подр.</th>

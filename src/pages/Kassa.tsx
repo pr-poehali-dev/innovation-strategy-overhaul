@@ -105,17 +105,28 @@ const Kassa = () => {
             ? (naryadSettings.obedVodKond ?? "300")
             : (naryadSettings.obedVod ?? "150")
           : "";
+        const newKolBil = r.biletov;
+        const existingRow = existing ?? emptyRow();
+        // Пересчитываем выручку если есть данные из наряда
+        const cena = parseFloat(naryadSettings.stoimostBileta) || 0;
+        const kol  = parseFloat(newKolBil) || 0;
+        const bez  = toNum(existingRow.beznal);
+        const qrV  = toNum(existingRow.qr);
+        const viruchkaAuto = (kol || bez || qrV)
+          ? String(Math.round(kol * cena + bez + qrV))
+          : existingRow.viruchka;
         return {
-          ...(existing ?? emptyRow()),
+          ...existingRow,
           type:     "route" as const,
           mar:      r.marshrut,
           bort:     r.bortovoy,
           fioVod:   r.fio,
           fioCond:  r.fioKond || "без",
-          kolBil:   r.biletov,
-          obed:     obedAuto || (existing?.obed ?? ""),
-          podrVod:  calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : (existing?.podrVod  ?? ""),
-          podrCond: calc && calc.cond > 0 ? String(Math.round(calc.cond)) : (existing?.podrCond ?? ""),
+          kolBil:   newKolBil,
+          viruchka: viruchkaAuto,
+          obed:     obedAuto || (existingRow.obed ?? ""),
+          podrVod:  calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : (existingRow.podrVod  ?? ""),
+          podrCond: calc && calc.cond > 0 ? String(Math.round(calc.cond)) : (existingRow.podrCond ?? ""),
         };
       });
       const dispRows = currentRows.filter((r) => r.type === "disp");
@@ -123,9 +134,28 @@ const Kassa = () => {
     });
   }, [naryadRows, naryadSettings, selectedKey]);
 
+  // ─── Пересчёт выручки: Кол.бил × стоимость + Безнал + QR ───────────────
+  const calcViruchka = (r: KassaRow, overrides: Partial<KassaRow> = {}): string => {
+    const row = { ...r, ...overrides };
+    const kol     = toNum(row.kolBil);
+    const beznal  = toNum(row.beznal);
+    const qr      = toNum(row.qr);
+    const cena    = parseFloat(naryadSettings.stoimostBileta) || 0;
+    if (!kol && !beznal && !qr) return "";
+    return String(Math.round(kol * cena + beznal + qr));
+  };
+
   // ─── Обработчики кассы ───────────────────────────────────────────────────
   const updateCell = (id: number, col: keyof KassaRow, value: string) =>
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
+    setRows((prev) => prev.map((r) => {
+      if (r.id !== id) return r;
+      const updated: KassaRow = { ...r, [col]: value };
+      // Пересчитываем выручку при изменении любого из трёх полей
+      if (col === "kolBil" || col === "beznal" || col === "qr") {
+        updated.viruchka = calcViruchka(r, { [col]: value });
+      }
+      return updated;
+    }));
 
   const addRow = (type: KassaRow["type"] = "route") =>
     setRows((prev) => [...prev, emptyRow(type)]);
