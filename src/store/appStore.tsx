@@ -174,6 +174,26 @@ interface AppStore {
   setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>;
   routes: Route[];
   setRoutes: React.Dispatch<React.SetStateAction<Route[]>>;
+  dtpRecords: DtpRecord[];
+  setDtpRecords: React.Dispatch<React.SetStateAction<DtpRecord[]>>;
+}
+
+// ─── ДТП ────────────────────────────────────────────────────────────────────
+export interface DtpRecord {
+  id: number;
+  date: string;          // дата наряда
+  bortovoy: string;
+  marshrut: string;
+  fioVod: string;
+  fioKond: string;
+  putevoy: string;
+  // заполняется в БДД
+  vremya: string;        // время ДТП
+  mesto: string;         // место ДТП
+  opisanie: string;      // описание
+  postradavshie: string; // пострадавшие
+  ushcherb: string;      // ущерб, ₽
+  status: "new" | "investigating" | "closed";
 }
 
 // ─── Типы для наряда (хранятся в сторе) ────────────────────────────────────
@@ -191,6 +211,7 @@ export interface NaryadRowStore {
   podrabotka: boolean;
   biletov: string;
   statusOtsutstviya: string;
+  dtp: boolean;          // отметка о ДТП
 }
 
 export interface NaryadSettingsStore {
@@ -207,7 +228,7 @@ const makeEmptyNaryadRow = (): NaryadRowStore => ({
   id: Math.random() * 1e15 + performance.now(),
   vehicleId: null, bortovoy: "", gos: "", marka: "",
   marshrut: "", fio: "", fioKond: "",
-  putevoy: "", terminal: "", podrabotka: false, biletov: "", statusOtsutstviya: "",
+  putevoy: "", terminal: "", podrabotka: false, biletov: "", statusOtsutstviya: "", dtp: false,
 });
 
 const DEFAULT_NARAD_SETTINGS: NaryadSettingsStore = {
@@ -294,6 +315,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [terminals, setTerminals] = useState<Terminal[]>([]);
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
   const [routes, setRoutes] = useState<Route[]>(INITIAL_ROUTES);
+  const [dtpRecords, setDtpRecords] = useState<DtpRecord[]>([]);
 
   return (
     <AppContext.Provider value={{
@@ -307,6 +329,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       terminals, setTerminals,
       employees, setEmployees,
       routes, setRoutes,
+      dtpRecords, setDtpRecords,
     }}>
       {children}
     </AppContext.Provider>

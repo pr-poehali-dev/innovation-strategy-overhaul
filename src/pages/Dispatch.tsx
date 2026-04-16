@@ -47,7 +47,7 @@ const makeEmptyRow = (): NaryadRowStore => ({
   id: uid(),
   vehicleId: null, bortovoy: "", gos: "", marka: "",
   marshrut: "", fio: "", fioKond: "",
-  putevoy: "", terminal: "", podrabotka: false, biletov: "",
+  putevoy: "", terminal: "", podrabotka: false, biletov: "", statusOtsutstviya: "", dtp: false,
 });
 
 // Строки по маршрутам: одна строка на каждый график, маршруты отсортированы по номеру
@@ -69,6 +69,7 @@ const Dispatch = () => {
     naryadSettings, setNaryadSettings,
     weeklyNaryady, setWeeklyNaryady,
     routes,
+    dtpRecords, setDtpRecords,
   } = useAppStore();
 
   const settings: NormaSettings = naryadSettings;
@@ -149,6 +150,34 @@ const Dispatch = () => {
     const cur = rowsForDay(selectedKey);
     if (cur.length === 1) return;
     saveRows(selectedKey, cur.filter((r) => r.id !== id));
+  };
+
+  // ДТП — переключение флага и создание/удаление записи в БДД
+  const toggleDtp = (row: NaryadRow) => {
+    const newDtp = !row.dtp;
+    const updated = rowsForDay(selectedKey).map((r) =>
+      r.id === row.id ? { ...r, dtp: newDtp } : r
+    );
+    saveRows(selectedKey, updated);
+    if (newDtp) {
+      const dateStr = toDisplayDate(new Date(selectedKey));
+      setDtpRecords((prev) => [...prev, {
+        id: Date.now() + Math.random(),
+        date: dateStr,
+        bortovoy: row.bortovoy,
+        marshrut: row.marshrut,
+        fioVod: row.fio,
+        fioKond: row.fioKond,
+        putevoy: row.putevoy,
+        vremya: "", mesto: "", opisanie: "", postradavshie: "", ushcherb: "",
+        status: "new",
+      }]);
+    } else {
+      // снятие флага — убираем запись БДД со статусом "new" по борту и дате
+      setDtpRecords((prev) => prev.filter(
+        (d) => !(d.bortovoy === row.bortovoy && d.status === "new" && d.date === toDisplayDate(new Date(selectedKey)))
+      ));
+    }
   };
 
   const setSetting = (key: keyof NormaSettings, val: string) =>
@@ -327,6 +356,7 @@ const Dispatch = () => {
             onDeleteRow={deleteRow}
             onSetActiveCell={setActiveCell}
             onOpenPutevoy={setPutevoyRow}
+            onToggleDtp={toggleDtp}
           />
 
         </div>

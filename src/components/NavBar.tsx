@@ -9,6 +9,7 @@ const LINKS = [
   { to: "/kadry",    label: "Кадры",      icon: "Users"         },
   { to: "/ts",        label: "ТС",          icon: "Bus"            },
   { to: "/terminals", label: "Терминалы",  icon: "CreditCard"     },
+  { to: "/bdd",      label: "БДД",        icon: "ShieldAlert"   },
   { to: "/vedomost", label: "Ведомость",  icon: "FileText"      },
   { to: "/settings", label: "Настройки",  icon: "Settings"      },
 ];

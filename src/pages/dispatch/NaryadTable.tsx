@@ -19,6 +19,7 @@ interface Props {
   onDeleteRow: (id: number) => void;
   onSetActiveCell: (cell: { rowId: number; col: string } | null) => void;
   onOpenPutevoy: (row: NaryadRow) => void;
+  onToggleDtp: (row: NaryadRow) => void;
 }
 
 // Выпадающая ячейка с <select> — исключает уже занятые значения
@@ -105,6 +106,7 @@ const NaryadTable = ({
   onDeleteRow,
   onSetActiveCell,
   onOpenPutevoy,
+  onToggleDtp,
 }: Props) => {
   const { vehicles, employees, terminals, routes } = useAppStore();
 
@@ -178,6 +180,7 @@ const NaryadTable = ({
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "110px" }}>Путевой лист</th>
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "75px" }}>Подработка</th>
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "75px" }}>Путевой</th>
+              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "55px" }}>ДТП</th>
               <th className="border border-blue-900 px-1 py-2" style={{ width: "28px" }}></th>
             </tr>
           </thead>
@@ -313,6 +316,22 @@ const NaryadTable = ({
                     >
                       <Icon name="FileText" size={11} />
                       Лист
+                    </button>
+                  </td>
+
+                  {/* ДТП */}
+                  <td className="border border-gray-300 text-center" style={{ width: "55px" }}>
+                    <button
+                      onClick={() => onToggleDtp(row)}
+                      title={row.dtp ? "ДТП зафиксировано — нажмите для снятия" : "Отметить ДТП"}
+                      className={`flex items-center gap-1 mx-auto px-1.5 py-0.5 text-xs rounded border transition-colors ${
+                        row.dtp
+                          ? "bg-red-600 text-white border-red-700 hover:bg-red-700"
+                          : "bg-gray-50 text-gray-400 border-gray-300 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
+                      }`}
+                    >
+                      <Icon name="AlertTriangle" size={11} />
+                      {row.dtp ? "ДТП" : "—"}
                     </button>
                   </td>
 

@@ -22,6 +22,8 @@ export interface NaryadRow {
   podrabotka: boolean;
   biletov: string;
   statusOtsutstviya: StatusOtsutstviya;
+  dtp: boolean;
+  garazhny?: string;
 }
 
 export interface NormaSettings {
@@ -48,6 +50,7 @@ export const emptyRow = (): NaryadRow => ({
   podrabotka: false,
   biletov: "",
   statusOtsutstviya: "",
+  dtp: false,
 });
 
 export const DEFAULT_SETTINGS: NormaSettings = {

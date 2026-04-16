@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Icon from "@/components/ui/icon";
 import PutevoyList, { PutevoyData } from "@/components/PutevoyList";
 import { useAppStore } from "@/store/appStore";
@@ -11,35 +11,63 @@ interface Props {
 }
 
 const PutevoyModal = ({ row, today, onClose }: Props) => {
-  const { companies, activeCompanyIdx } = useAppStore();
-  const activeCompany = companies[activeCompanyIdx];
+  const { companies, employees, routes, vehicles } = useAppStore();
+
+  // Определяем организацию по маршруту
+  const routeNum = row.marshrut.split("/")[0].trim();
+  const matchedRoute = routes.find((r) => r.nomer === routeNum);
+  const routeCompany = matchedRoute !== undefined ? companies[matchedRoute.companyIdx] : companies[0];
+
+  // ИТР — ищем дежурных по должности
+  const itrByDolzhnost = useMemo(() => {
+    const active = employees.filter((e) => e.status === "active");
+    const find = (d: string) => active.find((e) => e.dolzhnost === d)?.fio ?? "";
+    return {
+      medik:    find("Медик"),
+      mekh:     find("Механик по выпуску"),
+      disp:     find("Диспетчер"),
+      nachGar:  find("Нач. гаража"),
+    };
+  }, [employees]);
+
+  // ТС из справочника по борту
+  const vehicleInfo = useMemo(
+    () => vehicles.find((v) => v.bortovoy === row.bortovoy),
+    [vehicles, row.bortovoy]
+  );
+
+  // Водитель из сотрудников (ищем по ФИО для получения номера удостоверения)
+  const vodInfo = useMemo(
+    () => employees.find((e) => e.fio === row.fio || row.fio.startsWith(e.fio.split(" ")[0])),
+    [employees, row.fio]
+  );
 
   const [extra, setExtra] = useState<Partial<PutevoyData>>({
-    orgNazvanie: activeCompany.nazvanie,
-    orgAdres:    activeCompany.adres,
-    orgTelefon:  activeCompany.telefon,
-    orgInn:      activeCompany.inn,
-    marka: "",
-    gos: "",
-    marshrut: "",
+    orgNazvanie:     routeCompany.nazvanie,
+    orgAdres:        routeCompany.adres,
+    orgTelefon:      routeCompany.telefon,
+    orgInn:          routeCompany.inn,
+    marka:           vehicleInfo?.marka ?? "",
+    gos:             vehicleInfo?.gos   ?? "",
+    marshrut:        matchedRoute ? `№${matchedRoute.nomer} ${matchedRoute.nazvanie}` : "",
     vodUdostVerenie: "",
-    vodKategoria: "D",
-    odometrVyezd: "",
-    odometrVozv: "",
-    toplivoMarka: "ДТ",
-    toplivoVydano: "",
+    vodKategoria:    vodInfo?.kategoriya || "D",
+    odometrVyezd:    "",
+    odometrVozv:     "",
+    toplivoMarka:    "ДТ",
+    toplivoVydano:   "",
     toplivoOstVyezd: "",
-    toplivoOstVozv: "",
+    toplivoOstVozv:  "",
     vremyaVyezdPlan: "",
-    vremyaVozvPlan: "",
+    vremyaVozvPlan:  "",
     vremyaVyezdFakt: "",
-    vremyaVozvFakt: "",
-    medDopusk: "",
-    medPodpis: "",
-    tehDopusk: "",
-    tehPodpis: "",
-    dispFio: "",
-    dispPodpis: "",
+    vremyaVozvFakt:  "",
+    medDopusk:       "",
+    medPodpis:       itrByDolzhnost.medik,
+    tehDopusk:       "",
+    tehPodpis:       itrByDolzhnost.mekh,
+    dispFio:         itrByDolzhnost.disp,
+    dispPodpis:      itrByDolzhnost.disp,
   });
   const [showPrint, setShowPrint] = useState(false);
 
@@ -47,16 +75,16 @@ const PutevoyModal = ({ row, today, onClose }: Props) => {
     setExtra((prev) => ({ ...prev, [key]: val }));
 
   const putevoyData: PutevoyData = {
-    orgNazvanie:       extra.orgNazvanie     ?? activeCompany.nazvanie,
-    orgAdres:          extra.orgAdres        ?? activeCompany.adres,
-    orgTelefon:        extra.orgTelefon      ?? activeCompany.telefon,
-    orgInn:            extra.orgInn          ?? activeCompany.inn,
+    orgNazvanie:       extra.orgNazvanie     ?? routeCompany.nazvanie,
+    orgAdres:          extra.orgAdres        ?? routeCompany.adres,
+    orgTelefon:        extra.orgTelefon      ?? routeCompany.telefon,
+    orgInn:            extra.orgInn          ?? routeCompany.inn,
     nomer:             row.putevoy           || row.id.toString().slice(-4),
     data:              today,
-    marka:             extra.marka           ?? "",
-    gos:               extra.gos             ?? "",
+    marka:             extra.marka           ?? vehicleInfo?.marka ?? "",
+    gos:               extra.gos             ?? vehicleInfo?.gos   ?? "",
     bortovoy:          row.bortovoy,
-    garazhny:          row.bortovoy,
+    garazhny:          vehicleInfo?.garazhny ?? row.bortovoy,
     marshrut:          extra.marshrut        ?? "",
     vodFio:            row.fio,
     vodUdostVerenie:   extra.vodUdostVerenie ?? "",
@@ -73,11 +101,11 @@ const PutevoyModal = ({ row, today, onClose }: Props) => {
     vremyaVyezdFakt:   extra.vremyaVyezdFakt ?? "",
     vremyaVozvFakt:    extra.vremyaVozvFakt  ?? "",
     medDopusk:         extra.medDopusk       ?? "",
-    medPodpis:         extra.medPodpis       ?? "",
+    medPodpis:         extra.medPodpis       ?? itrByDolzhnost.medik,
     tehDopusk:         extra.tehDopusk       ?? "",
-    tehPodpis:         extra.tehPodpis       ?? "",
-    dispFio:           extra.dispFio         ?? "",
-    dispPodpis:        extra.dispPodpis      ?? "",
+    tehPodpis:         extra.tehPodpis       ?? itrByDolzhnost.mekh,
+    dispFio:           extra.dispFio         ?? itrByDolzhnost.disp,
+    dispPodpis:        extra.dispPodpis      ?? itrByDolzhnost.disp,
   };
 
   if (showPrint) {
@@ -85,13 +113,9 @@ const PutevoyModal = ({ row, today, onClose }: Props) => {
   }
 
   const F = ({
-    label,
-    k,
-    placeholder,
+    label, k, placeholder,
   }: {
-    label: string;
-    k: keyof PutevoyData;
-    placeholder?: string;
+    label: string; k: keyof PutevoyData; placeholder?: string;
   }) => (
     <div className="flex flex-col gap-0.5">
       <label className="text-xs text-gray-500">{label}</label>
@@ -122,9 +146,20 @@ const PutevoyModal = ({ row, today, onClose }: Props) => {
           <div className="bg-blue-50 rounded p-3 text-xs text-blue-700 space-y-0.5">
             <div>Водитель: <b>{row.fio || "—"}</b></div>
             {row.fioKond && <div>Кондуктор: <b>{row.fioKond}</b></div>}
-            <div>Бортовой: <b>{row.bortovoy || "—"}</b> · Гаражный: <b>{row.garazhny || "—"}</b></div>
-            <div>Путевой лист №: <b>{row.putevoy || "—"}</b> · Дата: <b>{today}</b></div>
+            <div>Бортовой: <b>{row.bortovoy || "—"}</b> · Гос. знак: <b>{vehicleInfo?.gos || "—"}</b></div>
+            <div>Маршрут: <b>{row.marshrut || "—"}</b> · Путевой лист №: <b>{row.putevoy || "—"}</b> · Дата: <b>{today}</b></div>
+            <div>Организация: <b>{routeCompany.nazvanie}</b></div>
           </div>
+
+          {/* Автозаполненные ИТР */}
+          {(itrByDolzhnost.medik || itrByDolzhnost.mekh || itrByDolzhnost.disp) && (
+            <div className="bg-green-50 border border-green-200 rounded p-2 text-xs text-green-700">
+              <b>Автозаполнено из ИТР:</b>
+              {itrByDolzhnost.medik && <span className="ml-2">Медик: {itrByDolzhnost.medik}</span>}
+              {itrByDolzhnost.mekh  && <span className="ml-2">· Механик: {itrByDolzhnost.mekh}</span>}
+              {itrByDolzhnost.disp  && <span className="ml-2">· Диспетчер: {itrByDolzhnost.disp}</span>}
+            </div>
+          )}
 
           <div>
             <div className="text-xs font-semibold text-gray-600 uppercase mb-2">Организация</div>
@@ -185,9 +220,9 @@ const PutevoyModal = ({ row, today, onClose }: Props) => {
             <div className="text-xs font-semibold text-gray-600 uppercase mb-2">Допуски</div>
             <div className="grid grid-cols-2 gap-2">
               <F label="Мед. осмотр — дата и время" k="medDopusk" placeholder="16.04.2026 05:40" />
-              <F label="Мед. работник (подпись/ФИО)" k="medPodpis" />
+              <F label="Мед. работник (ФИО)" k="medPodpis" />
               <F label="Тех. контроль — дата и время" k="tehDopusk" placeholder="16.04.2026 05:50" />
-              <F label="Контролёр (подпись/ФИО)" k="tehPodpis" />
+              <F label="Контролёр / механик (ФИО)" k="tehPodpis" />
             </div>
           </div>
 
