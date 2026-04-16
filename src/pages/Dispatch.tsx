@@ -41,25 +41,23 @@ const getWeekDays = (monday: Date): Date[] =>
 // Тип адаптеры
 const toNaryadRow = (r: NaryadRowStore): NaryadRow => r as unknown as NaryadRow;
 
+let _rowIdCounter = Date.now();
+const nextId = () => ++_rowIdCounter;
+
 const makeEmptyRow = (): NaryadRowStore => ({
-  id: Date.now() + Math.random(),
+  id: nextId(),
   vehicleId: null, bortovoy: "", gos: "", marka: "",
   marshrut: "", fio: "", fioKond: "",
   putevoy: "", terminal: "", podrabotka: false, biletov: "",
 });
 
-// Строки по маршрутам: одна строка на каждый график в порядке маршрутов
+// Строки по маршрутам: одна строка на каждый график, маршруты отсортированы по номеру
 const makeRowsFromRoutes = (routes: Route[]): NaryadRowStore[] => {
-  // Сортируем маршруты по числовому номеру (1, 3, 6, 15, 24...)
   const sorted = [...routes].sort((a, b) => Number(a.nomer) - Number(b.nomer));
   const rows: NaryadRowStore[] = [];
   sorted.forEach((route) => {
     for (let i = 1; i <= route.grafikov; i++) {
-      rows.push({
-        ...makeEmptyRow(),
-        id: Date.now() + Math.random(),
-        marshrut: `${route.nomer}/${i}`,
-      });
+      rows.push({ ...makeEmptyRow(), marshrut: `${route.nomer}/${i}` });
     }
   });
   return rows.length > 0 ? rows : [makeEmptyRow(), makeEmptyRow(), makeEmptyRow()];
