@@ -197,6 +197,7 @@ export interface NaryadSettingsStore {
   procentBez: string;
   procentVodS: string;
   procentCondS: string;
+  fixedRoute6: string;
 }
 
 const makeEmptyNaryadRow = (): NaryadRowStore => ({
@@ -209,6 +210,7 @@ const makeEmptyNaryadRow = (): NaryadRowStore => ({
 const DEFAULT_NARAD_SETTINGS: NaryadSettingsStore = {
   stoimostBileta: "40", stoimostTopliva: "75", rashod: "30",
   procentBez: "37", procentVodS: "22", procentCondS: "15",
+  fixedRoute6: "7000",
 };
 
 const AppContext = createContext<AppStore | null>(null);

@@ -183,7 +183,7 @@ const Settings = () => {
   const [tab, setTab] = useState<TabType>("company");
   const [saved, setSaved] = useState(false);
 
-  const { companies, setCompanies, activeCompanyIdx, setActiveCompanyIdx, routes, setRoutes } = useAppStore();
+  const { companies, setCompanies, activeCompanyIdx, setActiveCompanyIdx, routes, setRoutes, naryadSettings, setNaryadSettings } = useAppStore();
   const company = companies[activeCompanyIdx];
 
   // Маршруты текущей организации
@@ -202,8 +202,9 @@ const Settings = () => {
   const [dezhDt,           setDezhDt]           = useState("");
   const [hozNuzhdyGarazh,  setHozNuzhdyGarazh]  = useState("");
 
-  // Фиксированная оплата: маршрут №6 — водитель без кондуктора
-  const [fixedRoute6, setFixedRoute6] = useState("7000");
+  // Фиксированная оплата: маршрут №6 — из appStore
+  const fixedRoute6 = naryadSettings.fixedRoute6;
+  const setFixedRoute6 = (v: string) => setNaryadSettings({ ...naryadSettings, fixedRoute6: v });
 
   // Процентные таблицы (наименование + значение)
   const [procentVodBezCond, setProcentVodBezCond] = useState<SimpleRow[]>([emptySimpleRow()]);

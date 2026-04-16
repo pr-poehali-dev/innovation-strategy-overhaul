@@ -6,12 +6,13 @@ interface Props {
 }
 
 const FIELDS: { key: keyof NormaSettings; label: string }[] = [
-  { key: "stoimostBileta",  label: "Стоимость билета, ₽"       },
-  { key: "stoimostTopliva", label: "Стоимость топлива, ₽/л"    },
-  { key: "rashod",          label: "Расход топлива, л/100км"   },
-  { key: "procentBez",      label: "% водителя без кондуктора" },
-  { key: "procentVodS",     label: "% водителя с кондуктором"  },
-  { key: "procentCondS",    label: "% кондуктора"              },
+  { key: "stoimostBileta",  label: "Стоимость билета, ₽"          },
+  { key: "stoimostTopliva", label: "Стоимость топлива, ₽/л"       },
+  { key: "rashod",          label: "Расход топлива, л/100км"      },
+  { key: "procentBez",      label: "% водителя без кондуктора"    },
+  { key: "procentVodS",     label: "% водителя с кондуктором"     },
+  { key: "procentCondS",    label: "% кондуктора"                 },
+  { key: "fixedRoute6",     label: "Маршрут №6 фикс. оплата, ₽"  },
 ];
 
 const NormaPanel = ({ settings, onSetSetting }: Props) => (

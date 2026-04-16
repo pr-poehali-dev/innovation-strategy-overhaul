@@ -20,6 +20,7 @@ export interface NormaSettings {
   procentBez: string;
   procentVodS: string;
   procentCondS: string;
+  fixedRoute6: string;
 }
 
 export const emptyRow = (): NaryadRow => ({
@@ -44,6 +45,7 @@ export const DEFAULT_SETTINGS: NormaSettings = {
   procentBez: "37",
   procentVodS: "22",
   procentCondS: "15",
+  fixedRoute6: "7000",
 };
 
 // Порядок: Борт № → Маршрут → Терминал → Путевой лист
@@ -59,12 +61,20 @@ export function calcPodrabotka(
   s: NormaSettings,
 ): { vod: number; cond: number } | null {
   if (!row.podrabotka || !row.biletov) return null;
+  const hasCond = row.fioKond.trim().length > 0;
+
+  // Маршрут №6 без кондуктора — фиксированная оплата за смену
+  const routeNum = row.marshrut.split("/")[0].trim();
+  if (routeNum === "6" && !hasCond) {
+    const fixed = parseFloat(s.fixedRoute6) || 0;
+    return { vod: fixed, cond: 0 };
+  }
+
   const bilety = parseFloat(row.biletov) || 0;
   const cena = parseFloat(s.stoimostBileta) || 0;
   const toplivoRub =
     (parseFloat(s.rashod) / 100) * bilety * (parseFloat(s.stoimostTopliva) || 0);
   const vyuchka = bilety * cena - toplivoRub;
-  const hasCond = row.fioKond.trim().length > 0;
   if (!hasCond) {
     return { vod: vyuchka * (parseFloat(s.procentBez) / 100), cond: 0 };
   }
