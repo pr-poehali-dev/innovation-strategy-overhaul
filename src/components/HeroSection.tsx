@@ -2,9 +2,11 @@ import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 
 const SECTIONS = [
-  { to: "/dispatch", label: "Наряд",   icon: "ClipboardList", desc: "Наряд на работу водителей" },
-  { to: "/prodazhi", label: "Продажи", icon: "TrendingUp",    desc: "Выходы на линию, рейсы, ДТ" },
-  { to: "/kassa",    label: "Касса",   icon: "Wallet",        desc: "Кассовый отчёт по маршрутам" },
+  { to: "/dispatch", label: "Наряд",      icon: "ClipboardList", desc: "Наряд на работу водителей"  },
+  { to: "/prodazhi", label: "Продажи",    icon: "TrendingUp",    desc: "Выходы на линию, рейсы, ДТ" },
+  { to: "/kassa",    label: "Касса",      icon: "Wallet",        desc: "Кассовый отчёт по маршрутам" },
+  { to: "/kadry",    label: "Кадры",      icon: "Users",         desc: "Водители и кондукторы"       },
+  { to: "/settings", label: "Настройки",  icon: "Settings",      desc: "Организация и маршруты"      },
 ];
 
 const HeroSection = () => {
@@ -28,7 +30,7 @@ const HeroSection = () => {
         </p>
 
         {/* Section cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-10">
           {SECTIONS.map((s) => (
             <Link
               key={s.to}

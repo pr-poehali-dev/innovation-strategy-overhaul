@@ -2,10 +2,12 @@ import { Link, useLocation } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 
 const LINKS = [
-  { to: "/",         label: "Главная",  icon: "Home"        },
-  { to: "/dispatch", label: "Наряд",    icon: "ClipboardList" },
-  { to: "/prodazhi", label: "Продажи",  icon: "TrendingUp"  },
-  { to: "/kassa",    label: "Касса",    icon: "Wallet"      },
+  { to: "/",         label: "Главная",    icon: "Home"          },
+  { to: "/dispatch", label: "Наряд",      icon: "ClipboardList" },
+  { to: "/prodazhi", label: "Продажи",    icon: "TrendingUp"    },
+  { to: "/kassa",    label: "Касса",      icon: "Wallet"        },
+  { to: "/kadry",    label: "Кадры",      icon: "Users"         },
+  { to: "/settings", label: "Настройки",  icon: "Settings"      },
 ];
 
 interface NavBarProps {
