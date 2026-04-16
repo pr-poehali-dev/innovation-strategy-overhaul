@@ -4,12 +4,20 @@ import NavBar from "@/components/NavBar";
 import { useAppStore } from "@/store/appStore";
 import { calcPodrabotka } from "@/pages/dispatch/types";
 import {
-  KassaRow, VyplataRow, ChastRow, Day,
+  KassaRow, VyplataRow, ChastRow, Day, MonthlyKassaRow,
   MAIN_COLS, VYP_COLS,
   toNum, emptyRow, emptyVyp, emptyChastRow,
 } from "./kassa/kassaTypes";
 import KassaOtchet from "./kassa/KassaOtchet";
 import ChastVydacha from "./kassa/ChastVydacha";
+import KassaMonthly from "./kassa/KassaMonthly";
+import { loadVedomostRows, calcVedomostRow } from "@/pages/Vedomost";
+
+const LS_PRODAZHI = "dat_prodazhi_v1";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function loadProdazhiAll(): Record<string, any> {
+  try { const r = localStorage.getItem(LS_PRODAZHI); return r ? JSON.parse(r) : {}; } catch (e) { console.warn(e); return {}; }
+}
 
 const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 
@@ -35,8 +43,12 @@ const Kassa = () => {
 
   const [allData, setAllData] = useState<Record<string, { rows: KassaRow[]; vyplaty: VyplataRow[] }>>(() => loadKassa());
 
-  const [tab, setTab] = useState<"kassa" | "chast">("kassa");
+  const [tab, setTab] = useState<"kassa" | "chast" | "monthly">("kassa");
   const [selectedKey, setSelectedKey] = useState(() => toDateKey(new Date()));
+  const [monthKey, setMonthKey] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
   const [rows, setRows] = useState<KassaRow[]>(() => {
     const saved = loadKassa()[toDateKey(new Date())];
     return saved?.rows ?? Array.from({ length: 12 }, () => emptyRow());
@@ -158,6 +170,101 @@ const Kassa = () => {
 
   const addChastRow = () => setChastRows((prev) => [...prev, emptyChastRow()]);
 
+  // ─── Синхронизация "Начислено" в ЧастичнаяВыдача ← Ведомость.ostatok ────
+  const syncFromVedomost = () => {
+    const vedRows = loadVedomostRows();
+    setChastRows((prev) => prev.map((r) => {
+      if (!r.fio) return r;
+      const vedRow = vedRows.find((v: { fio?: string }) => v.fio === r.fio);
+      if (!vedRow) return r;
+      const { ostatok } = calcVedomostRow(vedRow);
+      return { ...r, nachisleno: ostatok !== 0 ? String(Math.round(ostatok)) : r.nachisleno };
+    }));
+  };
+
+  // ─── Синхронизация "Безнал" в кассовый отчёт ← Продажи.valid ────────────
+  const syncBeznal = () => {
+    const prodAll = loadProdazhiAll();
+    // Для текущего selectedKey берём данные из Продаж
+    const prodDay = prodAll[selectedKey];
+    if (!prodDay?.rows) return;
+    const validByBort = new Map<string, string>();
+    (prodDay.rows as Array<{ bort?: string; valid?: string }>).forEach((r) => {
+      if (r.bort && r.valid) validByBort.set(r.bort, r.valid);
+    });
+    if (validByBort.size === 0) return;
+    setRows((prev) => prev.map((r) => {
+      const val = validByBort.get(r.bort);
+      if (!val) return r;
+      return { ...r, beznal: val };
+    }));
+  };
+
+  // ─── Месячный отчёт: строим из allData за выбранный месяц ────────────────
+  const monthlyRows = useMemo((): MonthlyKassaRow[] => {
+    const prodAll = loadProdazhiAll();
+    const map = new Map<string, MonthlyKassaRow>();
+
+    // Перебираем все дни месяца из сохранённых кассовых данных
+    Object.entries(allData).forEach(([dateKey, dayData]) => {
+      if (!dateKey.startsWith(monthKey)) return;
+      const dayRows: KassaRow[] = dayData?.rows ?? [];
+
+      // Для этого дня загружаем данные продаж (валид = безнал)
+      const prodDay = prodAll[dateKey];
+      const validByBort = new Map<string, string>();
+      if (prodDay?.rows) {
+        (prodDay.rows as Array<{ bort?: string; valid?: string }>).forEach((r) => {
+          if (r.bort && r.valid) validByBort.set(r.bort, r.valid);
+        });
+      }
+
+      dayRows.filter((r) => r.bort && r.type !== "disp").forEach((r) => {
+        const bortKey = r.bort;
+        // Безнал: из кассы или из продаж (valid)
+        const beznalVal = toNum(r.beznal) > 0
+          ? toNum(r.beznal)
+          : toNum(validByBort.get(r.bort) ?? "0");
+
+        const dayEntry = {
+          kolBil: toNum(r.kolBil), beznal: beznalVal,
+          qr: toNum(r.qr), viruchka: toNum(r.viruchka),
+          obed: toNum(r.obed), rashodDt: toNum(r.rashodDt),
+          chek: toNum(r.chek), vozvrat: toNum(r.vozvrat),
+          podrVod: toNum(r.podrVod), podrCond: toNum(r.podrCond),
+          vPlus: toNum(r.vPlus), itogo: toNum(r.itogo),
+        };
+
+        if (!map.has(bortKey)) {
+          map.set(bortKey, {
+            id: Math.random() * 1e15 + performance.now(),
+            bort: r.bort, mar: r.mar, fioVod: r.fioVod, fioCond: r.fioCond,
+            kolBil: 0, beznal: 0, qr: 0, viruchka: 0,
+            obed: 0, rashodDt: 0, chek: 0, vozvrat: 0,
+            podrVod: 0, podrCond: 0, vPlus: 0, itogo: 0,
+            byDay: {},
+          });
+        }
+        const existing = map.get(bortKey)!;
+        // Обновляем fio если есть
+        if (r.fioVod) existing.fioVod = r.fioVod;
+        if (r.fioCond && r.fioCond !== "без") existing.fioCond = r.fioCond;
+        // Суммируем
+        (Object.keys(dayEntry) as (keyof typeof dayEntry)[]).forEach((k) => {
+          (existing[k] as number) += dayEntry[k];
+        });
+        existing.byDay[dateKey] = dayEntry;
+      });
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      const an = parseInt(a.mar.split("/")[0]) || 0;
+      const bn = parseInt(b.mar.split("/")[0]) || 0;
+      return an !== bn ? an - bn : a.bort.localeCompare(b.bort);
+    });
+   
+  }, [allData, monthKey]);
+
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
       <NavBar title="Касса" />
@@ -172,53 +279,100 @@ const Kassa = () => {
                 <h1 className="text-lg font-bold text-gray-800 uppercase tracking-wide">Касса</h1>
                 <p className="text-xs text-gray-500 mt-0.5">ООО «Дальавтотранс» · {today}</p>
               </div>
-              <div className="flex items-center gap-2 text-xs text-gray-600">
-                <span className="font-semibold">Дата:</span>
-                <input
-                  type="date"
-                  value={selectedKey}
-                  onChange={(e) => setSelectedKey(e.target.value)}
-                  className="border border-gray-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-blue-400"
-                />
-                {naryadRows.length > 0 && (
-                  <span className="text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded flex items-center gap-1">
-                    <Icon name="RefreshCw" size={10} />
-                    Из наряда ({naryadRows.length} ТС)
-                  </span>
+              {tab !== "monthly" && (
+                <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <span className="font-semibold">Дата:</span>
+                  <input
+                    type="date"
+                    value={selectedKey}
+                    onChange={(e) => setSelectedKey(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-blue-400"
+                  />
+                  {naryadRows.length > 0 && (
+                    <span className="text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded flex items-center gap-1">
+                      <Icon name="RefreshCw" size={10} />
+                      Из наряда ({naryadRows.length} ТС)
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            {tab !== "monthly" && (
+              <div className="flex items-center gap-2">
+                {tab === "kassa" && (
+                  <>
+                    <button onClick={() => addRow("route")}
+                      className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700">
+                      <Icon name="Plus" size={12} /> Строка
+                    </button>
+                    <button onClick={() => addRow("disp")}
+                      className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-amber-500 text-white rounded hover:bg-amber-600">
+                      <Icon name="Plus" size={12} /> Диспетчер
+                    </button>
+                  </>
                 )}
+                <button onClick={() => window.print()}
+                  className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
+                  <Icon name="Printer" size={12} /> Печать
+                </button>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={() => addRow("route")}
-                className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700">
-                <Icon name="Plus" size={12} /> Строка
-              </button>
-              <button onClick={() => addRow("disp")}
-                className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-amber-500 text-white rounded hover:bg-amber-600">
-                <Icon name="Plus" size={12} /> Диспетчер
-              </button>
-              <button onClick={() => window.print()}
-                className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700">
-                <Icon name="Printer" size={12} /> Печать
-              </button>
-            </div>
+            )}
           </div>
 
           {/* Вкладки */}
           <div className="border-b border-gray-300 flex print:hidden">
-            {([["kassa", "Кассовый отчёт"], ["chast", "Частичная выдача"]] as const).map(([key, label]) => (
+            {([
+              ["kassa",   "Кассовый отчёт",    "Wallet"    ],
+              ["chast",   "Частичная выдача",  "UserCheck" ],
+              ["monthly", "Отчёт за месяц",    "BarChart3" ],
+            ] as const).map(([key, label, icon]) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`px-5 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex items-center gap-1.5 px-5 py-2 text-sm font-medium border-b-2 transition-colors ${
                   tab === key
                     ? "border-blue-600 text-blue-700 bg-blue-50"
                     : "border-transparent text-gray-500 hover:text-gray-700"
                 }`}
               >
+                <Icon name={icon as "Wallet"} size={13} />
                 {label}
               </button>
             ))}
+            {/* Кнопки синхронизации — зависят от активной вкладки */}
+            <div className="ml-auto flex items-center gap-2 px-3">
+              {tab === "kassa" && (
+                <button
+                  onClick={syncBeznal}
+                  title="Заполнить Безнал из Продаж (колонка Валид) по текущей дате"
+                  className="flex items-center gap-1.5 px-2 py-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100"
+                >
+                  <Icon name="ArrowDownToLine" size={12} />
+                  Безнал ← Продажи
+                </button>
+              )}
+              {tab === "chast" && (
+                <button
+                  onClick={syncFromVedomost}
+                  title="Заполнить 'Начислено' из Ведомости (Остаток к получению)"
+                  className="flex items-center gap-1.5 px-2 py-1 text-xs bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100"
+                >
+                  <Icon name="ArrowDownToLine" size={12} />
+                  Начислено ← Ведомость
+                </button>
+              )}
+              {tab === "monthly" && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Месяц:</span>
+                  <input
+                    type="month"
+                    value={monthKey}
+                    onChange={(e) => setMonthKey(e.target.value)}
+                    className="border border-gray-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ═══ ВКЛАДКА: Кассовый отчёт ═══ */}
@@ -249,6 +403,15 @@ const Kassa = () => {
               onUpdateChast={updateChast}
               onUpdateChastDay={updateChastDay}
               onAddChastRow={addChastRow}
+            />
+          )}
+
+          {/* ═══ ВКЛАДКА: Отчёт за месяц ═══ */}
+          {tab === "monthly" && (
+            <KassaMonthly
+              rows={monthlyRows}
+              monthKey={monthKey}
+              onPrint={() => window.print()}
             />
           )}
 

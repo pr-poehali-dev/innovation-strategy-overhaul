@@ -1,3 +1,31 @@
+// ─── Месячный кассовый отчёт ────────────────────────────────────────────────
+export interface MonthlyKassaRow {
+  id: number;
+  bort: string;        // борт №
+  mar: string;         // маршрут (первый встреченный за месяц)
+  fioVod: string;      // ФИО водителя
+  fioCond: string;     // ФИО кондуктора
+  // Суммированные по дням из кассового отчёта:
+  kolBil: number;      // кол. билетов за месяц
+  beznal: number;      // безнал за месяц (← из Продаж: валид)
+  qr: number;
+  viruchka: number;    // выручка
+  obed: number;
+  rashodDt: number;
+  chek: number;
+  vozvrat: number;
+  podrVod: number;
+  podrCond: number;
+  vPlus: number;
+  itogo: number;
+  // По дням (для детализации):
+  byDay: Record<string, {
+    kolBil: number; beznal: number; qr: number; viruchka: number;
+    obed: number; rashodDt: number; chek: number; vozvrat: number;
+    podrVod: number; podrCond: number; vPlus: number; itogo: number;
+  }>;
+}
+
 // ─── Типы ──────────────────────────────────────────────────────────────────
 export interface KassaRow {
   id: number;

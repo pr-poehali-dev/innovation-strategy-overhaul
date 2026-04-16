@@ -1,8 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 
-interface VedomostRow {
+export const LS_VEDOMOST = "dat_vedomost_v1";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function loadVedomostRows(): any[] {
+  try { const r = localStorage.getItem(LS_VEDOMOST); return r ? JSON.parse(r) : []; } catch (e) { console.warn(e); return []; }
+}
+
+export interface VedomostRow {
   id: number;
   fio: string;
   // Начислено
@@ -80,6 +86,15 @@ const UDERZH_KEYS:    ColKey[] = ["ndfl", "poluchPodrab", "otpuskPol", "ispL", "
 const toNum = (v: string) => parseFloat(v.replace(",", ".")) || 0;
 const fmt   = (n: number) => n === 0 ? "" : n.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+export const NACH_KEYS_VED: ColKey[] = ["nachisl", "otpusk", "doplata", "pererab"];
+export const UDERZH_KEYS_VED: ColKey[] = ["ndfl", "poluchPodrab", "otpuskPol", "ispL", "avansKarta", "zpKarta", "dolg", "narusheniya", "shtrafGarazh", "avans"];
+export function calcVedomostRow(row: VedomostRow) {
+  const toN = (v: string) => parseFloat(v.replace(",", ".")) || 0;
+  const vsegaNach = NACH_KEYS_VED.reduce((s, k) => s + toN(row[k]), 0);
+  const vsegaUd   = UDERZH_KEYS_VED.reduce((s, k) => s + toN(row[k]), 0);
+  return { vsegaNach, vsegaUd, ostatok: vsegaNach - vsegaUd };
+}
+
 function calcRow(row: VedomostRow) {
   const vsegaNach  = NACH_KEYS.reduce((s, k) => s + toNum(row[k]), 0);
   const vsegaUd    = UDERZH_KEYS.reduce((s, k) => s + toNum(row[k]), 0);
@@ -91,8 +106,15 @@ function calcRow(row: VedomostRow) {
 const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 
 const Vedomost = () => {
-  const [rows, setRows] = useState<VedomostRow[]>([emptyRow(), emptyRow(), emptyRow()]);
+  const [rows, setRows] = useState<VedomostRow[]>(() => {
+    const saved = loadVedomostRows();
+    return saved.length > 0 ? saved : [emptyRow(), emptyRow(), emptyRow()];
+  });
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: ColKey } | null>(null);
+
+  useEffect(() => {
+    try { localStorage.setItem(LS_VEDOMOST, JSON.stringify(rows)); } catch (e) { console.warn(e); }
+  }, [rows]);
 
   const updateCell = (id: number, col: ColKey, value: string) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
