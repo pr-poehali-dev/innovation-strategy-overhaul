@@ -1,8 +1,8 @@
 import { useEffect, useCallback, useState } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
-import { useAppStore, NaryadEntry, NaryadRowStore } from "@/store/appStore";
-import { NaryadRow, NormaSettings, emptyRow, calcPodrabotka } from "./dispatch/types";
+import { useAppStore, NaryadEntry, NaryadRowStore, Route } from "@/store/appStore";
+import { NaryadRow, NormaSettings, calcPodrabotka } from "./dispatch/types";
 import NormaPanel from "./dispatch/NormaPanel";
 import PutevoyModal from "./dispatch/PutevoyModal";
 import NaryadTable from "./dispatch/NaryadTable";
@@ -40,16 +40,28 @@ const getWeekDays = (monday: Date): Date[] =>
 
 // Тип адаптеры
 const toNaryadRow = (r: NaryadRowStore): NaryadRow => r as unknown as NaryadRow;
-const toStoreRow  = (r: NaryadRow): NaryadRowStore => r as unknown as NaryadRowStore;
 
-const makeEmptyRows = (): NaryadRowStore[] => [
-  ...Array.from({ length: 3 }, () => ({
-    id: Date.now() + Math.random(),
-    vehicleId: null, bortovoy: "", gos: "", marka: "",
-    marshrut: "", fio: "", fioKond: "",
-    putevoy: "", terminal: "", podrabotka: false, biletov: "",
-  } as NaryadRowStore)),
-];
+const makeEmptyRow = (): NaryadRowStore => ({
+  id: Date.now() + Math.random(),
+  vehicleId: null, bortovoy: "", gos: "", marka: "",
+  marshrut: "", fio: "", fioKond: "",
+  putevoy: "", terminal: "", podrabotka: false, biletov: "",
+});
+
+// Строки по маршрутам: одна строка на каждый график в порядке маршрутов
+const makeRowsFromRoutes = (routes: Route[]): NaryadRowStore[] => {
+  const rows: NaryadRowStore[] = [];
+  routes.forEach((route) => {
+    for (let i = 1; i <= route.grafikov; i++) {
+      rows.push({
+        ...makeEmptyRow(),
+        id: Date.now() + Math.random(),
+        marshrut: `${route.nomer}/${i}`,
+      });
+    }
+  });
+  return rows.length > 0 ? rows : [makeEmptyRow(), makeEmptyRow(), makeEmptyRow()];
+};
 
 // ─── Компонент ──────────────────────────────────────────────────────────────
 const Dispatch = () => {
@@ -57,6 +69,7 @@ const Dispatch = () => {
     setNaryadEntries,
     naryadSettings, setNaryadSettings,
     weeklyNaryady, setWeeklyNaryady,
+    routes,
   } = useAppStore();
 
   const settings: NormaSettings = naryadSettings;
@@ -69,9 +82,9 @@ const Dispatch = () => {
   const todayKey = toDateKey(new Date());
   const [selectedKey, setSelectedKey] = useState<string>(todayKey);
 
-  // Строки выбранного дня
+  // Строки выбранного дня — если нет данных, генерируем из маршрутов
   const rowsForDay = (key: string): NaryadRowStore[] =>
-    weeklyNaryady[key] ?? makeEmptyRows();
+    weeklyNaryady[key] ?? makeRowsFromRoutes(routes);
 
   const currentRows: NaryadRow[] = rowsForDay(selectedKey).map(toNaryadRow);
 
@@ -125,7 +138,12 @@ const Dispatch = () => {
 
   const addRow = () => {
     const cur = rowsForDay(selectedKey);
-    saveRows(selectedKey, [...cur, toStoreRow(emptyRow())]);
+    saveRows(selectedKey, [...cur, makeEmptyRow()]);
+  };
+
+  // Пересоздать строки из маршрутов (сбросить день)
+  const resetToRoutes = () => {
+    saveRows(selectedKey, makeRowsFromRoutes(routes));
   };
 
   const deleteRow = (id: number) => {
@@ -195,6 +213,14 @@ const Dispatch = () => {
               >
                 <Icon name="Settings" size={14} />
                 Нормативы
+              </button>
+              <button
+                onClick={resetToRoutes}
+                title="Заполнить все строки по маршрутам из настроек"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
+              >
+                <Icon name="RotateCcw" size={14} />
+                По маршрутам
               </button>
               <button
                 onClick={addRow}
