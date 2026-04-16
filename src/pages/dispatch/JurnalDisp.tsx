@@ -2,6 +2,11 @@ import { useMemo } from "react";
 import { useAppStore, DayMeta } from "@/store/appStore";
 import { NaryadRow } from "./types";
 
+// ─── Журнал учёта работы водителей и транспортных средств ────────────────────
+// Официальная форма согласно Приказу Минтранса России от 18.09.2008 № 152
+// (форма ПГ-1 «Журнал регистрации путевых листов»)
+// + элементы формы согласно Приказу Минтранса России от 28.09.2022 № 390
+
 interface Props {
   rows: NaryadRow[];
   dayMeta: DayMeta;
@@ -9,17 +14,17 @@ interface Props {
   monthYear: string;
 }
 
-// Журнал диспетчера о выпуске транспортных средств на линию
-// Форма согласно Приказу Минтранса РФ от 18.01.2021 № 17 (форма № 17-диспетчер)
 const JurnalDisp = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
   const { companies, employees, vehicles, routes, routeSchedule } = useAppStore();
 
-  const dispFio = dayMeta.dispFio
-    || employees.find((e) => e.dolzhnost === "Диспетчер" && e.status === "active")?.fio
-    || "_______________";
-  const mekhFio = dayMeta.mekhFio
-    || employees.find((e) => e.dolzhnost === "Механик по выпуску" && e.status === "active")?.fio
-    || "_______________";
+  const dispFio =
+    dayMeta.dispFio ||
+    employees.find((e) => e.dolzhnost === "Диспетчер" && e.status === "active")?.fio ||
+    "_______________";
+  const mekhFio =
+    dayMeta.mekhFio ||
+    employees.find((e) => e.dolzhnost === "Механик по выпуску" && e.status === "active")?.fio ||
+    "_______________";
 
   const getVehicle = (bort: string) => vehicles.find((v) => v.bortovoy === bort);
   const getVodInfo = (fio: string) =>
@@ -29,13 +34,11 @@ const JurnalDisp = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
     return routes.find((r) => r.nomer === num)?.companyIdx ?? 0;
   };
 
-  // Только строки с водителем и бортом, без статуса отсутствия
   const activeRows = useMemo(
     () => rows.filter((r) => r.fio && r.fio !== "без" && r.bortovoy && !r.statusOtsutstviya),
     [rows]
   );
 
-  // Группировка по организации
   const byCompany = useMemo(() => {
     const map = new Map<number, NaryadRow[]>();
     activeRows.forEach((row) => {
@@ -54,7 +57,6 @@ const JurnalDisp = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
   const renderBlock = (companyIdx: number, blockRows: NaryadRow[], isFirst: boolean) => {
     const company = companies[companyIdx];
 
-    // Итоги по маршрутам
     const byRoute = blockRows.reduce<Record<string, number>>((acc, r) => {
       const num = r.marshrut.split("/")[0];
       acc[num] = (acc[num] || 0) + 1;
@@ -64,68 +66,99 @@ const JurnalDisp = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
     return (
       <div key={companyIdx} className={`mb-10 print-no-break${isFirst ? "" : " print-page-break"}`}>
 
-        {/* ─── Шапка ─── */}
-        <div className="flex justify-between items-start mb-2 text-[10px]">
-          <div>
-            <div className="font-bold text-[11px]">{company?.nazvanie || "___________________________"}</div>
-            <div className="text-gray-500">{company?.adres || ""}</div>
+        {/* ─── Угловой штамп (обязательный элемент формы) ─── */}
+        <div className="flex justify-between items-start mb-3">
+          <div className="border border-black p-2 text-[9px] min-w-[180px]">
+            <div className="font-bold text-[10px] mb-0.5">{company?.nazvanie || "________________________"}</div>
+            {company?.adres && <div>{company.adres}</div>}
+            {company?.inn && <div>ИНН: {company.inn}</div>}
+            {company?.telefon && <div>Тел.: {company.telefon}</div>}
+            <div className="mt-1">ОГРН/ОГРНИП: ________________________</div>
           </div>
-          <div className="text-right text-gray-500">
-            <div>ИНН: {company?.inn || "____________"}</div>
-          </div>
-        </div>
 
-        <div className="text-center mb-3">
-          <div className="font-bold text-[13px] uppercase tracking-wide">
-            ЖУРНАЛ ДИСПЕТЧЕРА О ВЫПУСКЕ ТРАНСПОРТНЫХ СРЕДСТВ НА ЛИНИЮ
+          <div className="text-center flex-1 px-4">
+            <div className="text-[9px] text-gray-500">Утверждена Приказом Минтранса России от 18.09.2008 № 152</div>
+            <div className="font-bold text-[13px] uppercase tracking-wide mt-1">
+              ЖУРНАЛ РЕГИСТРАЦИИ ПУТЕВЫХ ЛИСТОВ
+            </div>
+            <div className="text-[10px] mt-0.5">(форма ПГ-1)</div>
+            <div className="text-[10px] mt-1">за {monthYear} г.</div>
           </div>
-          <div className="text-[9px] mt-0.5 text-gray-500">
-            (форма согласно Приказу Минтранса России от 18.01.2021 № 17)
+
+          <div className="border border-black p-2 text-[9px] min-w-[140px] text-center">
+            <div className="mb-1">Код по ОКУД</div>
+            <div className="border border-black py-1 font-bold text-[11px]">0345016</div>
+            <div className="mt-2 mb-1">Код по ОКПО</div>
+            <div className="border border-black py-1">__________</div>
           </div>
-          <div className="mt-1 text-[10px]">за {monthYear} г.</div>
         </div>
 
         {/* ─── Реквизиты смены ─── */}
-        <div className="border border-gray-400 p-2 mb-3 text-[10px] grid grid-cols-3 gap-2">
+        <div className="border border-gray-400 grid grid-cols-4 gap-x-4 gap-y-1 p-2 mb-3 text-[10px]">
           <div>Дата: <span className="border-b border-black px-6 font-semibold">{displayDate}</span></div>
           <div>Диспетчер: <span className="border-b border-black px-6 font-semibold">{dispFio}</span></div>
-          <div>Механик по выпуску: <span className="border-b border-black px-4 font-semibold">{mekhFio}</span></div>
-          <div>Всего ТС выпущено: <span className="border-b border-black px-4 font-semibold">{blockRows.length}</span></div>
-          <div className="col-span-2">
+          <div>Механик: <span className="border-b border-black px-4 font-semibold">{mekhFio}</span></div>
+          <div>Выпущено ТС: <span className="border-b border-black px-4 font-semibold">{blockRows.length}</span></div>
+          <div className="col-span-4">
             По маршрутам:&nbsp;
             {Object.entries(byRoute).sort().map(([num, cnt]) => (
-              <span key={num} className="mr-3">№{num} — <b>{cnt}</b> ед.</span>
+              <span key={num} className="mr-4">№{num} — <b>{cnt}</b> ед.</span>
             ))}
           </div>
         </div>
 
-        {/* ─── Основная таблица ─── */}
-        <table className="border-collapse w-full text-[9px]">
+        {/* ─── Основная таблица формы ПГ-1 ─── */}
+        <table className="border-collapse w-full text-[8.5px]">
           <thead>
             <tr style={{ backgroundColor: "#1a3a6b" }}>
-              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "24px" }}>№</th>
-              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "45px" }}>Марш&shy;рут</th>
-              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "45px" }}>График</th>
-              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "42px" }}>Борт №</th>
-              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "60px" }}>Гос. знак</th>
-              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "50px" }}>Путевой №</th>
-              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "115px" }}>ФИО водителя</th>
-              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "48px" }}>Уд-ие вод. №</th>
-              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "80px" }}>ФИО кондуктора</th>
-              <th colSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold">Медосмотр</th>
+              {/* Гр. 1 */}
+              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "22px" }}>
+                <div style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", fontSize: "7px" }}>№ п/п</div>
+              </th>
+              {/* Гр. 2 */}
+              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "48px" }}>Путевой лист №</th>
+              {/* Гр. 3 */}
+              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "52px" }}>Дата выдачи</th>
+              {/* Гр. 4-5 */}
+              <th colSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold">Транспортное средство</th>
+              {/* Гр. 6 */}
+              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "50px" }}>Марш&shy;рут, график</th>
+              {/* Гр. 7-8 */}
+              <th colSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold">Водитель</th>
+              {/* Гр. 9 */}
+              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "68px" }}>Кондуктор (ФИО)</th>
+              {/* Гр. 10-11 */}
               <th colSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold">Выезд</th>
+              {/* Гр. 12-13 */}
               <th colSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold">Возврат</th>
-              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "55px" }}>Тех. состояние</th>
-              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "55px" }}>Подпись диспетч.</th>
-              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "70px" }}>Примечание</th>
+              {/* Гр. 14 */}
+              <th colSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold">Показания одометра (км)</th>
+              {/* Гр. 16 */}
+              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "44px" }}>Тех&shy;ни&shy;чес&shy;кое состояние</th>
+              {/* Гр. 17 */}
+              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "52px" }}>Подпись диспетчера о выдаче</th>
+              {/* Гр. 18 */}
+              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "52px" }}>Подпись диспетчера о приёме</th>
+              {/* Гр. 19 */}
+              <th rowSpan={2} className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "55px" }}>Примечание</th>
             </tr>
             <tr style={{ backgroundColor: "#1a3a6b" }}>
-              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "38px" }}>Рез-т</th>
-              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "42px" }}>Время</th>
-              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "42px" }}>План</th>
-              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "42px" }}>Факт</th>
-              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "42px" }}>План</th>
-              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "42px" }}>Факт</th>
+              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "42px" }}>Борт №</th>
+              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "62px" }}>Гос. знак / марка</th>
+              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "110px" }}>ФИО</th>
+              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "48px" }}>Уд-ие №</th>
+              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "40px" }}>план</th>
+              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "40px" }}>факт</th>
+              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "40px" }}>план</th>
+              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "40px" }}>факт</th>
+              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "46px" }}>при выезде</th>
+              <th className="border border-gray-500 px-1 py-1 text-white text-center font-semibold" style={{ width: "46px" }}>при возврате</th>
+            </tr>
+            {/* Нумерация граф (обязательна по форме) */}
+            <tr className="bg-gray-100">
+              {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19].map((n) => (
+                <td key={n} className="border border-gray-300 text-center text-[8px] text-gray-400 py-0.5">{n}</td>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -133,41 +166,35 @@ const JurnalDisp = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
               const veh   = getVehicle(row.bortovoy);
               const vod   = getVodInfo(row.fio);
               const sched = routeSchedule[row.marshrut];
-              const routeNum = row.marshrut.split("/")[0];
-              const grafik   = row.marshrut.split("/")[1] || "";
-              const rowBg    = idx % 2 === 0 ? "#ffffff" : "#f0f4ff";
+              const rowBg = idx % 2 === 0 ? "#ffffff" : "#f0f4ff";
               return (
                 <tr key={row.id} style={{ backgroundColor: rowBg }}>
-                  <td className="border border-gray-300 text-center py-2 text-gray-400">{idx + 1}</td>
-                  <td className="border border-gray-300 text-center font-bold text-blue-900">{routeNum}</td>
-                  <td className="border border-gray-300 text-center text-gray-600">{grafik}</td>
-                  <td className="border border-gray-300 text-center font-bold text-blue-800">{row.bortovoy}</td>
-                  <td className="border border-gray-300 px-1 text-center">{veh?.gos || ""}</td>
-                  <td className="border border-gray-300 px-1 text-center font-semibold text-blue-700">{row.putevoy}</td>
-                  <td className="border border-gray-300 px-1 font-medium">{row.fio}</td>
-                  <td className="border border-gray-300 px-1 text-center text-[8px]">{vod?.udostoverenie || ""}</td>
-                  <td className="border border-gray-300 px-1 text-[8px]">{row.fioKond && row.fioKond !== "без" ? row.fioKond : ""}</td>
-                  {/* Медосмотр */}
-                  <td className="border border-gray-300 px-1 text-center text-green-800 font-semibold text-[8px]">допущен</td>
-                  <td className="border border-gray-300"></td>
-                  {/* Выезд */}
-                  <td className="border border-gray-300 px-1 text-center font-semibold text-blue-900">{sched?.vypusk || ""}</td>
-                  <td className="border border-gray-300"></td>
-                  {/* Возврат */}
-                  <td className="border border-gray-300 px-1 text-center font-semibold text-red-700">{sched?.zakhod || ""}</td>
-                  <td className="border border-gray-300"></td>
-                  {/* Тех. состояние */}
-                  <td className="border border-gray-300 px-1 text-center text-green-800 font-semibold text-[8px] leading-tight">исправен</td>
-                  <td className="border border-gray-300"></td>
-                  <td className="border border-gray-300"></td>
+                  {/* 1 */ }<td className="border border-gray-300 text-center py-2.5 text-gray-400 text-[8px]">{idx + 1}</td>
+                  {/* 2 */ }<td className="border border-gray-300 px-1 text-center font-bold text-blue-700">{row.putevoy}</td>
+                  {/* 3 */ }<td className="border border-gray-300 px-1 text-center">{displayDate}</td>
+                  {/* 4 */ }<td className="border border-gray-300 px-1 text-center font-bold text-blue-900">{row.bortovoy}</td>
+                  {/* 5 */ }<td className="border border-gray-300 px-1 text-[8px]">{veh?.gos || ""}{veh?.marka ? ` / ${veh.marka}` : ""}</td>
+                  {/* 6 */ }<td className="border border-gray-300 px-1 text-center">{row.marshrut}</td>
+                  {/* 7 */ }<td className="border border-gray-300 px-1 font-medium">{row.fio}</td>
+                  {/* 8 */ }<td className="border border-gray-300 px-1 text-center text-[8px]">{vod?.udostoverenie || ""}</td>
+                  {/* 9 */ }<td className="border border-gray-300 px-1 text-[8px]">{row.fioKond && row.fioKond !== "без" ? row.fioKond : ""}</td>
+                  {/* 10 */ }<td className="border border-gray-300 px-1 text-center font-semibold text-blue-900">{sched?.vypusk || ""}</td>
+                  {/* 11 */ }<td className="border border-gray-300"></td>
+                  {/* 12 */ }<td className="border border-gray-300 px-1 text-center font-semibold text-red-700">{sched?.zakhod || ""}</td>
+                  {/* 13 */ }<td className="border border-gray-300"></td>
+                  {/* 14 */ }<td className="border border-gray-300 px-1 text-center text-[8px]">{row.odometrVyezd || ""}</td>
+                  {/* 15 */ }<td className="border border-gray-300 px-1 text-center text-[8px]">{row.odometrVozv || ""}</td>
+                  {/* 16 */ }<td className="border border-gray-300 px-1 text-center text-green-800 font-semibold text-[7.5px] leading-tight">исправен</td>
+                  {/* 17 */ }<td className="border border-gray-300"></td>
+                  {/* 18 */ }<td className="border border-gray-300"></td>
+                  {/* 19 */ }<td className="border border-gray-300"></td>
                 </tr>
               );
             })}
-            {/* Пустые строки для дозаписи */}
             {Array.from({ length: Math.max(0, 3 - blockRows.length) }).map((_, i) => (
-              <tr key={`empty-${i}`}>
-                <td className="border border-gray-300 text-center py-3 text-gray-300">{blockRows.length + i + 1}</td>
-                {Array.from({ length: 17 }).map((_, j) => (
+              <tr key={`e-${i}`}>
+                <td className="border border-gray-300 text-center py-3 text-gray-300 text-[8px]">{blockRows.length + i + 1}</td>
+                {Array.from({ length: 18 }).map((_, j) => (
                   <td key={j} className="border border-gray-300 py-3"></td>
                 ))}
               </tr>
@@ -175,39 +202,36 @@ const JurnalDisp = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
           </tbody>
         </table>
 
-        {/* ─── Итог / подписи ─── */}
-        <div className="mt-4 text-[10px] space-y-3">
-          {/* Сводка по маршрутам */}
-          <div className="border border-gray-300 p-2">
-            <div className="font-semibold mb-1">Сводка выпуска на линию:</div>
-            <div className="flex flex-wrap gap-4">
-              {Object.entries(byRoute).sort().map(([num, cnt]) => (
-                <div key={num} className="text-center">
-                  <div className="font-bold text-blue-900">Маршрут №{num}</div>
-                  <div>Выпущено: <b>{cnt}</b> ед.</div>
-                </div>
-              ))}
-              <div className="text-center ml-auto">
-                <div className="font-bold">ИТОГО</div>
-                <div>Выпущено: <b>{blockRows.length}</b> ед.</div>
-              </div>
+        {/* ─── Итоговая строка ─── */}
+        <div className="flex justify-between items-start mt-4 px-2 text-[10px] gap-6">
+          <div className="space-y-2">
+            <div>Всего путевых листов выдано: <span className="border-b border-black px-6 font-semibold">{blockRows.length}</span></div>
+            <div>
+              Диспетчер (выдача): <span className="border-b border-black px-10 font-semibold">{dispFio}</span>
+              &nbsp;&nbsp;Подпись: <span className="border-b border-black px-10"></span>
+            </div>
+            <div>
+              Диспетчер (приём): <span className="border-b border-black px-10 font-semibold">{dispFio}</span>
+              &nbsp;&nbsp;Подпись: <span className="border-b border-black px-10"></span>
             </div>
           </div>
-
-          {/* Подписи */}
-          <div className="flex justify-between pt-2">
-            <div className="space-y-4">
-              <div>
-                Диспетчер: <span className="border-b border-black px-16 font-semibold">{dispFio}</span>
-                &nbsp;&nbsp;Подпись: <span className="border-b border-black px-12"></span>
-              </div>
+          <div className="space-y-2 text-right">
+            <div>
+              Механик по выпуску: <span className="border-b border-black px-6 font-semibold">{mekhFio}</span>
+              &nbsp;&nbsp;Подпись: <span className="border-b border-black px-8"></span>
             </div>
-            <div className="text-right">
-              <div>Дата составления: <span className="border-b border-black px-8">{displayDate}</span></div>
-            </div>
+            <div>Дата составления: <span className="border-b border-black px-8">{displayDate}</span></div>
           </div>
         </div>
 
+        {/* ─── Сводка по маршрутам ─── */}
+        <div className="mt-3 border border-gray-300 p-2 text-[9px]">
+          <span className="font-semibold mr-3">Итог по маршрутам:</span>
+          {Object.entries(byRoute).sort().map(([num, cnt]) => (
+            <span key={num} className="mr-4">Маршрут №{num} — <b>{cnt}</b> ед.</span>
+          ))}
+          <span className="ml-4 font-semibold">Итого ТС: {blockRows.length}</span>
+        </div>
       </div>
     );
   };
@@ -222,7 +246,7 @@ const JurnalDisp = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
           Печать журнала
         </button>
       </div>
-      <div className="bg-white font-serif text-[10px] leading-tight" style={{ minWidth: "1050px" }}>
+      <div className="bg-white font-serif text-[10px] leading-tight" style={{ minWidth: "1150px" }}>
         {companyGroups.map(({ companyIdx, rows }, i) => renderBlock(companyIdx, rows, i === 0))}
       </div>
     </div>

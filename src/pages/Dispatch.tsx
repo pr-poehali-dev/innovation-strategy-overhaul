@@ -9,6 +9,7 @@ import NaryadTable from "./dispatch/NaryadTable";
 import JurnalMed from "./dispatch/JurnalMed";
 import JurnalVypusk from "./dispatch/JurnalVypusk";
 import JurnalDisp from "./dispatch/JurnalDisp";
+import JurnalPostSmen from "./dispatch/JurnalPostSmen";
 
 // ─── Утилиты дат ────────────────────────────────────────────────────────────
 const toDateKey = (d: Date): string => {
@@ -73,7 +74,7 @@ const makeRowsFromRoutes = (routes: Route[]): NaryadRowStore[] => {
   return rows.length > 0 ? rows : [makeEmptyRow(), makeEmptyRow(), makeEmptyRow()];
 };
 
-type TabType = "narad" | "med" | "vypusk" | "disp";
+type TabType = "narad" | "med" | "postSmen" | "vypusk" | "disp";
 
 // ─── Панель дежурных ────────────────────────────────────────────────────────
 const DayMetaPanel = ({
@@ -280,10 +281,11 @@ const Dispatch = () => {
   const monthYear    = toMonthYear(selectedDate);
 
   const TABS: { key: TabType; label: string; icon: string }[] = [
-    { key: "narad",  label: "Наряд",                  icon: "ClipboardList" },
-    { key: "med",    label: "Журнал медосмотра",       icon: "Stethoscope"   },
-    { key: "vypusk", label: "Журнал выпуска",          icon: "Truck"         },
-    { key: "disp",   label: "Журнал диспетчера",       icon: "RadioTower"    },
+    { key: "narad",    label: "Наряд",                             icon: "ClipboardList" },
+    { key: "med",      label: "Предрейсовый медосмотр",            icon: "Stethoscope"   },
+    { key: "postSmen", label: "Послесменный медосмотр",            icon: "HeartPulse"    },
+    { key: "vypusk",   label: "Журнал выпуска",                    icon: "Truck"         },
+    { key: "disp",     label: "Журнал путевых (ПГ-1)",             icon: "BookOpen"      },
   ];
 
   return (
@@ -443,6 +445,15 @@ const Dispatch = () => {
 
           {activeTab === "med" && (
             <JurnalMed
+              rows={currentRows}
+              dayMeta={dayMeta}
+              displayDate={displayDate}
+              monthYear={monthYear}
+            />
+          )}
+
+          {activeTab === "postSmen" && (
+            <JurnalPostSmen
               rows={currentRows}
               dayMeta={dayMeta}
               displayDate={displayDate}
