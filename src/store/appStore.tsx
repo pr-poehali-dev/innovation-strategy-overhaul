@@ -354,13 +354,13 @@ export interface NaryadSettingsStore {
   stoimostBileta: string;
   stoimostTopliva: string;
   rashod: string;
-  procentBez: string;
-  procentVodS: string;
-  procentCondS: string;
+  procentBez: string;    // % водителя без кондуктора
+  procentVodS: string;   // % водителя с кондуктором
+  procentCondS: string;  // % кондуктора
   fixedRoute6: string;
   obedVod: string;
   obedVodKond: string;
-  stoimostProezda: string;   // стоимость проезда (для расчёта выручки в кассе)
+  stoimostProezda: string;
   zpVodDezhurki: string;
   dezhDt: string;
   hozNuzhdyGarazh: string;

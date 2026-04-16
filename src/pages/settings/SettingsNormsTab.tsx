@@ -1,14 +1,11 @@
-import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useAppStore } from "@/store/appStore";
-import { TabType, SimpleRow, emptySimpleRow, FixedValueTab, PercentTable } from "./settingsShared";
+import { TabType, FixedValueTab } from "./settingsShared";
 
 interface Props {
   tab: TabType;
   setSaved: (v: boolean) => void;
 }
-
-const PERCENT_TABS: TabType[] = ["procentVodBezCond", "procentVodSCond", "procentCond"];
 
 const SettingsNormsTab = ({ tab, setSaved }: Props) => {
   const { naryadSettings, setNaryadSettings } = useAppStore();
@@ -18,56 +15,23 @@ const SettingsNormsTab = ({ tab, setSaved }: Props) => {
     setSaved(false);
   };
 
-  const stoimostProezda = naryadSettings.stoimostProezda;
-  const stoimostTopliva = naryadSettings.stoimostTopliva;
-  const zpVodDezhurki   = naryadSettings.zpVodDezhurki;
-  const dezhDt          = naryadSettings.dezhDt;
-  const hozNuzhdyGarazh = naryadSettings.hozNuzhdyGarazh;
-  const fixedRoute6     = naryadSettings.fixedRoute6;
-
-  const [procentVodBezCond, setProcentVodBezCond] = useState<SimpleRow[]>([emptySimpleRow()]);
-  const [procentVodSCond,   setProcentVodSCond]   = useState<SimpleRow[]>([emptySimpleRow()]);
-  const [procentCond,       setProcentCond]       = useState<SimpleRow[]>([emptySimpleRow()]);
-
-  const percentMap: Record<string, { rows: SimpleRow[]; setRows: React.Dispatch<React.SetStateAction<SimpleRow[]>> }> = {
-    procentVodBezCond: { rows: procentVodBezCond, setRows: setProcentVodBezCond },
-    procentVodSCond:   { rows: procentVodSCond,   setRows: setProcentVodSCond   },
-    procentCond:       { rows: procentCond,       setRows: setProcentCond       },
-  };
-
-  const makePercentHandlers = (key: string) => {
-    const { rows, setRows } = percentMap[key];
-    return {
-      rows,
-      onUpdate: (id: number, col: keyof SimpleRow, val: string) => {
-        setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: val } : r)));
-        setSaved(false);
-      },
-      onAdd: () => setRows((prev) => [...prev, emptySimpleRow()]),
-      onDelete: (id: number) => {
-        if (rows.length === 1) return;
-        setRows((prev) => prev.filter((r) => r.id !== id));
-      },
-    };
-  };
-
   return (
     <>
       {/* Фиксированные вкладки */}
       {tab === "stoimostProezda" && (
-        <FixedValueTab label="Стоимость проезда" unit="₽" value={stoimostProezda} onChange={(v) => upd("stoimostProezda", v)} />
+        <FixedValueTab label="Стоимость проезда" unit="₽" value={naryadSettings.stoimostProezda} onChange={(v) => upd("stoimostProezda", v)} />
       )}
       {tab === "stoimostTopliva" && (
-        <FixedValueTab label="Стоимость топлива" unit="₽/л" value={stoimostTopliva} onChange={(v) => upd("stoimostTopliva", v)} />
+        <FixedValueTab label="Стоимость топлива" unit="₽/л" value={naryadSettings.stoimostTopliva} onChange={(v) => upd("stoimostTopliva", v)} />
       )}
       {tab === "zpVodDezhurki" && (
-        <FixedValueTab label="ЗП водителя дежурки" unit="₽" value={zpVodDezhurki} onChange={(v) => upd("zpVodDezhurki", v)} />
+        <FixedValueTab label="ЗП водителя дежурки" unit="₽" value={naryadSettings.zpVodDezhurki} onChange={(v) => upd("zpVodDezhurki", v)} />
       )}
       {tab === "dezhDt" && (
-        <FixedValueTab label="Дежурка ДТ" unit="₽" value={dezhDt} onChange={(v) => upd("dezhDt", v)} />
+        <FixedValueTab label="Дежурка ДТ" unit="₽" value={naryadSettings.dezhDt} onChange={(v) => upd("dezhDt", v)} />
       )}
       {tab === "hozNuzhdyGarazh" && (
-        <FixedValueTab label="Хоз. нужды гараж" unit="₽" value={hozNuzhdyGarazh} onChange={(v) => upd("hozNuzhdyGarazh", v)} />
+        <FixedValueTab label="Хоз. нужды гараж" unit="₽" value={naryadSettings.hozNuzhdyGarazh} onChange={(v) => upd("hozNuzhdyGarazh", v)} />
       )}
 
       {/* Обеды */}
@@ -115,32 +79,70 @@ const SettingsNormsTab = ({ tab, setSaved }: Props) => {
         </div>
       )}
 
-      {/* Блок фиксированных исключений для вкладки "% водителя без кондуктора" */}
+      {/* % водителя без кондуктора */}
       {tab === "procentVodBezCond" && (
-        <div className="px-5 py-3 border-b border-gray-200 bg-amber-50">
-          <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">Фиксированная оплата (исключения)</p>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-700 w-52">Маршрут №6 — оплата за смену:</span>
-            <div className="flex items-center gap-1">
-              <input
-                type="text"
-                value={fixedRoute6}
-                onChange={(e) => upd("fixedRoute6", e.target.value)}
-                className="w-24 h-7 px-2 text-xs text-gray-800 border border-gray-300 rounded outline-none focus:border-blue-500 focus:bg-blue-50 transition-colors text-right"
-              />
-              <span className="text-xs text-gray-500">₽</span>
+        <div className="px-8 py-6 max-w-md space-y-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-xs text-blue-800">
+            <Icon name="Info" size={13} className="inline mr-1" />
+            Процент от выручки водителю, если он работает без кондуктора.
+            <br />Выручка = Кол.билетов × Стоимость проезда − Расход топлива.
+          </div>
+          <div className="flex flex-col gap-3">
+            <FixedValueTab
+              label="% водителя без кондуктора"
+              unit="%"
+              value={naryadSettings.procentBez}
+              onChange={(v) => upd("procentBez", v)}
+            />
+            <div className="border-t pt-4">
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-3">Исключение: Маршрут №6</p>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-700 flex-1">Маршрут №6 без кондуктора — фиксированная оплата за смену:</span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={naryadSettings.fixedRoute6}
+                    onChange={(e) => upd("fixedRoute6", e.target.value)}
+                    className="w-24 h-8 px-2 text-sm font-semibold text-gray-800 border border-gray-300 rounded outline-none focus:border-blue-500 focus:bg-blue-50 text-right"
+                  />
+                  <span className="text-xs text-gray-500">₽</span>
+                </div>
+              </div>
             </div>
-            <span className="text-xs text-gray-400 italic">независимо от выручки</span>
           </div>
         </div>
       )}
 
-      {/* Процентные вкладки */}
-      {PERCENT_TABS.includes(tab) && (
-        <PercentTable
-          {...makePercentHandlers(tab)}
-          unit="%"
-        />
+      {/* % водителя с кондуктором */}
+      {tab === "procentVodSCond" && (
+        <div className="px-8 py-6 max-w-md">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-xs text-blue-800 mb-6">
+            <Icon name="Info" size={13} className="inline mr-1" />
+            Процент от выручки водителю, если он работает с кондуктором.
+          </div>
+          <FixedValueTab
+            label="% водителя с кондуктором"
+            unit="%"
+            value={naryadSettings.procentVodS}
+            onChange={(v) => upd("procentVodS", v)}
+          />
+        </div>
+      )}
+
+      {/* % кондуктора */}
+      {tab === "procentCond" && (
+        <div className="px-8 py-6 max-w-md">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-xs text-blue-800 mb-6">
+            <Icon name="Info" size={13} className="inline mr-1" />
+            Процент от выручки кондуктору (работает только при наличии кондуктора в строке наряда).
+          </div>
+          <FixedValueTab
+            label="% кондуктора"
+            unit="%"
+            value={naryadSettings.procentCondS}
+            onChange={(v) => upd("procentCondS", v)}
+          />
+        </div>
       )}
     </>
   );

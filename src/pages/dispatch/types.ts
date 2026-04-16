@@ -67,20 +67,25 @@ export const TEXT_COLS = [
 
 export function calcPodrabotka(
   row: NaryadRow,
-  s: NormaSettings,
+  s: NormaSettings & { stoimostProezda?: string },
 ): { vod: number; cond: number } | null {
-  if (!row.podrabotka || !row.biletov) return null;
-  const hasCond = row.fioKond.trim().length > 0;
+  if (!row.podrabotka) return null;
 
-  // Маршрут №6 без кондуктора — фиксированная оплата за смену
+  const hasCond  = row.fioKond.trim().length > 0;
   const routeNum = row.marshrut.split("/")[0].trim();
+
+  // Маршрут №6 без кондуктора — фиксированная оплата за смену (не зависит от билетов)
   if (routeNum === "6" && !hasCond) {
     const fixed = parseFloat(s.fixedRoute6) || 0;
-    return { vod: fixed, cond: 0 };
+    return fixed > 0 ? { vod: fixed, cond: 0 } : null;
   }
 
+  // Для остальных маршрутов нужны билеты
+  if (!row.biletov) return null;
+
   const bilety = parseFloat(row.biletov) || 0;
-  const cena = parseFloat(s.stoimostBileta) || 0;
+  // Используем stoimostProezda если доступна (актуальная цена из настроек)
+  const cena = parseFloat(s.stoimostProezda || s.stoimostBileta) || 0;
   const toplivoRub =
     (parseFloat(s.rashod) / 100) * bilety * (parseFloat(s.stoimostTopliva) || 0);
   const vyuchka = bilety * cena - toplivoRub;

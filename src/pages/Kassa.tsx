@@ -105,13 +105,7 @@ const Kassa = () => {
       const syncedRows: KassaRow[] = workingRows.map((r) => {
         const existing = existingByBort.get(r.bortovoy);
         const existingRow = existing ?? emptyRow();
-        // stoimostBileta используется в calcPodrabotka для расчёта выручки;
-        // синхронизируем с stoimostProezda (то что редактирует пользователь в Настройках)
-        const settingsForCalc = {
-          ...naryadSettings,
-          stoimostBileta: naryadSettings.stoimostProezda || naryadSettings.stoimostBileta,
-        };
-        const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], settingsForCalc);
+        const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
         const hasCond = !!(r.fioKond && r.fioKond.trim());
         // Обед — всегда проставляем (при изменении кондуктора тоже обновляется)
         const obedAuto = hasCond
