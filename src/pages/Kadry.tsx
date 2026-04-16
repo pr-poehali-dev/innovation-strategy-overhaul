@@ -3,7 +3,17 @@ import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 import { useAppStore, Employee } from "@/store/appStore";
 
-type TabType = "voditely" | "konduktery";
+type TabType = "voditely" | "konduktery" | "itr";
+
+const ITR_DOLZHNOSTI = [
+  "Нач. гаража",
+  "Механик по выпуску",
+  "Механик по ремонту",
+  "Диспетчер",
+  "Слесарь",
+  "Медик",
+  "Клининг менеджер",
+];
 
 const emptyEmployee = (dolzhnost: string): Employee => ({
   id: Date.now() + Math.random(),
@@ -45,6 +55,20 @@ const COND_COLUMNS = [
   { key: "status",     label: "Статус",        width: "90px"  },
 ] as const;
 
+const ITR_COLUMNS = [
+  { key: "tabNum",     label: "Таб. №",        width: "70px"  },
+  { key: "fio",        label: "ФИО",           width: "200px" },
+  { key: "dolzhnost",  label: "Должность",     width: "160px" },
+  { key: "telefon",    label: "Телефон",       width: "130px" },
+  { key: "inn",        label: "ИНН",           width: "120px" },
+  { key: "snils",      label: "СНИЛС",         width: "130px" },
+  { key: "dataRozhd",  label: "Дата рождения", width: "110px" },
+  { key: "dataPriema", label: "Дата приёма",   width: "110px" },
+  { key: "status",     label: "Статус",        width: "90px"  },
+] as const;
+
+const ITR_DOLZHNOSTI_SET = new Set(ITR_DOLZHNOSTI);
+
 const StatusBadge = ({ value, onChange }: { value: "active" | "inactive"; onChange: (v: "active" | "inactive") => void }) => (
   <button
     onClick={() => onChange(value === "active" ? "inactive" : "active")}
@@ -67,16 +91,19 @@ const Kadry = () => {
 
   const voditely   = employees.filter((e) => e.dolzhnost === "Водитель");
   const konduktery = employees.filter((e) => e.dolzhnost === "Кондуктор");
+  const itr        = employees.filter((e) => ITR_DOLZHNOSTI_SET.has(e.dolzhnost));
 
-  const rows    = tab === "voditely" ? voditely : konduktery;
-  const columns = tab === "voditely" ? VOD_COLUMNS : COND_COLUMNS;
+  const rows    = tab === "voditely" ? voditely : tab === "konduktery" ? konduktery : itr;
+  const columns = tab === "voditely" ? VOD_COLUMNS : tab === "konduktery" ? COND_COLUMNS : ITR_COLUMNS;
 
   const updateCell = (id: number, col: keyof Employee, value: string) => {
     setEmployees((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
   };
 
-  const addRow = () =>
-    setEmployees((prev) => [...prev, emptyEmployee(tab === "voditely" ? "Водитель" : "Кондуктор")]);
+  const addRow = () => {
+    const dolzhnost = tab === "voditely" ? "Водитель" : tab === "konduktery" ? "Кондуктор" : ITR_DOLZHNOSTI[0];
+    setEmployees((prev) => [...prev, emptyEmployee(dolzhnost)]);
+  };
 
   const deleteRow = (id: number) => {
     if (rows.length === 1) return;
@@ -97,6 +124,12 @@ const Kadry = () => {
   };
 
   const activeCount = rows.filter((r) => r.status === "active").length;
+
+  const TABS: { key: TabType; label: string; icon: string; count: number }[] = [
+    { key: "voditely",   label: "Водители",   icon: "Steering", count: voditely.filter((r) => r.status === "active").length },
+    { key: "konduktery", label: "Кондукторы", icon: "Ticket",   count: konduktery.filter((r) => r.status === "active").length },
+    { key: "itr",        label: "ИТР",        icon: "HardHat",  count: itr.filter((r) => r.status === "active").length },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
@@ -130,38 +163,25 @@ const Kadry = () => {
 
           {/* Tabs */}
           <div className="flex border-b border-gray-300">
-            <button
-              onClick={() => setTab("voditely")}
-              className={`px-6 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
-                tab === "voditely"
-                  ? "border-blue-600 text-blue-700"
-                  : "border-transparent text-gray-500 hover:text-gray-800"
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                <Icon name="Steering" size={15} />
-                Водители
-                <span className="ml-1 px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 text-xs">
-                  {voditely.filter((r) => r.status === "active").length}
+            {TABS.map(({ key, label, icon, count }) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`px-6 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
+                  tab === key
+                    ? "border-blue-600 text-blue-700"
+                    : "border-transparent text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <Icon name={icon} size={15} />
+                  {label}
+                  <span className="ml-1 px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 text-xs">
+                    {count}
+                  </span>
                 </span>
-              </span>
-            </button>
-            <button
-              onClick={() => setTab("konduktery")}
-              className={`px-6 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
-                tab === "konduktery"
-                  ? "border-blue-600 text-blue-700"
-                  : "border-transparent text-gray-500 hover:text-gray-800"
-              }`}
-            >
-              <span className="flex items-center gap-2">
-                <Icon name="Ticket" size={15} />
-                Кондукторы
-                <span className="ml-1 px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 text-xs">
-                  {konduktery.filter((r) => r.status === "active").length}
-                </span>
-              </span>
-            </button>
+              </button>
+            ))}
           </div>
 
           {/* Table */}
@@ -196,6 +216,22 @@ const Kadry = () => {
                               value={row.status}
                               onChange={(v) => updateCell(row.id, "status", v)}
                             />
+                          </td>
+                        );
+                      }
+                      // Должность ИТР — выпадающий список
+                      if (col.key === "dolzhnost" && tab === "itr") {
+                        return (
+                          <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
+                            <select
+                              value={row.dolzhnost}
+                              onChange={(e) => updateCell(row.id, "dolzhnost", e.target.value)}
+                              className="w-full h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors cursor-pointer"
+                            >
+                              {ITR_DOLZHNOSTI.map((d) => (
+                                <option key={d} value={d}>{d}</option>
+                              ))}
+                            </select>
                           </td>
                         );
                       }
