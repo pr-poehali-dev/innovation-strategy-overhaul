@@ -45,8 +45,8 @@ const today = new Date().toLocaleDateString("ru-RU", {
 const Prodazhi = () => {
   const { naryadEntries, employees, vehicles } = useAppStore();
 
-  const vodители = employees.filter((e) => e.dolzhnost === "Водитель" && e.status === "active");
-  const кондукторы = employees.filter((e) => e.dolzhnost === "Кондуктор" && e.status === "active");
+  const driverList = employees.filter((e) => e.dolzhnost === "Водитель"  && e.status === "active");
+  const condList   = employees.filter((e) => e.dolzhnost === "Кондуктор" && e.status === "active");
 
   // Диспетчер
   const [dispFio, setDispFio] = useState("");
@@ -56,29 +56,24 @@ const Prodazhi = () => {
     Array.from({ length: 10 }, emptyRow)
   );
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
-  const [imported, setImported] = useState(false);
 
-  const handleImport = () => {
-    if (!naryadEntries.length) return;
-    const newRows: ProdazhiRow[] = naryadEntries.map((e) => ({
-      id:      Date.now() + Math.random(),
-      bort:    e.bortovoy,
-      marGr:   e.marshrut,
-      fioVod:  e.fioVod,
-      fioCond: e.fioKond || "без",
-      dt:      "",
-      reysy:   "",
-      kolBil:  e.biletov,
-      valid:   "",
-      qr:      "",
-    }));
-    setRows(newRows);
-    setImported(true);
-    setTimeout(() => setImported(false), 3000);
-  };
-
+  // Автоматическая синхронизация из наряда — сохраняет ручные правки (ДТ, рейсы и т.д.)
   useEffect(() => {
-    if (naryadEntries.length > 0) setImported(false);
+    if (!naryadEntries.length) return;
+    setRows((currentRows) => {
+      const existingByBort = new Map(currentRows.map((r) => [r.bort, r]));
+      return naryadEntries.map((e) => {
+        const existing = existingByBort.get(e.bortovoy);
+        return {
+          ...(existing ?? emptyRow()),
+          bort:    e.bortovoy,
+          marGr:   e.marshrut,
+          fioVod:  e.fioVod,
+          fioCond: e.fioKond || "без",
+          kolBil:  e.biletov || (existing?.kolBil ?? ""),
+        };
+      });
+    });
   }, [naryadEntries]);
 
   const updateCell = (id: number, col: ColKey, value: string) =>
@@ -207,11 +202,11 @@ const Prodazhi = () => {
       {/* datalists */}
       <datalist id={vodFioList}>
         <option value="без" />
-        {vodители.map((e) => <option key={e.id} value={e.fio} />)}
+        {driverList.map((e) => <option key={e.id} value={e.fio} />)}
       </datalist>
       <datalist id={condFioList}>
         <option value="без" />
-        {кондукторы.map((e) => <option key={e.id} value={e.fio} />)}
+        {condList.map((e) => <option key={e.id} value={e.fio} />)}
       </datalist>
       <datalist id={bortList}>
         {vehicles.map((v) => <option key={v.id} value={v.bortovoy}>{v.bortovoy} {v.marka}</option>)}
@@ -228,11 +223,10 @@ const Prodazhi = () => {
             </div>
             <div className="flex items-center gap-2">
               {naryadEntries.length > 0 && (
-                <button onClick={handleImport}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded transition-colors ${imported ? "bg-green-600 text-white" : "bg-indigo-600 text-white hover:bg-indigo-700"}`}>
-                  <Icon name={imported ? "Check" : "Download"} size={14} />
-                  {imported ? "Загружено!" : `Из наряда (${naryadEntries.length})`}
-                </button>
+                <span className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded flex items-center gap-1">
+                  <Icon name="RefreshCw" size={11} />
+                  Синхронизировано с нарядом ({naryadEntries.length})
+                </span>
               )}
               <button onClick={addRow} className="flex items-center gap-1.5 px-2 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700">
                 <Icon name="Plus" size={12} /> Строка
