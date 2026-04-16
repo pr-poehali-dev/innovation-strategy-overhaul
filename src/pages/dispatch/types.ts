@@ -60,12 +60,10 @@ export const DEFAULT_SETTINGS: NormaSettings = {
   fixedRoute6: "7000",
 };
 
-// Порядок: Борт № → Маршрут → Терминал → Путевой лист
+// Порядок в таблице: Борт № → Маршрут (остальные — отдельные ячейки)
 export const TEXT_COLS = [
-  { key: "bortovoy", label: "Борт №",       width: "90px"  },
-  { key: "marshrut", label: "Маршрут",      width: "90px"  },
-  { key: "terminal", label: "Терминал",     width: "120px" },
-  { key: "putevoy",  label: "Путевой лист", width: "110px" },
+  { key: "bortovoy", label: "Борт №",  width: "90px" },
+  { key: "marshrut", label: "Маршрут", width: "90px" },
 ] as const;
 
 export function calcPodrabotka(

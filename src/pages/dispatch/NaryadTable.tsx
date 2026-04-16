@@ -145,10 +145,8 @@ const NaryadTable = ({
     }
   }, [rows, onSetActiveCell, onAddRow]);
 
-  // datalist id для ФИО и терминала (глобальные, не зависят от строки)
   const VOD_LIST  = "dl-narad-vod";
   const COND_LIST = "dl-narad-cond";
-  const TERM_LIST = "dl-narad-term";
 
   const podrabotkaRows = rows.filter((r) => r.podrabotka);
 
@@ -161,9 +159,6 @@ const NaryadTable = ({
       <datalist id={COND_LIST}>
         <option value="без" />
         {condFios.map((f) => <option key={f} value={f} />)}
-      </datalist>
-      <datalist id={TERM_LIST}>
-        {activeTerminals.map((t) => <option key={t.id} value={t.nomer} />)}
       </datalist>
 
       <div className="overflow-x-auto">
@@ -179,7 +174,9 @@ const NaryadTable = ({
               ))}
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "180px" }}>ФИО водителя</th>
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "180px" }}>ФИО кондуктора</th>
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "130px" }}>Статус отсутствия</th>
+              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "120px" }}>Статус</th>
+              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "120px" }}>Терминал</th>
+              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "110px" }}>Путевой лист</th>
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "75px" }}>Подработка</th>
               <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "75px" }}>Путевой</th>
               <th className="border border-blue-900 px-1 py-2" style={{ width: "28px" }}></th>
@@ -197,69 +194,24 @@ const NaryadTable = ({
                     {rowIdx + 1}
                   </td>
 
-                  {TEXT_COLS.map((col, colIdx) => {
-                    const isActive = activeCell?.rowId === row.id && activeCell?.col === col.key;
+                  {/* Борт № — select, исключает занятые */}
+                  <ExclSelect
+                    value={row.bortovoy}
+                    options={freeBorts}
+                    placeholder="— Борт —"
+                    onChange={(v) => onUpdateCell(row.id, "bortovoy", v)}
+                    width="90px"
+                    bold
+                  />
 
-                    // Борт № — select, исключает занятые
-                    if (col.key === "bortovoy") {
-                      return (
-                        <ExclSelect
-                          key={col.key}
-                          value={row.bortovoy}
-                          options={freeBorts}
-                          placeholder="— Борт —"
-                          onChange={(v) => onUpdateCell(row.id, "bortovoy", v)}
-                          width={col.width}
-                          bold
-                        />
-                      );
-                    }
-
-                    // Маршрут — select, исключает занятые графики
-                    if (col.key === "marshrut") {
-                      return (
-                        <ExclSelect
-                          key={col.key}
-                          value={row.marshrut}
-                          options={freeGrafiki}
-                          placeholder="— График —"
-                          onChange={(v) => onUpdateCell(row.id, "marshrut", v)}
-                          width={col.width}
-                        />
-                      );
-                    }
-
-                    // Терминал — datalist (терминалы не уникальны)
-                    if (col.key === "terminal") {
-                      return (
-                        <TextCell
-                          key={col.key}
-                          value={row.terminal}
-                          onChange={(v) => onUpdateCell(row.id, "terminal", v)}
-                          onFocus={() => onSetActiveCell({ rowId: row.id, col: col.key })}
-                          onBlur={() => onSetActiveCell(null)}
-                          onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
-                          isActive={isActive}
-                          width={col.width}
-                          listId={TERM_LIST}
-                        />
-                      );
-                    }
-
-                    // Путевой — обычный ввод
-                    return (
-                      <TextCell
-                        key={col.key}
-                        value={row[col.key as keyof NaryadRow] as string}
-                        onChange={(v) => onUpdateCell(row.id, col.key as keyof NaryadRow, v)}
-                        onFocus={() => onSetActiveCell({ rowId: row.id, col: col.key })}
-                        onBlur={() => onSetActiveCell(null)}
-                        onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
-                        isActive={isActive}
-                        width={col.width}
-                      />
-                    );
-                  })}
+                  {/* Маршрут — select, исключает занятые графики */}
+                  <ExclSelect
+                    value={row.marshrut}
+                    options={freeGrafiki}
+                    placeholder="— График —"
+                    onChange={(v) => onUpdateCell(row.id, "marshrut", v)}
+                    width="90px"
+                  />
 
                   {/* ФИО водителя */}
                   <TextCell
@@ -285,8 +237,8 @@ const NaryadTable = ({
                     listId={COND_LIST}
                   />
 
-                  {/* Статус отсутствия */}
-                  <td className="border border-gray-300 p-0" style={{ width: "130px" }}>
+                  {/* Статус */}
+                  <td className="border border-gray-300 p-0" style={{ width: "120px" }}>
                     <select
                       value={row.statusOtsutstviya}
                       onChange={(e) => onUpdateCell(row.id, "statusOtsutstviya", e.target.value)}
@@ -300,6 +252,33 @@ const NaryadTable = ({
                       ))}
                     </select>
                   </td>
+
+                  {/* Терминал — select из справочника */}
+                  <td className="border border-gray-300 p-0" style={{ width: "120px" }}>
+                    <select
+                      value={row.terminal}
+                      onChange={(e) => onUpdateCell(row.id, "terminal", e.target.value)}
+                      className={`w-full h-7 px-1 text-xs bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors cursor-pointer ${
+                        row.terminal ? "text-gray-800" : "text-gray-400"
+                      }`}
+                    >
+                      <option value="">—</option>
+                      {activeTerminals.map((t) => (
+                        <option key={t.id} value={t.nomer}>{t.nomer}</option>
+                      ))}
+                    </select>
+                  </td>
+
+                  {/* Путевой лист — текстовый ввод */}
+                  <TextCell
+                    value={row.putevoy}
+                    onChange={(v) => onUpdateCell(row.id, "putevoy", v)}
+                    onFocus={() => onSetActiveCell({ rowId: row.id, col: "putevoy" })}
+                    onBlur={() => onSetActiveCell(null)}
+                    onKeyDown={(e) => handleKeyDown(e, rowIdx, TEXT_COLS.length + 3)}
+                    isActive={activeCell?.rowId === row.id && activeCell?.col === "putevoy"}
+                    width="110px"
+                  />
 
                   {/* Подработка */}
                   <td className="border border-gray-300 text-center" style={{ width: "75px" }}>
@@ -346,7 +325,7 @@ const NaryadTable = ({
           {podrabotkaRows.length > 0 && (
             <tfoot>
               <tr className="bg-gray-100 font-semibold text-xs">
-                <td colSpan={TEXT_COLS.length + 4} className="border border-gray-300 px-3 py-1.5 text-right text-gray-600">
+                <td colSpan={9} className="border border-gray-300 px-3 py-1.5 text-right text-gray-600">
                   Подработка: {podrabotkaRows.length} экипажей — суммы в Продажах
                 </td>
                 <td className="border border-gray-300" colSpan={2}></td>
