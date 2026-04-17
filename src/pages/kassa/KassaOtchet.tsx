@@ -86,22 +86,34 @@ const KassaOtchet = ({
       const who     = col.key === "podrVodVydano" ? "vod" : "cond";
       const checked = row[col.key] as boolean;
       const hasPod  = toNum(who === "vod" ? row.podrVod : row.podrCond) > 0;
+      const needAction = hasPod && !checked;
       return (
         <td key={col.key} className="border border-gray-300 p-0 text-center"
-          style={{ width: col.width, backgroundColor: checked ? "#dcfce7" : hasPod ? "#fef9c3" : undefined }}
-          title={checked ? "Подработка выдана" : "Нажмите — отметить как выданную"}
+          style={{
+            width: col.width,
+            backgroundColor: checked ? "#dcfce7" : needAction ? "#fb923c" : undefined,
+            boxShadow: needAction ? "inset 0 0 0 2px #c2410c" : undefined,
+          }}
+          title={
+            checked ? "Подработка выдана" :
+            needAction ? "⚠ Начислена подработка из наряда — нажмите, чтобы отметить как выданную" :
+            "Нет подработки"
+          }
         >
           <button
             onClick={() => hasPod && onToggleVydano(row.id, who)}
             disabled={!hasPod}
             className={[
               "w-full h-6 flex items-center justify-center transition-colors",
-              !hasPod ? "cursor-default opacity-30" : "cursor-pointer hover:bg-green-100",
+              !hasPod ? "cursor-default opacity-30" : "cursor-pointer",
+              needAction ? "animate-pulse hover:bg-orange-600" : "hover:bg-green-100",
             ].join(" ")}
           >
             {checked
-              ? <span className="text-green-600 font-bold text-sm">✓</span>
-              : <span className="text-gray-300 text-sm">○</span>
+              ? <span className="text-green-600 font-bold text-base">✓</span>
+              : needAction
+                ? <span className="text-white font-extrabold text-base drop-shadow">!</span>
+                : <span className="text-gray-300 text-sm">○</span>
             }
           </button>
         </td>
