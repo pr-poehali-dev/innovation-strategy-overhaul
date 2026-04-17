@@ -47,6 +47,7 @@ export interface KassaRow {
   podrCond: string;        // начислено кондуктору
   podrVodVydano: boolean;  // галочка: подработка водителя выдана
   podrCondVydano: boolean; // галочка: подработка кондуктора выдана
+  podrabotkaNaryad?: boolean; // право на подработку из наряда
   vPlus: string;
   itogo: string;
 }

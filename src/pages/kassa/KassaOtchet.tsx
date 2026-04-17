@@ -83,9 +83,11 @@ const KassaOtchet = ({
 
     // Галочка выдачи подработки
     if (isCheck) {
-      const who     = col.key === "podrVodVydano" ? "vod" : "cond";
-      const checked = row[col.key] as boolean;
-      const hasPod  = toNum(who === "vod" ? row.podrVod : row.podrCond) > 0;
+      const who       = col.key === "podrVodVydano" ? "vod" : "cond";
+      const checked   = row[col.key] as boolean;
+      const hasCondR  = !!(row.fioCond && row.fioCond.trim() && row.fioCond !== "без");
+      const allowedBy = row.podrabotkaNaryad === true && (who === "vod" || hasCondR);
+      const hasPod    = allowedBy && toNum(who === "vod" ? row.podrVod : row.podrCond) > 0;
       const needAction = hasPod && !checked;
       return (
         <td key={col.key} className="border border-gray-300 p-0 text-center"
@@ -192,9 +194,11 @@ const KassaOtchet = ({
               {/* Маршрутные строки */}
               {routeRows.map((row, rowIdx) => {
                 const bg = row.mar ? getRouteColor(row.mar) : rowIdx % 2 === 0 ? "#fff" : "#f5f8ff";
-                const hasPodrVod  = toNum(row.podrVod)  > 0;
-                const hasPodrCond = toNum(row.podrCond) > 0;
-                const hasPodr = hasPodrVod || hasPodrCond;
+                const hasCond     = !!(row.fioCond && row.fioCond.trim() && row.fioCond !== "без");
+                const allowPodr   = row.podrabotkaNaryad === true;
+                const hasPodrVod  = allowPodr && toNum(row.podrVod)  > 0;
+                const hasPodrCond = allowPodr && hasCond && toNum(row.podrCond) > 0;
+                const hasPodr = allowPodr && (hasPodrVod || hasPodrCond);
                 return (
                   <tr key={row.id} style={{ backgroundColor: bg, outline: hasPodr ? "2px solid #f97316" : undefined, outlineOffset: "-1px" }}>
                     <td className="border border-gray-300 text-center text-gray-400 select-none text-xs" style={{ width: "24px" }}>
@@ -205,10 +209,10 @@ const KassaOtchet = ({
                       {hasPodr ? (
                         <div className="flex flex-col items-center gap-0.5 py-0.5">
                           {hasPodrVod && (
-                            <span className="text-xs font-bold text-green-700 leading-none" title="Водитель может получить подработку">В</span>
+                            <span className="text-xs font-bold text-green-700 leading-none" title="Водитель: подработка разрешена в наряде">В</span>
                           )}
                           {hasPodrCond && (
-                            <span className="text-xs font-bold text-blue-700 leading-none" title="Кондуктор может получить подработку">К</span>
+                            <span className="text-xs font-bold text-blue-700 leading-none" title="Кондуктор: подработка разрешена в наряде">К</span>
                           )}
                         </div>
                       ) : (

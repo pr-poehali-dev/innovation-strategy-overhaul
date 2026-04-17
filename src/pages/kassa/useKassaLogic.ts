@@ -133,6 +133,7 @@ export const useKassaLogic = () => {
           podrVod, podrCond,
           podrVodVydano:  existingRow.podrVodVydano  ?? false,
           podrCondVydano: existingRow.podrCondVydano ?? false,
+          podrabotkaNaryad: !!r.podrabotka,
           itogo,
         };
       });
