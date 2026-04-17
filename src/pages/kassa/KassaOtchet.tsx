@@ -199,8 +199,16 @@ const KassaOtchet = ({
                 const hasPodrVod  = allowPodr && toNum(row.podrVod)  > 0;
                 const hasPodrCond = allowPodr && hasCond && toNum(row.podrCond) > 0;
                 const hasPodr = allowPodr && (hasPodrVod || hasPodrCond);
+                // Конфликт: сумма посчитана, но в наряде галочка не стоит
+                const sumVod  = toNum(row.podrVod)  > 0;
+                const sumCond = toNum(row.podrCond) > 0;
+                const conflict = !allowPodr && (sumVod || sumCond);
                 return (
-                  <tr key={row.id} style={{ backgroundColor: bg, outline: hasPodr ? "2px solid #f97316" : undefined, outlineOffset: "-1px" }}>
+                  <tr key={row.id} style={{
+                    backgroundColor: bg,
+                    outline: hasPodr ? "2px solid #f97316" : conflict ? "2px dashed #dc2626" : undefined,
+                    outlineOffset: "-1px",
+                  }}>
                     <td className="border border-gray-300 text-center text-gray-400 select-none text-xs" style={{ width: "24px" }}>
                       {rowIdx + 1}
                     </td>
@@ -215,6 +223,13 @@ const KassaOtchet = ({
                             <span className="text-xs font-bold text-blue-700 leading-none" title="Кондуктор: подработка разрешена в наряде">К</span>
                           )}
                         </div>
+                      ) : conflict ? (
+                        <span
+                          className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-600 text-white text-[10px] font-extrabold leading-none animate-pulse"
+                          title={`⚠ Конфликт: в Кассе начислена подработка${sumVod ? ` водителю (${row.podrVod})` : ""}${sumVod && sumCond ? " и" : ""}${sumCond ? ` кондуктору (${row.podrCond})` : ""}, но в Наряде галочка «Подработка» НЕ стоит. Проверь наряд или обнули суммы.`}
+                        >
+                          !
+                        </span>
                       ) : (
                         <span className="text-gray-200 text-xs">—</span>
                       )}
