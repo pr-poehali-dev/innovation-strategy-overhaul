@@ -331,9 +331,50 @@ export const useKassaLogic = () => {
     setRows((prev) => prev.map((r) => {
       const val = validByBort.get(r.bort);
       if (!val) return r;
-      return { ...r, beznal: val };
+      // Пересчитываем выручку и ИТОГО с новым безналом
+      const updated = { ...r, beznal: val };
+      updated.viruchka = calcViruchka(updated);
+      updated.prodBilety = calcProdBilety(updated.viruchka);
+      updated.itogo = calcItogo(updated);
+      return updated;
     }));
   };
+
+  // ─── Автосинхронизация безнала из Продаж ────────────────────────────────
+  useEffect(() => {
+    const runSync = () => {
+      const prodAll = loadProdazhiAll();
+      const prodDay = prodAll[selectedKey];
+      if (!prodDay?.rows) return;
+      const validByBort = new Map<string, string>();
+      (prodDay.rows as Array<{ bort?: string; valid?: string }>).forEach((r) => {
+        if (r.bort && r.valid) validByBort.set(r.bort, r.valid);
+      });
+      if (validByBort.size === 0) return;
+      setRows((prev) => {
+        let changed = false;
+        const next = prev.map((r) => {
+          if (!r.bort) return r;
+          const val = validByBort.get(r.bort);
+          if (!val || val === r.beznal) return r;
+          changed = true;
+          const updated = { ...r, beznal: val };
+          updated.viruchka = calcViruchka(updated);
+          updated.prodBilety = calcProdBilety(updated.viruchka);
+          updated.itogo = calcItogo(updated);
+          return updated;
+        });
+        return changed ? next : prev;
+      });
+    };
+    runSync();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === LS_PRODAZHI || e.key === null) runSync();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey, naryadRows.length]);
 
   // ─── Подработка: выдача + синхронизация в Ведомость ─────────────────────
   const syncPodrToVedomost = (fio: string, summa: string) => {
