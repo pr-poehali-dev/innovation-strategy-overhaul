@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
+import { useAppStore } from "@/store/appStore";
+import { loadKassa } from "@/pages/kassa/kassaShared";
 
 export const LS_VEDOMOST = "dat_vedomost_v1";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -105,16 +107,76 @@ function calcRow(row: VedomostRow) {
 
 const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 
+const currentMonthKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const MONTH_NAMES = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+
 const Vedomost = () => {
+  const { employees } = useAppStore();
   const [rows, setRows] = useState<VedomostRow[]>(() => {
     const saved = loadVedomostRows();
     return saved.length > 0 ? saved : [emptyRow(), emptyRow(), emptyRow()];
   });
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: ColKey } | null>(null);
+  const [monthKey, setMonthKey] = useState<string>(currentMonthKey());
 
   useEffect(() => {
     try { localStorage.setItem(LS_VEDOMOST, JSON.stringify(rows)); } catch (e) { console.warn(e); }
   }, [rows]);
+
+  // Суммы по ФИО за выбранный месяц: nachisl (Подр.вод) + poluchPodrab (выданное)
+  const kassaAgg = useMemo(() => {
+    const kassa = loadKassa();
+    const acc: Record<string, { nachisl: number; poluch: number }> = {};
+    Object.entries(kassa).forEach(([dateKey, day]) => {
+      if (!dateKey.startsWith(monthKey + "-")) return;
+      const kassaRows = (day as { rows?: Array<{ fioVod?: string; fioCond?: string; podrVod?: string; podrCond?: string; podrVodVydano?: boolean; podrCondVydano?: boolean }> })?.rows;
+      if (!Array.isArray(kassaRows)) return;
+      kassaRows.forEach((r) => {
+        const pv = parseFloat((r.podrVod || "0").replace(",", ".")) || 0;
+        const pc = parseFloat((r.podrCond || "0").replace(",", ".")) || 0;
+        if (r.fioVod && pv > 0) {
+          const k = r.fioVod.trim();
+          if (!acc[k]) acc[k] = { nachisl: 0, poluch: 0 };
+          acc[k].nachisl += pv;
+          if (r.podrVodVydano) acc[k].poluch += pv;
+        }
+        if (r.fioCond && r.fioCond !== "без" && pc > 0) {
+          const k = r.fioCond.trim();
+          if (!acc[k]) acc[k] = { nachisl: 0, poluch: 0 };
+          acc[k].nachisl += pc;
+          if (r.podrCondVydano) acc[k].poluch += pc;
+        }
+      });
+    });
+    return acc;
+  }, [monthKey]);
+
+  // Автосинхронизация: добавить всех активных водителей/кондукторов из Кадров + заполнить Начислено и Получ.Подраб.
+  const syncFromKadryAndKassa = () => {
+    const staff = employees.filter((e) => e.status === "active" && (e.dolzhnost === "Водитель" || e.dolzhnost === "Кондуктор"));
+    setRows((prev) => {
+      const byFio = new Map(prev.filter((r) => r.fio).map((r) => [r.fio.trim(), r]));
+      const result: VedomostRow[] = staff.map((e) => {
+        const existing = byFio.get(e.fio.trim());
+        const agg = kassaAgg[e.fio.trim()] || { nachisl: 0, poluch: 0 };
+        const base = existing ?? emptyRow();
+        return {
+          ...base,
+          fio: e.fio,
+          nachisl: agg.nachisl > 0 ? String(Math.round(agg.nachisl)) : base.nachisl,
+          poluchPodrab: agg.poluch > 0 ? String(Math.round(agg.poluch)) : base.poluchPodrab,
+        };
+      });
+      // Сохраняем строки, которые не нашлись в Кадрах (ручные)
+      const staffFios = new Set(staff.map((s) => s.fio.trim()));
+      const manual = prev.filter((r) => r.fio && !staffFios.has(r.fio.trim()));
+      return result.length > 0 ? [...result, ...manual] : prev;
+    });
+  };
 
   const updateCell = (id: number, col: ColKey, value: string) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
@@ -172,7 +234,32 @@ const Vedomost = () => {
               <h1 className="text-xl font-bold text-gray-800 uppercase tracking-wide">Расчётная ведомость</h1>
               <p className="text-sm text-gray-500 mt-0.5">Дальавтотранс · {today}</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              <select
+                value={monthKey}
+                onChange={(e) => setMonthKey(e.target.value)}
+                className="px-2 py-1.5 text-sm border border-gray-300 rounded bg-white"
+                title="Месяц для автозаполнения"
+              >
+                {(() => {
+                  const opts: { value: string; label: string }[] = [];
+                  const d = new Date();
+                  for (let i = 0; i < 12; i++) {
+                    const dt = new Date(d.getFullYear(), d.getMonth() - i, 1);
+                    const v = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+                    opts.push({ value: v, label: `${MONTH_NAMES[dt.getMonth()]} ${dt.getFullYear()}` });
+                  }
+                  return opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>);
+                })()}
+              </select>
+              <button
+                onClick={syncFromKadryAndKassa}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
+                title="Заполнить ФИО из Кадров, Начислено и Получ. Подраб. из Кассы за выбранный месяц"
+              >
+                <Icon name="RefreshCw" size={14} />
+                Автозаполнение
+              </button>
               <button onClick={addRow} className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
                 <Icon name="Plus" size={14} />
                 Добавить строку
