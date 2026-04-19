@@ -256,8 +256,13 @@ const NaryadTable = ({
               // Уникальные datalist id для строки — исключаем уже занятых другими
               const vodListId  = `dl-vod-${row.id}`;
               const condListId = `dl-cond-${row.id}`;
+
+              // Арендатор — жёлтая подсветка строки
+              const driverEmp = employees.find((e) => e.fio === row.fio && e.dolzhnost === "Водитель");
+              const isArendator = driverEmp?.tip === "arendator";
+
               return (
-                <tr key={row.id} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50/40"}>
+                <tr key={row.id} className={isArendator ? "bg-yellow-100" : (rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50/40")}>
                   <td className="border border-gray-300 text-center text-gray-400 select-none" style={{ width: "28px" }}>
                     {rowIdx + 1}
                   </td>

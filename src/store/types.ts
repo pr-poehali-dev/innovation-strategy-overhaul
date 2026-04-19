@@ -99,6 +99,7 @@ export interface Employee {
   inn: string;
   snils: string;
   udostoverenie: string;  // номер водительского удостоверения
+  tip?: string;           // тип водителя: "arendator" | "podrabotka" | "" (штатный)
 }
 
 // ─── Маршрут ───────────────────────────────────────────────────────────────
