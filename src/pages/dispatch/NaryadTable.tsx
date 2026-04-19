@@ -257,12 +257,18 @@ const NaryadTable = ({
               const vodListId  = `dl-vod-${row.id}`;
               const condListId = `dl-cond-${row.id}`;
 
-              // Арендатор — жёлтая подсветка строки
+              // Подсветка по типу водителя: арендатор — жёлтый, подработчик — голубой
               const driverEmp = employees.find((e) => e.fio === row.fio && e.dolzhnost === "Водитель");
               const isArendator = driverEmp?.tip === "arendator";
+              const isPodrabotka = driverEmp?.tip === "podrabotka";
+              const rowBg = isArendator
+                ? "bg-yellow-100"
+                : isPodrabotka
+                  ? "bg-sky-100"
+                  : (rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50/40");
 
               return (
-                <tr key={row.id} className={isArendator ? "bg-yellow-100" : (rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50/40")}>
+                <tr key={row.id} className={rowBg}>
                   <td className="border border-gray-300 text-center text-gray-400 select-none" style={{ width: "28px" }}>
                     {rowIdx + 1}
                   </td>

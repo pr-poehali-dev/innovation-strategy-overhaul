@@ -73,9 +73,27 @@ const PutevoyModal = ({ row, today, dayMeta, onClose, onSaveOdometr }: Props) =>
     dispPodpis:      itr.disp,
   });
   const [showPrint, setShowPrint] = useState(false);
+  // Поля, которые пользователь отредактировал вручную — их не перезаписываем автозначением из Кадров
+  const [editedKeys, setEditedKeys] = useState<Set<keyof PutevoyData>>(new Set());
 
-  const set = (key: keyof PutevoyData, val: string) =>
+  const set = (key: keyof PutevoyData, val: string) => {
     setExtra((prev) => ({ ...prev, [key]: val }));
+    setEditedKeys((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  };
+
+  // Автозаполнение № удостоверения из Кадров — приоритет, если пользователь не редактировал поле вручную
+  const autoUdost = vodInfo?.udostoverenie ?? "";
+  const autoKategoria = vodInfo?.kategoriya || "D";
+  const vodUdostVerenieVal = editedKeys.has("vodUdostVerenie")
+    ? (extra.vodUdostVerenie ?? "")
+    : (autoUdost || extra.vodUdostVerenie || "");
+  const vodKategoriaVal = editedKeys.has("vodKategoria")
+    ? (extra.vodKategoria ?? "D")
+    : (autoKategoria || extra.vodKategoria || "D");
 
   const putevoyData: PutevoyData = {
     orgNazvanie:       extra.orgNazvanie     ?? routeCompany.nazvanie,
@@ -90,8 +108,8 @@ const PutevoyModal = ({ row, today, dayMeta, onClose, onSaveOdometr }: Props) =>
     garazhny:          vehicleInfo?.garazhny ?? row.bortovoy,
     marshrut:          extra.marshrut        ?? "",
     vodFio:            row.fio,
-    vodUdostVerenie:   extra.vodUdostVerenie ?? "",
-    vodKategoria:      extra.vodKategoria    ?? "D",
+    vodUdostVerenie:   vodUdostVerenieVal,
+    vodKategoria:      vodKategoriaVal,
     kondFio:           row.fioKond,
     odometrVyezd:      extra.odometrVyezd    ?? "",
     odometrVozv:       extra.odometrVozv     ?? "",
@@ -124,7 +142,7 @@ const PutevoyModal = ({ row, today, dayMeta, onClose, onSaveOdometr }: Props) =>
       <label className="text-xs text-gray-500">{label}</label>
       <input
         type="text"
-        value={(extra[k] as string) ?? ""}
+        value={(putevoyData[k] as string) ?? ""}
         onChange={(e) => set(k, e.target.value)}
         placeholder={placeholder}
         className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
