@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 import { useAppStore, DtpRecord, CompanySettings } from "@/store/appStore";
+import JurnalBdd from "./bdd/JurnalBdd";
 
 const EMPTY_COMPANY: CompanySettings = {
   nazvanie: "—", kratkoeNazvanie: "", inn: "", kpp: "", ogrn: "", okpo: "", okvad: "",
@@ -28,12 +29,13 @@ const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2
 
 // ─── Печать документа ДТП ──────────────────────────────────────────────────
 const DtpDocPrint = ({ rec, onClose }: { rec: DtpRecord; onClose: () => void }) => {
-  const { companies, routes, employees } = useAppStore();
+  const { companies, routes, employees, vehicles } = useAppStore();
   // Компания определяется по маршруту из записи ДТП, а не по activeCompanyIdx
   const routeNum = rec.marshrut?.split("/")[0]?.trim();
   const matchedRoute = routes.find((r) => r.nomer === routeNum);
   const company = (matchedRoute ? companies[matchedRoute.companyIdx] : companies[0]) ?? EMPTY_COMPANY;
   const direktor = employees.find((e) => e.dolzhnost === "Директор" && e.status === "active")?.fio ?? "_______________";
+  const veh = vehicles.find((v) => v.bortovoy === rec.bortovoy);
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-start justify-center p-4 overflow-y-auto">
@@ -69,12 +71,14 @@ const DtpDocPrint = ({ rec, onClose }: { rec: DtpRecord; onClose: () => void }) 
 
           <div className="border border-gray-400 p-4 mb-4 text-sm space-y-2">
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              <div><b>Транспортное средство:</b> борт № {rec.bortovoy || "—"}</div>
+              <div><b>Транспортное средство:</b> борт № {rec.bortovoy || "—"}{veh?.marka ? `, ${veh.marka}` : ""}</div>
+              <div><b>Гос. знак:</b> {veh?.gos || "—"}</div>
               <div><b>Маршрут:</b> {rec.marshrut || "—"}</div>
+              <div><b>Путевой лист №:</b> {rec.putevoy || "—"}</div>
               <div><b>Водитель:</b> {rec.fioVod || "—"}</div>
               <div><b>Кондуктор:</b> {rec.fioKond || "—"}</div>
-              <div><b>Путевой лист №:</b> {rec.putevoy || "—"}</div>
               <div><b>Время ДТП:</b> {rec.vremya || "___:___"}</div>
+              <div><b>Дата ДТП:</b> {rec.date}</div>
               <div className="col-span-2"><b>Место ДТП:</b> {rec.mesto || "____________________________________________"}</div>
             </div>
           </div>
@@ -117,6 +121,8 @@ const DtpDocPrint = ({ rec, onClose }: { rec: DtpRecord; onClose: () => void }) 
               <div>Организация: <b>{company.nazvanie || "—"}</b></div>
               <div>ИНН: <b>{company.inn || "—"}</b></div>
               <div>Борт №: <b>{rec.bortovoy || "—"}</b></div>
+              <div>Гос. знак: <b>{veh?.gos || "—"}</b></div>
+              <div>Марка: <b>{veh?.marka || "—"}</b></div>
               <div>Дата/время: <b>{rec.date} {rec.vremya}</b></div>
               <div className="col-span-2">Место: <b>{rec.mesto || "—"}</b></div>
               <div className="col-span-2">Водитель: <b>{rec.fioVod || "—"}</b></div>
@@ -138,6 +144,8 @@ const DtpCard = ({
   onUpdate: (id: number, partial: Partial<DtpRecord>) => void;
   onOpenDoc: (rec: DtpRecord) => void;
 }) => {
+  const { vehicles } = useAppStore();
+  const veh = vehicles.find((v) => v.bortovoy === rec.bortovoy);
   const [open, setOpen] = useState(rec.status === "new");
 
   const F = ({ label, field, placeholder }: { label: string; field: keyof DtpRecord; placeholder?: string }) => (
@@ -186,6 +194,9 @@ const DtpCard = ({
             <div><span className="text-gray-500">Кондуктор:</span> <span className="font-medium">{rec.fioKond || "—"}</span></div>
             <div><span className="text-gray-500">Путевой №:</span> <span className="font-semibold text-blue-700">{rec.putevoy || "—"}</span></div>
             <div><span className="text-gray-500">Маршрут:</span> <span className="font-medium">{rec.marshrut || "—"}</span></div>
+            <div><span className="text-gray-500">Гос.знак:</span> <span className="font-medium">{veh?.gos || "—"}</span></div>
+            <div className="col-span-2"><span className="text-gray-500">Марка:</span> <span className="font-medium">{veh?.marka || "—"}</span></div>
+            <div><span className="text-gray-500">Дата:</span> <span className="font-medium">{rec.date}</span></div>
           </div>
           <div className="grid grid-cols-3 gap-2">
             <F label="Время ДТП" field="vremya" placeholder="09:35" />
@@ -238,6 +249,11 @@ const Bdd = () => {
   const { dtpRecords, setDtpRecords } = useAppStore();
   const [docRec, setDocRec] = useState<DtpRecord | null>(null);
   const [filterStatus, setFilterStatus] = useState<DtpRecord["status"] | "all">("all");
+  const [tab, setTab] = useState<"cards" | "journal">("cards");
+  const [journalMonth, setJournalMonth] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
 
   const updateDtp = (id: number, partial: Partial<DtpRecord>) =>
     setDtpRecords((prev) => prev.map((r) => (r.id === id ? { ...r, ...partial } : r)));
@@ -260,13 +276,30 @@ const Bdd = () => {
     closed:       dtpRecords.filter((r) => r.status === "closed").length,
   };
 
+  // Отфильтрованные для журнала по выбранному месяцу
+  const journalRecords = useMemo(() => {
+    if (!journalMonth) return dtpRecords;
+    const [y, m] = journalMonth.split("-");
+    return dtpRecords.filter((r) => {
+      const parts = r.date.split(".");
+      return parts[1] === m && parts[2] === y;
+    });
+  }, [dtpRecords, journalMonth]);
+
+  const journalMonthYear = useMemo(() => {
+    if (!journalMonth) return "";
+    const [y, m] = journalMonth.split("-");
+    const name = new Date(parseInt(y), parseInt(m) - 1, 1).toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
+    return name;
+  }, [journalMonth]);
+
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
       <NavBar title="БДД" />
 
       {docRec && <DtpDocPrint rec={docRec} onClose={() => setDocRec(null)} />}
 
-      <div className="px-4 py-5 max-w-4xl mx-auto">
+      <div className={`px-4 py-5 ${tab === "journal" ? "max-w-7xl" : "max-w-4xl"} mx-auto`}>
         <div className="bg-white border border-gray-300 shadow-sm">
 
           {/* Шапка */}
@@ -284,49 +317,109 @@ const Bdd = () => {
             </button>
           </div>
 
-          {/* Статистика */}
-          <div className="px-5 py-3 border-b border-gray-200 flex gap-4">
-            {([
-              ["all", "Всего", "bg-gray-100 text-gray-700"],
-              ["new", "Новые", "bg-red-100 text-red-700"],
-              ["investigating", "Расследуются", "bg-amber-100 text-amber-700"],
-              ["closed", "Закрытые", "bg-green-100 text-green-700"],
-            ] as [DtpRecord["status"] | "all", string, string][]).map(([key, label, cls]) => (
-              <button
-                key={key}
-                onClick={() => setFilterStatus(key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold border transition-colors ${
-                  filterStatus === key ? cls + " border-current" : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
-                }`}
-              >
-                {label}
-                <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${cls}`}>{counts[key]}</span>
-              </button>
-            ))}
+          {/* Вкладки */}
+          <div className="flex border-b border-gray-200 bg-gray-50">
+            <button
+              onClick={() => setTab("cards")}
+              className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
+                tab === "cards"
+                  ? "border-red-600 text-red-700 bg-white"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <Icon name="LayoutGrid" size={14} className="inline mr-1.5 -mt-0.5" />
+              Карточки ДТП
+            </button>
+            <button
+              onClick={() => setTab("journal")}
+              className={`px-5 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
+                tab === "journal"
+                  ? "border-red-600 text-red-700 bg-white"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <Icon name="BookText" size={14} className="inline mr-1.5 -mt-0.5" />
+              Журнал ДТП
+            </button>
           </div>
 
-          {/* Список ДТП */}
-          <div className="px-5 py-4 space-y-3">
-            {filtered.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
-                <Icon name="ShieldCheck" size={48} className="mx-auto mb-3 opacity-30" />
-                <div className="text-sm">
-                  {dtpRecords.length === 0
-                    ? "ДТП не зафиксировано. Отметки появятся автоматически из Наряда."
-                    : "Нет ДТП с выбранным статусом."}
+          {tab === "cards" && (
+            <>
+              {/* Статистика */}
+              <div className="px-5 py-3 border-b border-gray-200 flex gap-4">
+                {([
+                  ["all", "Всего", "bg-gray-100 text-gray-700"],
+                  ["new", "Новые", "bg-red-100 text-red-700"],
+                  ["investigating", "Расследуются", "bg-amber-100 text-amber-700"],
+                  ["closed", "Закрытые", "bg-green-100 text-green-700"],
+                ] as [DtpRecord["status"] | "all", string, string][]).map(([key, label, cls]) => (
+                  <button
+                    key={key}
+                    onClick={() => setFilterStatus(key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold border transition-colors ${
+                      filterStatus === key ? cls + " border-current" : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    {label}
+                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${cls}`}>{counts[key]}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Список ДТП */}
+              <div className="px-5 py-4 space-y-3">
+                {filtered.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400">
+                    <Icon name="ShieldCheck" size={48} className="mx-auto mb-3 opacity-30" />
+                    <div className="text-sm">
+                      {dtpRecords.length === 0
+                        ? "ДТП не зафиксировано. Отметки появятся автоматически из Наряда."
+                        : "Нет ДТП с выбранным статусом."}
+                    </div>
+                  </div>
+                ) : (
+                  filtered.map((rec) => (
+                    <DtpCard
+                      key={rec.id}
+                      rec={rec}
+                      onUpdate={updateDtp}
+                      onOpenDoc={setDocRec}
+                    />
+                  ))
+                )}
+              </div>
+            </>
+          )}
+
+          {tab === "journal" && (
+            <div className="px-5 py-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <label className="text-xs text-gray-600">Месяц:</label>
+                <input
+                  type="month"
+                  value={journalMonth}
+                  onChange={(e) => setJournalMonth(e.target.value)}
+                  className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                />
+                <button
+                  onClick={() => setJournalMonth("")}
+                  className="text-xs text-blue-600 hover:underline"
+                >
+                  Показать все
+                </button>
+                <div className="ml-auto">
+                  <button
+                    onClick={() => window.print()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  >
+                    <Icon name="Printer" size={14} />
+                    Печать
+                  </button>
                 </div>
               </div>
-            ) : (
-              filtered.map((rec) => (
-                <DtpCard
-                  key={rec.id}
-                  rec={rec}
-                  onUpdate={updateDtp}
-                  onOpenDoc={setDocRec}
-                />
-              ))
-            )}
-          </div>
+              <JurnalBdd records={journalRecords} monthYear={journalMonthYear} />
+            </div>
+          )}
 
         </div>
       </div>

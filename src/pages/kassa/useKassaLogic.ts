@@ -50,6 +50,8 @@ export const useKassaLogic = () => {
     const data = loadKassa();
     data[selectedKey] = { rows, vyplaty };
     saveKassa(data);
+    // Уведомляем модуль "Продажи" в той же вкладке, что касса обновилась
+    try { window.dispatchEvent(new CustomEvent("kassa-updated", { detail: { key: selectedKey } })); } catch { /* noop */ }
   }, [rows, vyplaty, selectedKey]);
 
   const [chastRows, setChastRows] = useState<ChastRow[]>(() =>

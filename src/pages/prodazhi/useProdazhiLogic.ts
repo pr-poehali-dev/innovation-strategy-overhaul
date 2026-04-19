@@ -110,8 +110,18 @@ export const useProdazhiLogic = () => {
         }));
       }
     };
+    // Кастомное событие: Касса обновилась в той же вкладке
+    const onKassaUpdated = (e: Event) => {
+      const ce = e as CustomEvent<{ key?: string }>;
+      const key = ce.detail?.key;
+      if (!key || key === selectedKey) applyFromKassa(selectedKey);
+    };
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener("kassa-updated", onKassaUpdated);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("kassa-updated", onKassaUpdated);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedKey]);
 
@@ -125,9 +135,14 @@ export const useProdazhiLogic = () => {
     setRows((currentRows) => {
       const existingByBort = new Map(currentRows.map((r) => [r.bort, r]));
       const workingRows = naryadRows.filter((r) => r.fio && !r.statusOtsutstviya);
-      return workingRows.map((r) => {
+      const mapped = workingRows.map((r) => {
         const existing = existingByBort.get(r.bortovoy);
         const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
+        // Приоритет: ручной ввод → касса (существующее значение) → расчёт из наряда
+        const existingPodVod  = existing?.podVod  ?? "";
+        const existingPodCond = existing?.podCond ?? "";
+        const newPodVod  = existingPodVod  || (calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : "");
+        const newPodCond = existingPodCond || (calc && calc.cond > 0 ? String(Math.round(calc.cond)) : "");
         return {
           ...(existing ?? emptyRow()),
           bort:    r.bortovoy,
@@ -135,11 +150,15 @@ export const useProdazhiLogic = () => {
           fioVod:  r.fio,
           fioCond: r.fioKond || "без",
           kolBil:  r.biletov || (existing?.kolBil ?? ""),
-          podVod:  calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : (existing?.podVod  ?? ""),
-          podCond: calc && calc.cond > 0 ? String(Math.round(calc.cond)) : (existing?.podCond ?? ""),
+          podVod:  newPodVod,
+          podCond: newPodCond,
         };
       });
+      // После синка из наряда сразу догружаем кассу, чтобы перезаписать подработку из факта выдачи
+      setTimeout(() => applyFromKassa(selectedKey), 0);
+      return mapped;
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [naryadRows, naryadSettings]);
 
   // ─── Обработчики ─────────────────────────────────────────────────────────
