@@ -31,6 +31,16 @@ export const useKassaLogic = () => {
     const saved = loadKassa()[toDateKey(new Date())];
     return saved?.vyplaty ?? Array.from({ length: 10 }, emptyVyp);
   });
+  // Обязательные ежедневные расходы (вычитаются из дневного итого).
+  // Дефолты тянутся из настроек Наряда (zpVodDezhurki / dezhDt / hozNuzhdyGarazh).
+  const [dailyFixed, setDailyFixed] = useState<{ zpVodDezhurki: string; dezhDt: string; hozNuzhdyGarazh: string }>(() => {
+    const saved = loadKassa()[toDateKey(new Date())];
+    return saved?.dailyFixed ?? {
+      zpVodDezhurki: naryadSettings.zpVodDezhurki || "",
+      dezhDt:        naryadSettings.dezhDt        || "",
+      hozNuzhdyGarazh: naryadSettings.hozNuzhdyGarazh || "",
+    };
+  });
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
   const [activeVyp, setActiveVyp] = useState<{ rowId: number; col: string } | null>(null);
 
@@ -42,17 +52,25 @@ export const useKassaLogic = () => {
     const saved = loadKassa()[newKey];
     setRows(saved?.rows ?? Array.from({ length: 12 }, () => emptyRow()));
     setVyplaty(saved?.vyplaty ?? Array.from({ length: 10 }, emptyVyp));
+    setDailyFixed(saved?.dailyFixed ?? {
+      zpVodDezhurki: naryadSettings.zpVodDezhurki || "",
+      dezhDt:        naryadSettings.dezhDt        || "",
+      hozNuzhdyGarazh: naryadSettings.hozNuzhdyGarazh || "",
+    });
     setTimeout(() => { isLoadingRef.current = false; }, 0);
   };
 
   useEffect(() => {
     if (isLoadingRef.current) return;
     const data = loadKassa();
-    data[selectedKey] = { rows, vyplaty };
+    data[selectedKey] = { rows, vyplaty, dailyFixed };
     saveKassa(data);
     // Уведомляем модуль "Продажи" в той же вкладке, что касса обновилась
     try { window.dispatchEvent(new CustomEvent("kassa-updated", { detail: { key: selectedKey } })); } catch { /* noop */ }
-  }, [rows, vyplaty, selectedKey]);
+  }, [rows, vyplaty, dailyFixed, selectedKey]);
+
+  const updateDailyFixed = (key: keyof typeof dailyFixed, val: string) =>
+    setDailyFixed((prev) => ({ ...prev, [key]: val }));
 
   const [chastRows, setChastRows] = useState<ChastRow[]>(() =>
     employees
@@ -507,6 +525,7 @@ export const useKassaLogic = () => {
     rows, vyplaty, activeCell, activeVyp,
     chastRows, naryadRows,
     podrabJournal, monthlyRows,
+    dailyFixed,
     // handlers
     handleDateChange,
     updateCell, addRow, deleteRow, handleKeyDown,
@@ -516,5 +535,6 @@ export const useKassaLogic = () => {
     updateChast, updateChastDay, addChastRow,
     syncFromVedomost, syncBeznal,
     toggleVydano,
+    updateDailyFixed,
   };
 };

@@ -5,6 +5,12 @@ import {
   toNum, getRouteColor,
 } from "./kassaTypes";
 
+interface DailyFixed {
+  zpVodDezhurki: string;
+  dezhDt: string;
+  hozNuzhdyGarazh: string;
+}
+
 interface Props {
   rows: KassaRow[];
   vyplaty: VyplataRow[];
@@ -22,6 +28,8 @@ interface Props {
   onVypKeyDown: (e: React.KeyboardEvent, rowIdx: number, colIdx: number) => void;
   rowCount: number;
   vyplatCount: number;
+  dailyFixed: DailyFixed;
+  onUpdateDailyFixed: (key: keyof DailyFixed, val: string) => void;
 }
 
 const KassaOtchet = ({
@@ -31,6 +39,7 @@ const KassaOtchet = ({
   onUpdateVyp, onAddVyp, onDeleteVyp, onSetActiveVyp,
   onKeyDown, onVypKeyDown,
   rowCount, vyplatCount,
+  dailyFixed, onUpdateDailyFixed,
 }: Props) => {
   const routeRows = rows.filter((r) => r.type !== "disp");
   const dispRows  = rows.filter((r) => r.type === "disp");
@@ -39,6 +48,17 @@ const KassaOtchet = ({
     rows.reduce((acc, r) => acc + toNum(r[col] as string), 0);
 
   const vypItogo = vyplaty.reduce((s, v) => s + toNum(v.itogo), 0);
+
+  // Обязательные ежедневные расходы — вычитаются из итого за день
+  const FIXED_FIELDS: { key: keyof DailyFixed; label: string; hint: string }[] = [
+    { key: "zpVodDezhurki",   label: "ЗП водителя дежурки", hint: "Зарплата дежурного водителя за день" },
+    { key: "dezhDt",          label: "Дежурка ДТ",          hint: "Расход на дизтопливо дежурной машины" },
+    { key: "hozNuzhdyGarazh", label: "Хоз. нужды гараж",    hint: "Хозяйственные расходы гаража за день" },
+  ];
+  const fixedSum    = FIXED_FIELDS.reduce((s, f) => s + toNum(dailyFixed[f.key]), 0);
+  const itogoSum    = getSum("itogo");
+  const dayTotal    = itogoSum - fixedSum;
+  const hasEmptyReq = FIXED_FIELDS.some((f) => !(dailyFixed[f.key] && dailyFixed[f.key].trim()));
 
   // Колонки только для просмотра (авторасчёт)
   // prodBilety, podrVod, podrCond, itogo — авторасчёт, только просмотр
@@ -356,6 +376,75 @@ const KassaOtchet = ({
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* ── Обязательные ежедневные расходы + Итого за день ── */}
+      <div className="border-t-2 border-gray-300 bg-gradient-to-r from-red-50 via-amber-50 to-green-50 px-4 py-3">
+        <div className="flex items-start gap-4 flex-wrap">
+          <div className="flex-1 min-w-[420px]">
+            <div className="flex items-center gap-2 mb-2">
+              <Icon name="AlertCircle" size={14} className="text-red-600" />
+              <span className="text-xs font-bold text-red-700 uppercase tracking-wide">
+                Обязательные расходы за день
+              </span>
+              {hasEmptyReq && (
+                <span className="text-[10px] text-red-600 bg-red-100 border border-red-300 rounded px-1.5 py-0.5 font-semibold">
+                  не заполнены
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {FIXED_FIELDS.map((f) => {
+                const val   = dailyFixed[f.key] ?? "";
+                const empty = !(val && val.trim());
+                return (
+                  <div key={f.key} className="flex flex-col gap-1" title={f.hint}>
+                    <label className="text-[11px] font-semibold text-gray-700 flex items-center gap-1">
+                      {f.label}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={val}
+                        onChange={(e) => onUpdateDailyFixed(f.key, e.target.value)}
+                        className={[
+                          "w-28 h-7 px-2 text-sm font-semibold text-right rounded outline-none transition-colors bg-white",
+                          empty
+                            ? "border-2 border-red-400 focus:border-red-600 bg-red-50"
+                            : "border border-gray-300 focus:border-blue-500",
+                        ].join(" ")}
+                        placeholder="0"
+                      />
+                      <span className="text-xs text-gray-500">₽</span>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-semibold text-gray-500">Сумма расходов</label>
+                <div className="w-32 h-7 px-2 flex items-center justify-end text-sm font-bold text-red-700 bg-white border border-red-300 rounded">
+                  − {fixedSum.toLocaleString("ru-RU")} ₽
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1 min-w-[220px] ml-auto">
+            <label className="text-[11px] font-bold text-green-800 uppercase tracking-wide">
+              Итого за день (чистыми)
+            </label>
+            <div
+              className="h-10 px-3 flex items-center justify-end text-lg font-extrabold bg-green-600 text-white rounded border-2 border-green-800 shadow"
+              title="Σ ИТОГО по строкам минус обязательные ежедневные расходы"
+            >
+              {dayTotal.toLocaleString("ru-RU")} ₽
+            </div>
+            <div className="text-[10px] text-gray-500 text-right">
+              Σ строк {itogoSum.toLocaleString("ru-RU")} − расходы {fixedSum.toLocaleString("ru-RU")}
+            </div>
+          </div>
         </div>
       </div>
 

@@ -23,6 +23,7 @@ const Kassa = () => {
     updateChast, updateChastDay, addChastRow,
     syncFromVedomost, syncBeznal,
     toggleVydano,
+    dailyFixed, updateDailyFixed,
   } = useKassaLogic();
 
   return (
@@ -155,6 +156,8 @@ const Kassa = () => {
               onVypKeyDown={handleVypKeyDown}
               rowCount={rows.length}
               vyplatCount={vyplaty.length}
+              dailyFixed={dailyFixed}
+              onUpdateDailyFixed={updateDailyFixed}
             />
           )}
 
