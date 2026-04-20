@@ -38,6 +38,35 @@ const JurnalBdd = ({ records, monthYear }: Props) => {
     return [...records].sort((a, b) => parse(b.date) - parse(a.date));
   }, [records]);
 
+  // ─── Итоговая сводка ────────────────────────────────────────────────────────
+  const summary = useMemo(() => {
+    const total = sorted.length;
+    const byStatus = {
+      new: sorted.filter((r) => r.status === "new").length,
+      investigating: sorted.filter((r) => r.status === "investigating").length,
+      closed: sorted.filter((r) => r.status === "closed").length,
+    };
+    // Ущерб — суммируем число из строки
+    const damage = sorted.reduce((acc, r) => {
+      const n = parseFloat((r.ushcherb || "0").replace(/\s/g, "").replace(",", "."));
+      return acc + (isFinite(n) ? n : 0);
+    }, 0);
+    // Пострадавшие: если не "нет"/"—"/пусто — считаем ФИО через запятую
+    const victims = sorted.reduce((acc, r) => {
+      const v = (r.postradavshie || "").trim().toLowerCase();
+      if (!v || v === "нет" || v === "—" || v === "-") return acc;
+      const count = (r.postradavshie || "").split(/[,;]/).filter((s) => s.trim().length > 0).length;
+      return acc + (count || 1);
+    }, 0);
+    // Уникальные водители и ТС
+    const drivers = new Set(sorted.map((r) => r.fioVod).filter(Boolean)).size;
+    const ts = new Set(sorted.map((r) => r.bortovoy).filter(Boolean)).size;
+    return { total, byStatus, damage, victims, drivers, ts };
+  }, [sorted]);
+
+  const fmtMoney = (n: number) =>
+    n.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+
   const ruTitle = monthYear ? `за ${monthYear}` : "за весь период";
 
   return (
@@ -104,6 +133,49 @@ const JurnalBdd = ({ records, monthYear }: Props) => {
           )}
         </tbody>
       </table>
+
+      {/* ─── Итоговая сводка ──────────────────────────────────────────────── */}
+      <div className="mt-5 border border-gray-300 bg-gray-50">
+        <div className="px-3 py-1.5 bg-gray-700 text-white text-[11px] font-semibold uppercase tracking-wide">
+          Итоги за период
+        </div>
+        <div className="grid grid-cols-6 gap-0 text-xs">
+          <div className="border-r border-gray-300 px-3 py-2">
+            <div className="text-[10px] text-gray-500 uppercase">Всего ДТП</div>
+            <div className="text-lg font-bold text-gray-800">{summary.total}</div>
+          </div>
+          <div className="border-r border-gray-300 px-3 py-2">
+            <div className="text-[10px] text-gray-500 uppercase">Новых</div>
+            <div className="text-lg font-bold text-red-700">{summary.byStatus.new}</div>
+          </div>
+          <div className="border-r border-gray-300 px-3 py-2">
+            <div className="text-[10px] text-gray-500 uppercase">Расследуются</div>
+            <div className="text-lg font-bold text-amber-700">{summary.byStatus.investigating}</div>
+          </div>
+          <div className="border-r border-gray-300 px-3 py-2">
+            <div className="text-[10px] text-gray-500 uppercase">Закрыто</div>
+            <div className="text-lg font-bold text-green-700">{summary.byStatus.closed}</div>
+          </div>
+          <div className="border-r border-gray-300 px-3 py-2">
+            <div className="text-[10px] text-gray-500 uppercase">Пострадавших</div>
+            <div className="text-lg font-bold text-gray-800">{summary.victims}</div>
+          </div>
+          <div className="px-3 py-2">
+            <div className="text-[10px] text-gray-500 uppercase">Общий ущерб</div>
+            <div className="text-lg font-bold text-gray-800">{fmtMoney(summary.damage)} ₽</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-0 text-xs border-t border-gray-300">
+          <div className="border-r border-gray-300 px-3 py-2 flex justify-between">
+            <span className="text-gray-500">Задействовано водителей:</span>
+            <span className="font-semibold text-gray-800">{summary.drivers}</span>
+          </div>
+          <div className="px-3 py-2 flex justify-between">
+            <span className="text-gray-500">Задействовано ТС:</span>
+            <span className="font-semibold text-gray-800">{summary.ts}</span>
+          </div>
+        </div>
+      </div>
 
       <div className="mt-6 grid grid-cols-2 gap-8 text-xs">
         <div>
