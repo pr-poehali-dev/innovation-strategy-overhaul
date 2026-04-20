@@ -30,6 +30,7 @@ export interface NaryadRow {
 
 export interface NormaSettings {
   stoimostBileta: string;
+  stoimostProezda: string;
   stoimostTopliva: string;
   rashod: string;
   procentBez: string;

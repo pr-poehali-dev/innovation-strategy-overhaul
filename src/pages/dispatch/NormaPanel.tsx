@@ -6,7 +6,7 @@ interface Props {
 }
 
 const FIELDS: { key: keyof NormaSettings; label: string }[] = [
-  { key: "stoimostBileta",  label: "Стоимость билета, ₽"          },
+  { key: "stoimostProezda", label: "Стоимость проезда, ₽"         },
   { key: "stoimostTopliva", label: "Стоимость топлива, ₽/л"       },
   { key: "rashod",          label: "Расход топлива, л/100км"      },
   { key: "procentBez",      label: "% водителя без кондуктора"    },

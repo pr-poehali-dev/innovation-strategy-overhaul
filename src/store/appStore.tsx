@@ -1,4 +1,4 @@
-import { createContext, useContext, ReactNode } from "react";
+import { createContext, useContext, ReactNode, useEffect } from "react";
 import { usePersist } from "./persist";
 import type {
   TsVehicle,
@@ -65,6 +65,19 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [dtpRecords,      setDtpRecords]      = usePersist<DtpRecord[]>           ("dtpRecords",      []);
   const [weeklyDayMeta,   setWeeklyDayMeta]   = usePersist<WeeklyDayMeta>         ("weeklyDayMeta",   {});
   const [routeSchedule,   setRouteSchedule]   = usePersist<RouteSchedule>         ("routeSchedule",   INITIAL_ROUTE_SCHEDULE);
+
+  // ─── Миграция: синхронизация stoimostProezda ↔ stoimostBileta ──────────────
+  // Раньше цена проезда жила в двух разных полях (Настройки писали в stoimostProezda,
+  // панель в Наряде — в stoimostBileta). Выравниваем их после загрузки.
+  useEffect(() => {
+    const p = (naryadSettings.stoimostProezda || "").trim();
+    const b = (naryadSettings.stoimostBileta  || "").trim();
+    if (p === b) return;
+    const src = p || b;
+    if (!src) return;
+    setNaryadSettings((prev) => ({ ...prev, stoimostProezda: src, stoimostBileta: src }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <AppContext.Provider value={{

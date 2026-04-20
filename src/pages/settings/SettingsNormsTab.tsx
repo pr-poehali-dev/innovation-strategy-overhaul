@@ -11,7 +11,14 @@ const SettingsNormsTab = ({ tab, setSaved }: Props) => {
   const { naryadSettings, setNaryadSettings } = useAppStore();
 
   const upd = (key: keyof typeof naryadSettings, v: string) => {
-    setNaryadSettings((prev) => ({ ...prev, [key]: v }));
+    setNaryadSettings((prev) => {
+      const next = { ...prev, [key]: v };
+      // Зеркалим "Стоимость проезда" ↔ "Стоимость билета" чтобы Касса и Наряд
+      // всегда видели актуальную цену вне зависимости от того, где её правили.
+      if (key === "stoimostProezda") next.stoimostBileta = v;
+      if (key === "stoimostBileta")  next.stoimostProezda = v;
+      return next;
+    });
     setSaved(false);
   };
 

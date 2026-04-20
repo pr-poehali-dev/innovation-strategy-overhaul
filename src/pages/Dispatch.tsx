@@ -246,7 +246,13 @@ const Dispatch = () => {
   };
 
   const setSetting = (key: keyof NormaSettings, val: string) =>
-    setNaryadSettings((prev) => ({ ...prev, [key]: val }));
+    setNaryadSettings((prev) => {
+      const next = { ...prev, [key]: val };
+      // Зеркалируем "Стоимость проезда" ↔ "Стоимость билета" — единая цена
+      if (key === "stoimostProezda") next.stoimostBileta = val;
+      if (key === "stoimostBileta")  next.stoimostProezda = val;
+      return next;
+    });
 
   const copyFromDay = (fromKey: string) => {
     if (!weeklyNaryady[fromKey]?.length) return;
