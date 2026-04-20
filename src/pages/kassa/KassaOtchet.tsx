@@ -61,13 +61,12 @@ const KassaOtchet = ({
   const hasEmptyReq = FIXED_FIELDS.some((f) => !(dailyFixed[f.key] && dailyFixed[f.key].trim()));
 
   // Колонки только для просмотра (авторасчёт)
-  // prodBilety, podrVod, podrCond, itogo — авторасчёт, только просмотр
-  const READONLY_COLS = new Set(["prodBilety", "podrVod", "podrCond", "itogo"]);
+  // viruchka, prodBilety, podrVod, podrCond, itogo — авторасчёт, только просмотр
+  const READONLY_COLS = new Set(["viruchka", "prodBilety", "podrVod", "podrCond", "itogo"]);
   const CHECK_COLS    = new Set(["podrVodVydano", "podrCondVydano"]);
 
   const renderCell = (row: KassaRow, col: typeof MAIN_COLS[number], rowIdx: number, colIdx: number) => {
     const isActive   = activeCell?.rowId === row.id && activeCell?.col === col.key;
-    const isViruchka = col.key === "viruchka";
     const isReadonly = READONLY_COLS.has(col.key);
     const isCheck    = CHECK_COLS.has(col.key);
 
@@ -75,16 +74,19 @@ const KassaOtchet = ({
     if (isReadonly) {
       const val = row[col.key] as string;
       const bg =
+        col.key === "viruchka"   ? "#f0fdf4" :
         col.key === "prodBilety" ? "#eff6ff" :
         col.key === "podrVod"    ? "#fff7ed" :
         col.key === "podrCond"   ? "#fff7ed" :
         col.key === "itogo"      ? "#f0fdf4" : "#fafafa";
       const textColor =
+        col.key === "viruchka"   ? "text-green-800 font-semibold" :
         col.key === "prodBilety" ? "text-blue-700 font-semibold" :
         col.key === "podrVod"    ? "text-orange-700 font-semibold" :
         col.key === "podrCond"   ? "text-orange-700 font-semibold" :
         col.key === "itogo"      ? "text-green-800 font-bold" : "text-gray-500";
       const title =
+        col.key === "viruchka"   ? "Авто: Кол.бил × Стоимость проезда + Безнал + QR" :
         col.key === "itogo"      ? "Авто: Выручка − Безнал − QR − Обед − Расх.ДТ − Чек − Возврат − Подр.вод − Подр.конд + В плюс" :
         col.key === "prodBilety" ? "Авто: Выручка ÷ Стоимость проезда" :
         col.key === "podrVod"    ? "Авто из наряда (настройки → % водителя)" :
@@ -142,14 +144,11 @@ const KassaOtchet = ({
       );
     }
 
-    const calcBg    = isViruchka ? "#f0fdf4" : undefined;
-    const calcTitle = isViruchka ? "Авто: Кол.бил × Стоимость проезда + Безнал + QR" : undefined;
     return (
       <td
         key={col.key}
         className="border border-gray-300 p-0"
-        style={{ width: col.width, backgroundColor: calcBg }}
-        title={calcTitle}
+        style={{ width: col.width }}
       >
         <input
           type="text"
@@ -161,7 +160,7 @@ const KassaOtchet = ({
           className={[
             "w-full h-6 px-1 bg-transparent outline-none border-2 transition-colors text-center",
             isActive ? "border-blue-500 bg-blue-50" : "border-transparent",
-            isViruchka ? "text-green-800 font-semibold" : "text-gray-800",
+            "text-gray-800",
           ].join(" ")}
           placeholder=""
         />

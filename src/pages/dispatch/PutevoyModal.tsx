@@ -14,13 +14,28 @@ interface Props {
 }
 
 const PutevoyModal = ({ row, today, dayMeta, onClose, onSaveOdometr }: Props) => {
-  const { companies, employees, routes, vehicles, routeSchedule } = useAppStore();
+  const { companies, activeCompanyIdx, employees, routes, vehicles, routeSchedule } = useAppStore();
   const sched = routeSchedule[row.marshrut];
 
-  // Определяем организацию по маршруту
+  // Определяем организацию по маршруту. Если маршрут не найден или companyIdx
+  // ссылается на отсутствующую компанию — падаем на активную, затем на первую,
+  // затем на пустой объект (чтобы не крашить модалку).
   const routeNum = row.marshrut.split("/")[0].trim();
   const matchedRoute = routes.find((r) => r.nomer === routeNum);
-  const routeCompany = matchedRoute !== undefined ? companies[matchedRoute.companyIdx] : companies[0];
+  const emptyCompany = {
+    nazvanie: "", kratkoeNazvanie: "", inn: "", kpp: "", ogrn: "", okpo: "",
+    okvad: "", direktor: "", dolzhnostDir: "", glavbuh: "",
+    adresYur: "", adres: "", telefon: "", email: "",
+    bank: "", bik: "", raschetnySchet: "", korSchet: "",
+    licenziya: "", licenziyaData: "", licenziyaVydan: "",
+    reestrNomer: "", svidetelstvo: "", svidetelstvoData: "",
+    dogovorZakazchik: "", zakazchik: "", zakazchikInn: "",
+  };
+  const routeCompany =
+    (matchedRoute && companies[matchedRoute.companyIdx]) ||
+    companies[activeCompanyIdx] ||
+    companies[0] ||
+    emptyCompany;
 
   // Дежурные: сначала из DayMeta, затем из ИТР-справочника
   const itr = useMemo(() => {

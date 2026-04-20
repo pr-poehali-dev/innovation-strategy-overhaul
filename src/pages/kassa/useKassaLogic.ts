@@ -144,11 +144,16 @@ export const useKassaLogic = () => {
           const any = v || bez || qrV || o || rd || ch || vz || pv || pk || pl;
           return any ? String(Math.round(v - bez - qrV - o - rd - ch - vz - pv - pk + pl)) : existingRow.itogo;
         })();
+        // Подтягиваем № водительского удостоверения из Кадров по ФИО
+        const empRec = employees.find(
+          (e) => e.fio === r.fio || (r.fio && e.fio && r.fio.startsWith(e.fio.split(" ")[0]))
+        );
+        const vodUd = empRec?.udostoverenie || existingRow.vodUdostoverenie || "";
         return {
           ...existingRow,
           type: "route" as const,
           mar: r.marshrut, bort: r.bortovoy,
-          fioVod: r.fio, fioCond: r.fioKond || "без",
+          fioVod: r.fio, vodUdostoverenie: vodUd, fioCond: r.fioKond || "без",
           kolBil, viruchka, prodBilety, obed: obedAuto,
           podrVod, podrCond,
           podrVodVydano:  existingRow.podrVodVydano  ?? false,
@@ -160,7 +165,7 @@ export const useKassaLogic = () => {
       const dispRows = currentRows.filter((r) => r.type === "disp");
       return [...syncedRows, ...dispRows];
     });
-  }, [naryadRows, naryadSettings, selectedKey]);
+  }, [naryadRows, naryadSettings, selectedKey, employees]);
 
   // ─── Расчётные поля ──────────────────────────────────────────────────────
   const calcViruchka = (r: KassaRow, overrides: Partial<KassaRow> = {}): string => {
@@ -518,6 +523,25 @@ export const useKassaLogic = () => {
     });
   }, [rows, monthKey]);
 
+  // ─── Обязательные расходы по дням за месяц ──────────────────────────────
+  const monthlyFixed = useMemo(() => {
+    const kassaAll = loadKassa();
+    const byDay: Record<string, { zpVodDezhurki: number; dezhDt: number; hozNuzhdyGarazh: number; total: number }> = {};
+    let totZp = 0, totDt = 0, totHoz = 0;
+    Object.entries(kassaAll).forEach(([dateKey, dayData]) => {
+      if (!dateKey.startsWith(monthKey)) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const df = (dayData as any)?.dailyFixed ?? {};
+      const zp  = toNum(df.zpVodDezhurki || "");
+      const dt  = toNum(df.dezhDt || "");
+      const hoz = toNum(df.hozNuzhdyGarazh || "");
+      if (!zp && !dt && !hoz) return;
+      byDay[dateKey] = { zpVodDezhurki: zp, dezhDt: dt, hozNuzhdyGarazh: hoz, total: zp + dt + hoz };
+      totZp += zp; totDt += dt; totHoz += hoz;
+    });
+    return { byDay, zpVodDezhurki: totZp, dezhDt: totDt, hozNuzhdyGarazh: totHoz, total: totZp + totDt + totHoz };
+  }, [rows, monthKey, dailyFixed]);
+
   return {
     // state
     tab, setTab,
@@ -526,6 +550,7 @@ export const useKassaLogic = () => {
     chastRows, naryadRows,
     podrabJournal, monthlyRows,
     dailyFixed,
+    monthlyFixed,
     // handlers
     handleDateChange,
     updateCell, addRow, deleteRow, handleKeyDown,

@@ -2,10 +2,19 @@ import { useMemo } from "react";
 import Icon from "@/components/ui/icon";
 import { MonthlyKassaRow, toNum, getRouteColor } from "./kassaTypes";
 
+interface MonthlyFixed {
+  byDay: Record<string, { zpVodDezhurki: number; dezhDt: number; hozNuzhdyGarazh: number; total: number }>;
+  zpVodDezhurki: number;
+  dezhDt: number;
+  hozNuzhdyGarazh: number;
+  total: number;
+}
+
 interface Props {
   rows: MonthlyKassaRow[];
   monthKey: string; // "2026-04"
   onPrint: () => void;
+  monthlyFixed?: MonthlyFixed;
 }
 
 const fmt = (n: number) => n !== 0 ? n.toLocaleString("ru-RU") : "";
@@ -37,7 +46,7 @@ function dayKey(monthKey: string, day: number) {
   return `${y}-${m}-${String(day).padStart(2, "0")}`;
 }
 
-const KassaMonthly = ({ rows, monthKey, onPrint }: Props) => {
+const KassaMonthly = ({ rows, monthKey, onPrint, monthlyFixed }: Props) => {
   const days = useMemo(() => getDaysInMonth(monthKey), [monthKey]);
 
   const [y, m] = monthKey.split("-");
@@ -146,6 +155,45 @@ const KassaMonthly = ({ rows, monthKey, onPrint }: Props) => {
           </tfoot>
         </table>
       </div>
+
+      {/* ── Обязательные ежедневные расходы за месяц + чистый итог ── */}
+      {monthlyFixed && (
+        <div className="mt-4 mx-4 bg-gradient-to-r from-red-50 via-amber-50 to-green-50 border border-red-200 rounded p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Icon name="AlertCircle" size={14} className="text-red-600" />
+            <span className="text-xs font-bold text-red-700 uppercase tracking-wide">
+              Обязательные расходы за {monthLabel}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] text-gray-600">ЗП водителя дежурки</span>
+              <span className="text-sm font-bold text-red-700">− {fmt(monthlyFixed.zpVodDezhurki) || "0"} ₽</span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] text-gray-600">Дежурка ДТ</span>
+              <span className="text-sm font-bold text-red-700">− {fmt(monthlyFixed.dezhDt) || "0"} ₽</span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] text-gray-600">Хоз. нужды гараж</span>
+              <span className="text-sm font-bold text-red-700">− {fmt(monthlyFixed.hozNuzhdyGarazh) || "0"} ₽</span>
+            </div>
+            <div className="flex flex-col gap-0.5 border-l border-gray-300 pl-4">
+              <span className="text-[11px] text-gray-600">Сумма расходов</span>
+              <span className="text-sm font-extrabold text-red-800">− {fmt(monthlyFixed.total) || "0"} ₽</span>
+            </div>
+            <div className="flex flex-col gap-0.5 ml-auto">
+              <span className="text-[11px] font-bold text-green-800 uppercase">Итого за месяц (чистыми)</span>
+              <div className="px-3 py-1.5 bg-green-600 text-white font-extrabold text-base rounded shadow">
+                {(rows.reduce((s, r) => s + r.itogo, 0) - monthlyFixed.total).toLocaleString("ru-RU")} ₽
+              </div>
+              <span className="text-[10px] text-gray-500 text-right">
+                Σ строк {rows.reduce((s, r) => s + r.itogo, 0).toLocaleString("ru-RU")} − расходы {monthlyFixed.total.toLocaleString("ru-RU")}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Детализация по дням ── */}
       <div className="mt-4 px-4 pb-4">

@@ -33,6 +33,7 @@ export interface KassaRow {
   mar: string;
   bort: string;
   fioVod: string;
+  vodUdostoverenie: string;
   fioCond: string;
   prodBilety: string;
   kolBil: string;
@@ -89,6 +90,7 @@ export const MAIN_COLS: { key: keyof Omit<KassaRow, "id" | "type">; label: strin
   { key: "mar",          label: "№ мар",            width: "55px"  },
   { key: "bort",         label: "Борт №",            width: "55px"  },
   { key: "fioVod",       label: "ФИО водитель",      width: "130px" },
+  { key: "vodUdostoverenie", label: "Уд-ие вод. №",  width: "110px" },
   { key: "fioCond",      label: "ФИО кондуктор",     width: "100px" },
   { key: "prodBilety",   label: "Прод. бил",         width: "75px"  },
   { key: "kolBil",       label: "Кол. бил",          width: "60px",  numeric: true },
@@ -121,7 +123,7 @@ export const toNum = (v: string) => parseFloat((v || "0").replace(",", ".")) || 
 export const emptyRow = (type: KassaRow["type"] = "route"): KassaRow => ({
   id: Math.random() * 1e15 + performance.now(),
   type,
-  mar: "", bort: "", fioVod: "", fioCond: "",
+  mar: "", bort: "", fioVod: "", vodUdostoverenie: "", fioCond: "",
   prodBilety: "", kolBil: "", beznal: "", qr: "",
   viruchka: "", obed: "", rashodDt: "", chek: "",
   vozvrat: "", podrVod: "", podrCond: "",

@@ -24,6 +24,7 @@ const Kassa = () => {
     syncFromVedomost, syncBeznal,
     toggleVydano,
     dailyFixed, updateDailyFixed,
+    monthlyFixed,
   } = useKassaLogic();
 
   return (
@@ -186,6 +187,7 @@ const Kassa = () => {
               rows={monthlyRows}
               monthKey={monthKey}
               onPrint={() => window.print()}
+              monthlyFixed={monthlyFixed}
             />
           )}
 
