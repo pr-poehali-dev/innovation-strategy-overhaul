@@ -48,7 +48,7 @@ export const INITIAL_VEHICLES: TsVehicle[] = [
 ];
 
 // ─── Организации ───────────────────────────────────────────────────────────
-const emptyCompany = (nazvanie = ""): CompanySettings => ({
+export const emptyCompany = (nazvanie = ""): CompanySettings => ({
   nazvanie, kratkoeNazvanie: "", inn: "", kpp: "", ogrn: "", okpo: "", okvad: "49.31",
   direktor: "", dolzhnostDir: "Директор", glavbuh: "",
   adresYur: "", adres: "", telefon: "", email: "",

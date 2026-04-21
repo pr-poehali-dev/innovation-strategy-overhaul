@@ -66,18 +66,18 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [weeklyDayMeta,   setWeeklyDayMeta]   = usePersist<WeeklyDayMeta>         ("weeklyDayMeta",   {});
   const [routeSchedule,   setRouteSchedule]   = usePersist<RouteSchedule>         ("routeSchedule",   INITIAL_ROUTE_SCHEDULE);
 
-  // ─── Миграция: синхронизация stoimostProezda ↔ stoimostBileta ──────────────
-  // Раньше цена проезда жила в двух разных полях (Настройки писали в stoimostProezda,
-  // панель в Наряде — в stoimostBileta). Выравниваем их после загрузки.
+  // ─── Постоянная синхронизация stoimostProezda ↔ stoimostBileta ─────────────
+  // Цена проезда хранится в двух полях (historical reasons): Настройки пишут в
+  // stoimostProezda, панель Наряда — в stoimostBileta. Держим их равными всегда.
   useEffect(() => {
     const p = (naryadSettings.stoimostProezda || "").trim();
     const b = (naryadSettings.stoimostBileta  || "").trim();
     if (p === b) return;
+    // приоритет у того поля, которое заполнено; если оба — берём stoimostProezda
     const src = p || b;
-    if (!src) return;
     setNaryadSettings((prev) => ({ ...prev, stoimostProezda: src, stoimostBileta: src }));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [naryadSettings.stoimostProezda, naryadSettings.stoimostBileta]);
 
   return (
     <AppContext.Provider value={{

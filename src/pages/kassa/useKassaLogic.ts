@@ -46,7 +46,28 @@ export const useKassaLogic = () => {
 
   const isLoadingRef = useRef(false);
 
+  // Актуальные значения для синхронного сохранения при смене даты
+  const rowsRef       = useRef(rows);
+  const vyplatyRef    = useRef(vyplaty);
+  const dailyFixedRef = useRef(dailyFixed);
+  const keyRef        = useRef(selectedKey);
+  useEffect(() => { rowsRef.current = rows; },             [rows]);
+  useEffect(() => { vyplatyRef.current = vyplaty; },       [vyplaty]);
+  useEffect(() => { dailyFixedRef.current = dailyFixed; }, [dailyFixed]);
+  useEffect(() => { keyRef.current = selectedKey; },       [selectedKey]);
+
   const handleDateChange = (newKey: string) => {
+    // Синхронно сохраняем актуальные данные текущей даты (из refs — минуя замыкание)
+    try {
+      const data = loadKassa();
+      data[keyRef.current] = {
+        rows: rowsRef.current,
+        vyplaty: vyplatyRef.current,
+        dailyFixed: dailyFixedRef.current,
+      };
+      saveKassa(data);
+    } catch { /* noop */ }
+
     isLoadingRef.current = true;
     setSelectedKey(newKey);
     const saved = loadKassa()[newKey];
@@ -68,6 +89,28 @@ export const useKassaLogic = () => {
     // Уведомляем модуль "Продажи" в той же вкладке, что касса обновилась
     try { window.dispatchEvent(new CustomEvent("kassa-updated", { detail: { key: selectedKey } })); } catch { /* noop */ }
   }, [rows, vyplaty, dailyFixed, selectedKey]);
+
+  // ─── Живая синхронизация дефолтов фиксированных расходов из Настроек ──────
+  // Если для текущей даты в кассе ещё НЕ было явно сохранённых значений — подтягиваем
+  // свежие значения из naryadSettings. Как только пользователь отредактировал поле
+  // в Кассе (значение отличается от дефолта в saved), оно считается «своим» и не перезаписывается.
+  useEffect(() => {
+    if (isLoadingRef.current) return;
+    const saved = loadKassa()[selectedKey]?.dailyFixed;
+    if (saved) return; // уже есть сохранённое — не трогаем
+    const fromSettings = {
+      zpVodDezhurki:   naryadSettings.zpVodDezhurki   || "",
+      dezhDt:          naryadSettings.dezhDt          || "",
+      hozNuzhdyGarazh: naryadSettings.hozNuzhdyGarazh || "",
+    };
+    setDailyFixed((prev) =>
+      prev.zpVodDezhurki === fromSettings.zpVodDezhurki &&
+      prev.dezhDt === fromSettings.dezhDt &&
+      prev.hozNuzhdyGarazh === fromSettings.hozNuzhdyGarazh
+        ? prev
+        : fromSettings
+    );
+  }, [naryadSettings.zpVodDezhurki, naryadSettings.dezhDt, naryadSettings.hozNuzhdyGarazh, selectedKey]);
 
   const updateDailyFixed = (key: keyof typeof dailyFixed, val: string) =>
     setDailyFixed((prev) => ({ ...prev, [key]: val }));

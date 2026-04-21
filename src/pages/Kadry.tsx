@@ -101,7 +101,17 @@ const Kadry = () => {
   const columns = tab === "voditely" ? VOD_COLUMNS : tab === "konduktery" ? COND_COLUMNS : ITR_COLUMNS;
 
   const updateCell = (id: number, col: keyof Employee, value: string) => {
-    setEmployees((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
+    setEmployees((prev) => prev.map((r) => {
+      if (r.id !== id) return r;
+      const updated: Employee = { ...r, [col]: value };
+      // При смене должности перемещаем сотрудника в соответствующий таб
+      if (col === "dolzhnost") {
+        if (value === "Водитель") updated.kadryTab = "voditely";
+        else if (value === "Кондуктор") updated.kadryTab = "konduktery";
+        else if (ITR_DOLZHNOSTI_SET.has(value)) updated.kadryTab = "itr";
+      }
+      return updated;
+    }));
   };
 
   const addRow = () => {

@@ -2,6 +2,7 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 import { useAppStore, Terminal } from "@/store/appStore";
+import { emptyCompany } from "@/store/initialData";
 
 const emptyTerminal = (companyIdx = 0): Terminal => ({
   id: Date.now() + Math.random(),
@@ -21,8 +22,9 @@ const COLS: { key: keyof Omit<Terminal, "id" | "companyIdx" | "status">; label: 
 ];
 
 const Terminals = () => {
-  const { terminals, setTerminals, companies, setCompanies } = useAppStore();
-  const [activeCompIdx, setActiveCompIdx] = useState(0);
+  const { terminals, setTerminals, companies, setCompanies, activeCompanyIdx, setActiveCompanyIdx } = useAppStore();
+  const activeCompIdx = activeCompanyIdx;
+  const setActiveCompIdx = setActiveCompanyIdx;
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
   const [newCompName, setNewCompName] = useState("");
   const [showAddComp, setShowAddComp] = useState(false);
@@ -58,10 +60,11 @@ const Terminals = () => {
   const addCompany = () => {
     const name = newCompName.trim();
     if (!name) return;
-    setCompanies((prev) => [...prev, { nazvanie: name, inn: "", direktor: "", telefon: "", adres: "" }]);
+    const newIdx = companies.length;
+    setCompanies((prev) => [...prev, emptyCompany(name)]);
     setNewCompName("");
     setShowAddComp(false);
-    setActiveCompIdx(companies.length);
+    setActiveCompIdx(newIdx);
   };
 
   return (

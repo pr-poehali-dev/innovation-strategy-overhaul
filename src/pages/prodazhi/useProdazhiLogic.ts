@@ -28,7 +28,23 @@ export const useProdazhiLogic = () => {
     initData?.rows ?? Array.from({ length: 10 }, emptyRow)
   );
 
+  // Актуальные значения для синхронного сохранения (минуя React-замыкания)
+  const rowsRef     = useRef(rows);
+  const dispFioRef  = useRef(dispFio);
+  const keyRef      = useRef(selectedKey);
+  useEffect(() => { rowsRef.current = rows; }, [rows]);
+  useEffect(() => { dispFioRef.current = dispFio; }, [dispFio]);
+  useEffect(() => { keyRef.current = selectedKey; }, [selectedKey]);
+
   const handleDateChange = (newKey: string) => {
+    // Синхронно фиксируем актуальные данные для текущей даты,
+    // чтобы последний ввод не потерялся при переключении.
+    try {
+      const data = loadProdazhi();
+      data[keyRef.current] = { rows: rowsRef.current, dispFio: dispFioRef.current };
+      saveProdazhi(data);
+    } catch { /* noop */ }
+
     isLoadingRef.current = true;
     setSelectedKey(newKey);
     const fresh = loadProdazhi()[newKey];
