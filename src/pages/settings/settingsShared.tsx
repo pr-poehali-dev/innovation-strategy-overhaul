@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
+import { uid } from "@/lib/uid";
 
 export interface SimpleRow {
   id: number;
@@ -8,7 +9,7 @@ export interface SimpleRow {
 }
 
 export const emptySimpleRow = (): SimpleRow => ({
-  id: Date.now() + Math.random(),
+  id: uid(),
   nazvanie: "", znachenie: "",
 });
 

@@ -1,3 +1,5 @@
+import { uid } from "@/lib/uid";
+
 export const STATUS_OTSUTSTVIYA = [
   "Выходной",
   "Больничный",
@@ -40,7 +42,7 @@ export interface NormaSettings {
 }
 
 export const emptyRow = (): NaryadRow => ({
-  id: Date.now() + Math.random(),
+  id: uid(),
   vehicleId: null,
   bortovoy: "",
   gos: "",

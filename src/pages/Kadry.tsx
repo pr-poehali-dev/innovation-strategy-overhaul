@@ -2,6 +2,7 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 import { useAppStore, Employee } from "@/store/appStore";
+import { uid } from "@/lib/uid";
 
 type TabType = "voditely" | "konduktery" | "itr";
 
@@ -17,7 +18,7 @@ const ITR_DOLZHNOSTI = [
 ];
 
 const emptyEmployee = (dolzhnost: string, kadryTab: "voditely" | "konduktery" | "itr"): Employee => ({
-  id: Date.now() + Math.random(),
+  id: uid(),
   tabNum: "",
   fio: "",
   dolzhnost,

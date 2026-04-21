@@ -1,3 +1,5 @@
+import { uid } from "@/lib/uid";
+
 // ─── Месячный кассовый отчёт ────────────────────────────────────────────────
 export interface MonthlyKassaRow {
   id: number;
@@ -119,13 +121,6 @@ export const VYP_COLS: { key: keyof Omit<VyplataRow, "id">; label: string; width
 
 // ─── Утилиты ───────────────────────────────────────────────────────────────
 export const toNum = (v: string) => parseFloat((v || "0").replace(",", ".")) || 0;
-
-// Монотонный счётчик гарантирует уникальность id даже при синхронной генерации
-let __uidCounter = 0;
-const uid = (): number => {
-  __uidCounter = (__uidCounter + 1) % 1_000_000;
-  return Date.now() * 1_000_000 + __uidCounter;
-};
 
 export const emptyRow = (type: KassaRow["type"] = "route"): KassaRow => ({
   id: uid(),

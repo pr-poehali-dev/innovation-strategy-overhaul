@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 import { useAppStore, TsVehicle, TsDoc } from "@/store/appStore";
+import { uid } from "@/lib/uid";
 
 const DOC_TYPES: { key: string; label: string; color: string }[] = [
   { key: "osago",  label: "ОСАГО",          color: "bg-blue-100 text-blue-800"   },
@@ -18,7 +19,7 @@ const docLabel = (type: string) =>
   DOC_TYPES.find((d) => d.key === type)?.label ?? "Прочее";
 
 const emptyVehicle = (): TsVehicle => ({
-  id: Date.now() + Math.random(),
+  id: uid(),
   bortovoy: "",
   gos: "",
   marka: "",

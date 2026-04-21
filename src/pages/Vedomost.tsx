@@ -3,6 +3,7 @@ import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 import { useAppStore } from "@/store/appStore";
 import { loadKassa } from "@/pages/kassa/kassaShared";
+import { uid } from "@/lib/uid";
 
 export const LS_VEDOMOST = "dat_vedomost_v1";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,7 +35,7 @@ export interface VedomostRow {
 }
 
 const emptyRow = (): VedomostRow => ({
-  id: Date.now() + Math.random(),
+  id: uid(),
   fio: "",
   nachisl: "",
   otpusk: "",

@@ -10,6 +10,7 @@ import JurnalMed from "./dispatch/JurnalMed";
 import JurnalVypusk from "./dispatch/JurnalVypusk";
 import JurnalDisp from "./dispatch/JurnalDisp";
 import JurnalPostSmen from "./dispatch/JurnalPostSmen";
+import { uid } from "@/lib/uid";
 
 // ─── Утилиты дат ────────────────────────────────────────────────────────────
 const toDateKey = (d: Date): string => {
@@ -44,7 +45,6 @@ const getWeekDays = (monday: Date): Date[] =>
   });
 
 const toNaryadRow = (r: NaryadRowStore): NaryadRow => r as unknown as NaryadRow;
-const uid = () => Math.random() * 1e15 + performance.now();
 
 const makeEmptyRow = (): NaryadRowStore => ({
   id: uid(),

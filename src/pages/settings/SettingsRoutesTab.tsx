@@ -1,9 +1,10 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useAppStore, Route, getGrafiki } from "@/store/appStore";
+import { uid } from "@/lib/uid";
 
 const emptyRoute = (companyIdx: number): Route => ({
-  id: Date.now() + Math.random(),
+  id: uid(),
   nomer: "", nazvanie: "", nachalo: "", konets: "", grafikov: 1, intervalMin: "", rabochieChasy: "", companyIdx,
 });
 

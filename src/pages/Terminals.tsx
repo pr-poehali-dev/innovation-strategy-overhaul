@@ -3,9 +3,10 @@ import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 import { useAppStore, Terminal } from "@/store/appStore";
 import { emptyCompany } from "@/store/initialData";
+import { uid } from "@/lib/uid";
 
 const emptyTerminal = (companyIdx = 0): Terminal => ({
-  id: Date.now() + Math.random(),
+  id: uid(),
   nomer: "",
   serial: "",
   model: "",
