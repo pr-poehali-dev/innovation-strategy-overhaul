@@ -16,7 +16,7 @@ const ITR_DOLZHNOSTI = [
   "Клининг менеджер",
 ];
 
-const emptyEmployee = (dolzhnost: string): Employee => ({
+const emptyEmployee = (dolzhnost: string, kadryTab: "voditely" | "konduktery" | "itr"): Employee => ({
   id: Date.now() + Math.random(),
   tabNum: "",
   fio: "",
@@ -30,6 +30,7 @@ const emptyEmployee = (dolzhnost: string): Employee => ({
   inn: "",
   snils: "",
   udostoverenie: "",
+  kadryTab,
 });
 
 const VOD_COLUMNS = [
@@ -92,9 +93,9 @@ const Kadry = () => {
   const [tab, setTab] = useState<TabType>("voditely");
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: string } | null>(null);
 
-  const voditely   = employees.filter((e) => e.dolzhnost === "Водитель");
-  const konduktery = employees.filter((e) => e.dolzhnost === "Кондуктор");
-  const itr        = employees.filter((e) => ITR_DOLZHNOSTI_SET.has(e.dolzhnost));
+  const voditely   = employees.filter((e) => e.kadryTab ? e.kadryTab === "voditely"   : e.dolzhnost === "Водитель");
+  const konduktery = employees.filter((e) => e.kadryTab ? e.kadryTab === "konduktery" : e.dolzhnost === "Кондуктор");
+  const itr        = employees.filter((e) => e.kadryTab ? e.kadryTab === "itr"        : ITR_DOLZHNOSTI_SET.has(e.dolzhnost));
 
   const rows    = tab === "voditely" ? voditely : tab === "konduktery" ? konduktery : itr;
   const columns = tab === "voditely" ? VOD_COLUMNS : tab === "konduktery" ? COND_COLUMNS : ITR_COLUMNS;
@@ -105,7 +106,7 @@ const Kadry = () => {
 
   const addRow = () => {
     const dolzhnost = tab === "voditely" ? "Водитель" : tab === "konduktery" ? "Кондуктор" : ITR_DOLZHNOSTI[0];
-    setEmployees((prev) => [...prev, emptyEmployee(dolzhnost)]);
+    setEmployees((prev) => [...prev, emptyEmployee(dolzhnost, tab)]);
   };
 
   const deleteRow = (id: number) => {

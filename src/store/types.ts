@@ -100,6 +100,7 @@ export interface Employee {
   snils: string;
   udostoverenie: string;  // номер водительского удостоверения
   tip?: string;           // тип водителя: "arendator" | "podrabotka" | "" (штатный)
+  kadryTab?: "voditely" | "konduktery" | "itr"; // к какому табу принадлежит в Кадрах
 }
 
 // ─── Маршрут ───────────────────────────────────────────────────────────────
