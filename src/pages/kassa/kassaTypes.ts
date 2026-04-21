@@ -120,8 +120,15 @@ export const VYP_COLS: { key: keyof Omit<VyplataRow, "id">; label: string; width
 // ─── Утилиты ───────────────────────────────────────────────────────────────
 export const toNum = (v: string) => parseFloat((v || "0").replace(",", ".")) || 0;
 
+// Монотонный счётчик гарантирует уникальность id даже при синхронной генерации
+let __uidCounter = 0;
+const uid = (): number => {
+  __uidCounter = (__uidCounter + 1) % 1_000_000;
+  return Date.now() * 1_000_000 + __uidCounter;
+};
+
 export const emptyRow = (type: KassaRow["type"] = "route"): KassaRow => ({
-  id: Math.random() * 1e15 + performance.now(),
+  id: uid(),
   type,
   mar: "", bort: "", fioVod: "", vodUdostoverenie: "", fioCond: "",
   prodBilety: "", kolBil: "", beznal: "", qr: "",
@@ -132,12 +139,12 @@ export const emptyRow = (type: KassaRow["type"] = "route"): KassaRow => ({
 });
 
 export const emptyVyp = (): VyplataRow => ({
-  id: Math.random() * 1e15 + performance.now(),
+  id: uid(),
   fio: "", vid: "", summa: "", kol: "", itogo: "",
 });
 
 export const emptyChastRow = (fio = "", nach = ""): ChastRow => ({
-  id: Math.random() * 1e15 + performance.now(),
+  id: uid(),
   fio,
   nachisleno: nach,
   vyplaty: Object.fromEntries(DAYS.map((d) => [d, ""])) as Record<Day, string>,

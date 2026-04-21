@@ -45,7 +45,12 @@ export const COLUMNS: { key: ColKey; label: string; width: string; numeric?: boo
   { key: "podCond", label: "Конд. подр., ₽", width: "90px",  numeric: true },
 ];
 
-export const uid = () => Math.random() * 1e15 + performance.now();
+// Монотонный счётчик гарантирует уникальность id даже при синхронной генерации
+let __uidCounter = 0;
+export const uid = (): number => {
+  __uidCounter = (__uidCounter + 1) % 1_000_000;
+  return Date.now() * 1_000_000 + __uidCounter;
+};
 export const emptyRow = (): ProdazhiRow => ({
   id: uid(),
   bort: "", marGr: "", fioVod: "", fioCond: "",

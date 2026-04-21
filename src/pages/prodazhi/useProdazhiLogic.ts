@@ -149,23 +149,30 @@ export const useProdazhiLogic = () => {
   useEffect(() => {
     if (!naryadRows.length) return;
     setRows((currentRows) => {
-      const existingByBort = new Map(currentRows.map((r) => [r.bort, r]));
+      // Индексируем ТОЛЬКО непустые борта, иначе пустые строки сольются
+      const existingByBort = new Map<string, ProdazhiRow>();
+      currentRows.forEach((r) => {
+        if (r.bort && !existingByBort.has(r.bort)) existingByBort.set(r.bort, r);
+      });
+      const usedIds = new Set<number>();
       const workingRows = naryadRows.filter((r) => r.fio && !r.statusOtsutstviya);
       const mapped = workingRows.map((r) => {
-        const existing = existingByBort.get(r.bortovoy);
+        const existing = r.bortovoy ? existingByBort.get(r.bortovoy) : undefined;
+        const reuse = existing && !usedIds.has(existing.id);
+        const base = reuse ? existing! : emptyRow();
+        if (reuse) usedIds.add(base.id);
         const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
-        // Приоритет: ручной ввод → касса (существующее значение) → расчёт из наряда
-        const existingPodVod  = existing?.podVod  ?? "";
-        const existingPodCond = existing?.podCond ?? "";
+        const existingPodVod  = reuse ? base.podVod  : "";
+        const existingPodCond = reuse ? base.podCond : "";
         const newPodVod  = existingPodVod  || (calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : "");
         const newPodCond = existingPodCond || (calc && calc.cond > 0 ? String(Math.round(calc.cond)) : "");
         return {
-          ...(existing ?? emptyRow()),
+          ...base,
           bort:    r.bortovoy,
           marGr:   r.marshrut,
           fioVod:  r.fio,
           fioCond: r.fioKond || "без",
-          kolBil:  r.biletov || (existing?.kolBil ?? ""),
+          kolBil:  r.biletov || (reuse ? base.kolBil : ""),
           podVod:  newPodVod,
           podCond: newPodCond,
         };

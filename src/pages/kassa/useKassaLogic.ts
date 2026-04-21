@@ -130,11 +130,21 @@ export const useKassaLogic = () => {
     if (!naryadRows.length) return;
     const cena = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
     setRows((currentRows) => {
-      const existingByBort = new Map(currentRows.map((r) => [r.bort, r]));
+      // Индексируем только по НЕпустым бортам — иначе все пустые строки
+      // сольются в один ключ "" и дадут дубли id в syncedRows.
+      const existingByBort = new Map<string, KassaRow>();
+      currentRows.forEach((r) => {
+        if (r.bort && !existingByBort.has(r.bort)) existingByBort.set(r.bort, r);
+      });
+      const usedIds = new Set<number>();
       const workingRows = naryadRows.filter((r) => r.fio && !r.statusOtsutstviya);
       const syncedRows: KassaRow[] = workingRows.map((r) => {
-        const existing = existingByBort.get(r.bortovoy);
-        const existingRow = existing ?? emptyRow();
+        const existing = r.bortovoy ? existingByBort.get(r.bortovoy) : undefined;
+        // если existing уже использован этим циклом (двойное совпадение по борту) —
+        // создаём новую строку с уникальным id
+        const reuse = existing && !usedIds.has(existing.id);
+        const existingRow = reuse ? existing! : emptyRow();
+        if (reuse) usedIds.add(existingRow.id);
         const hasCond = !!(r.fioKond && r.fioKond.trim());
         const obedAuto = hasCond
           ? (naryadSettings.obedVodKond ?? "300")
@@ -166,7 +176,7 @@ export const useKassaLogic = () => {
         if (!podrVod)  podrVod  = existingRow.podrVod;
         if (!podrCond) podrCond = existingRow.podrCond;
         const kolBil = r.biletov || existingRow.kolBil;
-        const viruchka = existing
+        const viruchka = reuse
           ? existingRow.viruchka
           : (() => {
               const kol = parseFloat(kolBil) || 0;
