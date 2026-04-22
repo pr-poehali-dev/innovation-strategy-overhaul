@@ -272,6 +272,8 @@ export const useKassaLogic = () => {
   // Если в строке есть явная метка из наряда (podrabotkaNaryad === false) — НЕ начисляем.
   // Если метки нет (ручная строка) — считаем как обычно.
   const recalcPodrabotka = (r: KassaRow): { podrVod: string; podrCond: string } => {
+    // Диспетчерские строки — подработка не начисляется
+    if (r.type === "disp") return { podrVod: "", podrCond: "" };
     if (r.podrabotkaNaryad === false) return { podrVod: "", podrCond: "" };
     const v = toNum(r.viruchka);
     const cena = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
