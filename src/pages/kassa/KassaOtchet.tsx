@@ -87,10 +87,10 @@ const KassaOtchet = ({
         col.key === "itogo"      ? "text-green-800 font-bold" : "text-gray-500";
       const title =
         col.key === "viruchka"   ? "Авто: Кол.бил × Стоимость проезда + Безнал" :
-        col.key === "itogo"      ? "Авто: Выручка − Безнал − Обед − Расх.ДТ − Чек − Возврат − Подр.вод − Подр.конд + В плюс" :
+        col.key === "itogo"      ? "Авто: Выручка − Безнал − Обед − Расх.ДТ − Чек − Возврат − ЗП вод − ЗП Кон + В плюс" :
         col.key === "prodBilety" ? "Авто: Выручка ÷ Стоимость проезда" :
-        col.key === "podrVod"    ? "Авто из наряда (настройки → % водителя)" :
-        col.key === "podrCond"   ? "Авто из наряда (настройки → % кондуктора)" : undefined;
+        col.key === "podrVod"    ? "Авто: ЗП водителя (по действующей формуле наряда)" :
+        col.key === "podrCond"   ? "Авто: ЗП кондуктора (по действующей формуле наряда)" : undefined;
       return (
         <td key={col.key} className="border border-gray-300 p-0"
           style={{ width: col.width, backgroundColor: bg }}

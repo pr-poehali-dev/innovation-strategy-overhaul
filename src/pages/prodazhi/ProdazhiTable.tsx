@@ -79,17 +79,58 @@ const ProdazhiTable = ({
       );
     }
 
-    const isPod     = col.key === "podVod" || col.key === "podCond";
-    const isReadonly = col.key === "kolBil" || col.key === "qr" || col.key === "podVod" || col.key === "podCond";
+    // Галочки выдачи ЗП (только просмотр — меняются в Кассе)
+    if (col.key === "podVodVydano" || col.key === "podCondVydano") {
+      const who = col.key === "podVodVydano" ? "vod" : "cond";
+      const checked = !!row[col.key];
+      const sum = who === "vod" ? toNum(row.podVod) : toNum(row.podCond);
+      const hasPod = sum > 0;
+      return (
+        <td key={col.key} className="border border-gray-300 p-0 text-center"
+          style={{
+            width: col.width,
+            backgroundColor: checked ? "#dcfce7" : (hasPod ? "#fff7ed" : undefined),
+          }}
+          title={
+            checked ? "ЗП выдана (отмечается в Кассе)" :
+            hasPod  ? "ЗП начислена, но ещё не выдана (отмечается в Кассе)" :
+                      "ЗП не начислена"
+          }
+        >
+          <div className="w-full h-6 flex items-center justify-center select-none">
+            {checked
+              ? <span className="text-green-600 font-bold text-base">✓</span>
+              : hasPod
+                ? <span className="text-orange-500 font-extrabold text-base">!</span>
+                : <span className="text-gray-300 text-sm">○</span>}
+          </div>
+        </td>
+      );
+    }
+
+    const isPod      = col.key === "podVod" || col.key === "podCond";
+    const isFromKassa = col.key === "dt" || col.key === "valid";
+    const isReadonly =
+      col.key === "kolBil" || col.key === "qr" ||
+      col.key === "podVod" || col.key === "podCond" ||
+      isFromKassa;
 
     if (isReadonly) {
       const val = row[col.key] as string;
-      const bg  = isPod ? "#fff7ed" : "#eff6ff";
-      const tc  = isPod ? "text-orange-700 font-semibold" : "text-blue-700 font-semibold";
+      const bg  = isPod ? "#fff7ed" : isFromKassa ? "#fef3c7" : "#eff6ff";
+      const tc  =
+        isPod         ? "text-orange-700 font-semibold"
+        : isFromKassa ? "text-amber-800 font-semibold"
+                      : "text-blue-700 font-semibold";
+      const title =
+        col.key === "dt"      ? "Авто из Кассы: Расх. ДТ ÷ Стоимость топлива (л)"
+        : col.key === "valid" ? "Авто из Кассы: Безнал (только просмотр)"
+        : isPod               ? "Авто из Кассы: ЗП по действующей формуле"
+                              : "Авто из Кассы — только просмотр";
       return (
         <td key={col.key} className="border border-gray-300 p-0"
           style={{ width: col.width, backgroundColor: bg }}
-          title="Авто из Кассы — только просмотр">
+          title={title}>
           <div className={`w-full h-6 px-1 flex items-center justify-center text-xs select-none ${tc}`}>
             {val || "—"}
           </div>
@@ -104,7 +145,7 @@ const ProdazhiTable = ({
           onFocus={() => onSetActiveCell({ rowId: row.id, col: col.key })}
           onBlur={() => onSetActiveCell(null)}
           onKeyDown={(e) => onKeyDown(e, rowIdx, colIdx)}
-          disabled={isOff && (col.key === "dt" || col.key === "reysy" || col.key === "valid")}
+          disabled={isOff && col.key === "reysy"}
           className={[
             "w-full h-6 px-1 text-xs bg-transparent outline-none border-2 transition-colors text-center",
             isActive ? "border-blue-500 bg-blue-50" : "border-transparent",

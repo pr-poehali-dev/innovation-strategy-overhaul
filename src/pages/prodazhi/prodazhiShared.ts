@@ -64,6 +64,8 @@ export interface ProdazhiRow {
   qr: string;
   podVod: string;
   podCond: string;
+  podVodVydano?: boolean;
+  podCondVydano?: boolean;
 }
 
 export type ColKey = keyof Omit<ProdazhiRow, "id">;
@@ -77,8 +79,10 @@ export const COLUMNS: { key: ColKey; label: string; width: string; numeric?: boo
   { key: "reysy",   label: "Рейсы",           width: "65px",  numeric: true },
   { key: "kolBil",  label: "Кол. бил",        width: "70px",  numeric: true },
   { key: "valid",   label: "Валид",           width: "65px",  numeric: true },
-  { key: "podVod",  label: "Вод. подр., ₽",  width: "90px",  numeric: true },
-  { key: "podCond", label: "Конд. подр., ₽", width: "90px",  numeric: true },
+  { key: "podVod",  label: "ЗП вод, ₽",      width: "80px",  numeric: true },
+  { key: "podVodVydano",  label: "✓ вод",    width: "40px"  },
+  { key: "podCond", label: "ЗП Кон, ₽",     width: "80px",  numeric: true },
+  { key: "podCondVydano", label: "✓ конд",   width: "45px"  },
 ];
 
 export const emptyRow = (): ProdazhiRow => ({
@@ -86,6 +90,7 @@ export const emptyRow = (): ProdazhiRow => ({
   bort: "", marGr: "", fioVod: "", fioCond: "",
   dt: "", reysy: "", kolBil: "", valid: "", qr: "",
   podVod: "", podCond: "",
+  podVodVydano: false, podCondVydano: false,
 });
 
 export const OFF_STATUSES = ["вых", "отп", "рем"];

@@ -74,12 +74,16 @@ export const useProdazhiLogic = () => {
       podrVod?: string; podrCond?: string;
       podrVodVydano?: boolean; podrCondVydano?: boolean;
       prodBilety?: string;
+      beznal?: string;
       podrabotkaNaryad?: boolean;
     };
     // Для каждого борта из Кассы формируем «снимок» значений, которые нужно
     // синхронизировать в Продажи. Ключ присутствует даже при пустых значениях —
     // чтобы корректно обнулять старые цифры при снятии подработки в наряде.
-    const byBort = new Map<string, { dt: string; podVod: string; podCond: string; kolBil: string }>();
+    const byBort = new Map<string, {
+      dt: string; podVod: string; podCond: string; kolBil: string;
+      valid: string; podVodVydano: boolean; podCondVydano: boolean;
+    }>();
 
     (kassaData.rows as KassaRowMin[]).forEach((r) => {
       if (!r.bort) return;
@@ -89,7 +93,12 @@ export const useProdazhiLogic = () => {
       const podVod  = (r.podrVod  && parseFloat(r.podrVod)  > 0) ? r.podrVod  : "";
       const podCond = (r.podrCond && parseFloat(r.podrCond) > 0) ? r.podrCond : "";
       const kolBil  = (r.prodBilety && parseFloat(r.prodBilety) > 0) ? r.prodBilety : "";
-      byBort.set(r.bort, { dt, podVod, podCond, kolBil });
+      const valid   = (r.beznal && parseFloat(r.beznal) > 0) ? r.beznal : "";
+      byBort.set(r.bort, {
+        dt, podVod, podCond, kolBil, valid,
+        podVodVydano: !!r.podrVodVydano,
+        podCondVydano: !!r.podrCondVydano,
+      });
     });
 
     if (byBort.size === 0) return;
@@ -98,15 +107,25 @@ export const useProdazhiLogic = () => {
       const next = prev.map((r) => {
         const kassa = byBort.get(r.bort);
         if (!kassa) return r;
-        // Значения из Кассы применяются только если они НЕ пустые ИЛИ
-        // если у нас уже стояла цифра, которую теперь надо обнулить
-        const nextRow = { ...r };
-        if (kassa.dt || r.dt)           nextRow.dt = kassa.dt || r.dt;
-        if (kassa.kolBil || r.kolBil)   nextRow.kolBil = kassa.kolBil || r.kolBil;
-        // Подработка: всегда берём значение из Кассы (включая пустую строку → обнуление)
-        nextRow.podVod  = kassa.podVod;
-        nextRow.podCond = kassa.podCond;
-        if (nextRow.dt === r.dt && nextRow.kolBil === r.kolBil && nextRow.podVod === r.podVod && nextRow.podCond === r.podCond) {
+        // ДТ, Кол.бил, Безнал (valid): значения из Кассы всегда имеют приоритет.
+        // Подработка и флаги выдачи — всегда синхронизируются (включая обнуление).
+        const nextRow: ProdazhiRow = {
+          ...r,
+          dt: kassa.dt,
+          kolBil: kassa.kolBil,
+          valid: kassa.valid,
+          podVod: kassa.podVod,
+          podCond: kassa.podCond,
+          podVodVydano: kassa.podVodVydano,
+          podCondVydano: kassa.podCondVydano,
+        };
+        if (
+          nextRow.dt === r.dt && nextRow.kolBil === r.kolBil &&
+          nextRow.valid === r.valid &&
+          nextRow.podVod === r.podVod && nextRow.podCond === r.podCond &&
+          nextRow.podVodVydano === !!r.podVodVydano &&
+          nextRow.podCondVydano === !!r.podCondVydano
+        ) {
           return r;
         }
         changed = true;
@@ -200,8 +219,15 @@ export const useProdazhiLogic = () => {
   }, [naryadRows, naryadSettings]);
 
   // ─── Обработчики ─────────────────────────────────────────────────────────
-  const updateCell = (id: number, col: ColKey, value: string) =>
+  // Колонки, которые в Продажах только читаются (приходят из Кассы/Наряда)
+  const READONLY_COLS = new Set<ColKey>([
+    "dt", "valid", "kolBil", "qr", "podVod", "podCond",
+    "podVodVydano", "podCondVydano",
+  ]);
+  const updateCell = (id: number, col: ColKey, value: string) => {
+    if (READONLY_COLS.has(col)) return;
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [col]: value } : r)));
+  };
 
   const addRow = () => setRows((prev) => [...prev, emptyRow()]);
 

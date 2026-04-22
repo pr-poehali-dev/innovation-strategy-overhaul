@@ -20,6 +20,7 @@ interface PutevoyData {
   vodFio: string;
   vodUdostVerenie: string;
   vodKategoria: string;
+  vodSnils?: string;
   // Кондуктор
   kondFio: string;
   // Показания одометра
@@ -120,6 +121,9 @@ const PutevoyListPrint = ({ data }: { data: PutevoyData }) => (
       <Line label="фамилия, имя, отчество" value={data.vodFio} width="flex-[3]" />
       <Line label="удостоверение №" value={data.vodUdostVerenie} width="flex-[2]" />
       <Line label="категория" value={data.vodKategoria} />
+    </div>
+    <div className="flex gap-2 mb-1">
+      <Line label="СНИЛС" value={data.vodSnils} width="flex-[2]" />
     </div>
 
     {/* Кондуктор */}

@@ -70,10 +70,11 @@ const JurnalDisp = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
         <div className="flex justify-between items-start mb-3">
           <div className="border border-black p-2 text-[9px] min-w-[180px]">
             <div className="font-bold text-[10px] mb-0.5">{company?.nazvanie || "________________________"}</div>
-            {company?.adres && <div>{company.adres}</div>}
-            {company?.inn && <div>ИНН: {company.inn}</div>}
+            {company?.adresYur && <div>{company.adresYur}</div>}
+            {!company?.adresYur && company?.adres && <div>{company.adres}</div>}
+            {company?.inn && <div>ИНН: {company.inn}{company?.kpp ? ` / КПП: ${company.kpp}` : ""}</div>}
             {company?.telefon && <div>Тел.: {company.telefon}</div>}
-            <div className="mt-1">ОГРН/ОГРНИП: ________________________</div>
+            <div className="mt-1">ОГРН/ОГРНИП: {company?.ogrn || "________________________"}</div>
           </div>
 
           <div className="text-center flex-1 px-4">
@@ -89,7 +90,7 @@ const JurnalDisp = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
             <div className="mb-1">Код по ОКУД</div>
             <div className="border border-black py-1 font-bold text-[11px]">0345016</div>
             <div className="mt-2 mb-1">Код по ОКПО</div>
-            <div className="border border-black py-1">__________</div>
+            <div className="border border-black py-1">{company?.okpo || "__________"}</div>
           </div>
         </div>
 

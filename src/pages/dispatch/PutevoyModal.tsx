@@ -70,6 +70,7 @@ const PutevoyModal = ({ row, today, dayMeta, onClose, onSaveOdometr }: Props) =>
     marshrut:        matchedRoute ? `№${matchedRoute.nomer} ${matchedRoute.nazvanie}` : row.marshrut,
     vodUdostVerenie: vodInfo?.udostoverenie ?? "",
     vodKategoria:    vodInfo?.kategoriya  || "D",
+    vodSnils:        vodInfo?.snils ?? "",
     odometrVyezd:    row.odometrVyezd ?? "",
     odometrVozv:     row.odometrVozv  ?? "",
     toplivoMarka:    "ДТ",
@@ -125,6 +126,9 @@ const PutevoyModal = ({ row, today, dayMeta, onClose, onSaveOdometr }: Props) =>
     vodFio:            row.fio,
     vodUdostVerenie:   vodUdostVerenieVal,
     vodKategoria:      vodKategoriaVal,
+    vodSnils:          editedKeys.has("vodSnils")
+                         ? (extra.vodSnils ?? "")
+                         : (vodInfo?.snils ?? extra.vodSnils ?? ""),
     kondFio:           row.fioKond,
     odometrVyezd:      extra.odometrVyezd    ?? "",
     odometrVozv:       extra.odometrVozv     ?? "",
@@ -201,6 +205,7 @@ const PutevoyModal = ({ row, today, dayMeta, onClose, onSaveOdometr }: Props) =>
               {itr.mekh  && <span className="ml-2">· Механик: {itr.mekh}</span>}
               {itr.disp  && <span className="ml-2">· Диспетчер: {itr.disp}</span>}
               {vodInfo?.udostoverenie && <span className="ml-2">· Уд-ие вод.: {vodInfo.udostoverenie}</span>}
+              {vodInfo?.snils && <span className="ml-2">· СНИЛС: {vodInfo.snils}</span>}
             </div>
           )}
 
@@ -228,6 +233,7 @@ const PutevoyModal = ({ row, today, dayMeta, onClose, onSaveOdometr }: Props) =>
               <F label="Маршрут (№ и наименование)" k="marshrut" placeholder="№1 Вокзал — Рынок" />
               <F label="Удостоверение водителя №" k="vodUdostVerenie" />
               <F label="Категория ТС" k="vodKategoria" placeholder="D" />
+              <F label="СНИЛС водителя" k="vodSnils" placeholder="000-000-000 00" />
             </div>
           </div>
 

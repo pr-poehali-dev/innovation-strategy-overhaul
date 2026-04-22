@@ -58,6 +58,12 @@ const JurnalMed = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
         {/* Шапка блока */}
         <div className="text-center mb-3">
           <div className="font-bold text-[12px]">{company?.nazvanie || "___________________________"}</div>
+          <div className="text-[9px] text-gray-700 mt-0.5 flex justify-center gap-3 flex-wrap">
+            {company?.inn  && <span>ИНН: {company.inn}</span>}
+            {company?.kpp  && <span>КПП: {company.kpp}</span>}
+            {company?.ogrn && <span>ОГРН: {company.ogrn}</span>}
+            {company?.adresYur && <span>Адрес: {company.adresYur}</span>}
+          </div>
           <div className="mt-1.5 font-bold text-[13px] uppercase tracking-wide">
             ЖУРНАЛ РЕГИСТРАЦИИ ПРЕДРЕЙСОВЫХ МЕДИЦИНСКИХ ОСМОТРОВ ВОДИТЕЛЕЙ
           </div>
