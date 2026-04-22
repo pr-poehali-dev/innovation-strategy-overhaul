@@ -77,7 +77,6 @@ export const COLUMNS: { key: ColKey; label: string; width: string; numeric?: boo
   { key: "reysy",   label: "Рейсы",           width: "65px",  numeric: true },
   { key: "kolBil",  label: "Кол. бил",        width: "70px",  numeric: true },
   { key: "valid",   label: "Валид",           width: "65px",  numeric: true },
-  { key: "qr",      label: "QR",              width: "60px",  numeric: true },
   { key: "podVod",  label: "Вод. подр., ₽",  width: "90px",  numeric: true },
   { key: "podCond", label: "Конд. подр., ₽", width: "90px",  numeric: true },
 ];

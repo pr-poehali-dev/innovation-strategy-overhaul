@@ -22,7 +22,6 @@ const fmt = (n: number) => n !== 0 ? n.toLocaleString("ru-RU") : "";
 const COLS: { key: keyof Omit<MonthlyKassaRow, "id" | "bort" | "mar" | "fioVod" | "fioCond" | "byDay">; label: string; width: string }[] = [
   { key: "kolBil",   label: "Кол. бил",    width: "65px"  },
   { key: "beznal",   label: "Безнал",      width: "70px"  },
-  { key: "qr",       label: "QR",          width: "60px"  },
   { key: "viruchka", label: "Выручка",     width: "75px"  },
   { key: "obed",     label: "Обед",        width: "55px"  },
   { key: "rashodDt", label: "Расх. ДТ",   width: "65px"  },

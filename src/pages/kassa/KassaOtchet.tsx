@@ -86,8 +86,8 @@ const KassaOtchet = ({
         col.key === "podrCond"   ? "text-orange-700 font-semibold" :
         col.key === "itogo"      ? "text-green-800 font-bold" : "text-gray-500";
       const title =
-        col.key === "viruchka"   ? "Авто: Кол.бил × Стоимость проезда + Безнал + QR" :
-        col.key === "itogo"      ? "Авто: Выручка − Безнал − QR − Обед − Расх.ДТ − Чек − Возврат − Подр.вод − Подр.конд + В плюс" :
+        col.key === "viruchka"   ? "Авто: Кол.бил × Стоимость проезда + Безнал" :
+        col.key === "itogo"      ? "Авто: Выручка − Безнал − Обед − Расх.ДТ − Чек − Возврат − Подр.вод − Подр.конд + В плюс" :
         col.key === "prodBilety" ? "Авто: Выручка ÷ Стоимость проезда" :
         col.key === "podrVod"    ? "Авто из наряда (настройки → % водителя)" :
         col.key === "podrCond"   ? "Авто из наряда (настройки → % кондуктора)" : undefined;
@@ -192,7 +192,7 @@ const KassaOtchet = ({
                         col.key === "itogo"                            ? "#1a3a6b" : undefined,
                     }}
                     title={
-                      col.key === "viruchka"    ? "Авто: Кол.бил × Стоимость проезда + Безнал + QR" :
+                      col.key === "viruchka"    ? "Авто: Кол.бил × Стоимость проезда + Безнал" :
                       col.key === "prodBilety"  ? "Авто: Выручка ÷ Стоимость проезда" :
                       col.key === "podrVod"     ? "Начислено из наряда" :
                       col.key === "podrCond"    ? "Начислено из наряда" :

@@ -97,7 +97,6 @@ export const MAIN_COLS: { key: keyof Omit<KassaRow, "id" | "type">; label: strin
   { key: "prodBilety",   label: "Прод. бил",         width: "75px"  },
   { key: "kolBil",       label: "Кол. бил",          width: "60px",  numeric: true },
   { key: "beznal",       label: "Безнал",            width: "65px",  numeric: true },
-  { key: "qr",           label: "QR код",            width: "60px",  numeric: true },
   { key: "viruchka",     label: "Выручка",           width: "75px",  numeric: true },
   { key: "obed",         label: "Обед",              width: "55px",  numeric: true },
   { key: "rashodDt",     label: "Расх. ДТ",          width: "65px",  numeric: true },
