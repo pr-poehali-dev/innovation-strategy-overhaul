@@ -74,35 +74,46 @@ export const useProdazhiLogic = () => {
       podrVod?: string; podrCond?: string;
       podrVodVydano?: boolean; podrCondVydano?: boolean;
       prodBilety?: string;
+      podrabotkaNaryad?: boolean;
     };
-    const byBort = new Map<string, { dt?: string; podVod?: string; podCond?: string; kolBil?: string }>();
+    // Для каждого борта из Кассы формируем «снимок» значений, которые нужно
+    // синхронизировать в Продажи. Ключ присутствует даже при пустых значениях —
+    // чтобы корректно обнулять старые цифры при снятии подработки в наряде.
+    const byBort = new Map<string, { dt: string; podVod: string; podCond: string; kolBil: string }>();
 
     (kassaData.rows as KassaRowMin[]).forEach((r) => {
       if (!r.bort) return;
-      const entry: { dt?: string; podVod?: string; podCond?: string; kolBil?: string } = {};
-      if (r.rashodDt && parseFloat(r.rashodDt) > 0 && cenaTopliva > 0) {
-        entry.dt = String(Math.round(parseFloat(r.rashodDt) / cenaTopliva * 100) / 100);
-      }
-      // Переносим НАЧИСЛЕННУЮ подработку (не только уже выданную):
-      // если в Кассе есть сумма подработки — сразу показываем её в Продажах.
-      if (r.podrVod  && parseFloat(r.podrVod)  > 0) entry.podVod  = r.podrVod;
-      if (r.podrCond && parseFloat(r.podrCond) > 0) entry.podCond = r.podrCond;
-      if (r.prodBilety && parseFloat(r.prodBilety) > 0) entry.kolBil = r.prodBilety;
-      if (Object.keys(entry).length > 0) byBort.set(r.bort, entry);
+      const dt = (r.rashodDt && parseFloat(r.rashodDt) > 0 && cenaTopliva > 0)
+        ? String(Math.round(parseFloat(r.rashodDt) / cenaTopliva * 100) / 100)
+        : "";
+      const podVod  = (r.podrVod  && parseFloat(r.podrVod)  > 0) ? r.podrVod  : "";
+      const podCond = (r.podrCond && parseFloat(r.podrCond) > 0) ? r.podrCond : "";
+      const kolBil  = (r.prodBilety && parseFloat(r.prodBilety) > 0) ? r.prodBilety : "";
+      byBort.set(r.bort, { dt, podVod, podCond, kolBil });
     });
 
     if (byBort.size === 0) return;
-    setRows((prev) => prev.map((r) => {
-      const kassa = byBort.get(r.bort);
-      if (!kassa) return r;
-      return {
-        ...r,
-        ...(kassa.dt      !== undefined ? { dt:      kassa.dt }      : {}),
-        ...(kassa.podVod  !== undefined ? { podVod:  kassa.podVod }  : {}),
-        ...(kassa.podCond !== undefined ? { podCond: kassa.podCond } : {}),
-        ...(kassa.kolBil  !== undefined ? { kolBil:  kassa.kolBil }  : {}),
-      };
-    }));
+    setRows((prev) => {
+      let changed = false;
+      const next = prev.map((r) => {
+        const kassa = byBort.get(r.bort);
+        if (!kassa) return r;
+        // Значения из Кассы применяются только если они НЕ пустые ИЛИ
+        // если у нас уже стояла цифра, которую теперь надо обнулить
+        const nextRow = { ...r };
+        if (kassa.dt || r.dt)           nextRow.dt = kassa.dt || r.dt;
+        if (kassa.kolBil || r.kolBil)   nextRow.kolBil = kassa.kolBil || r.kolBil;
+        // Подработка: всегда берём значение из Кассы (включая пустую строку → обнуление)
+        nextRow.podVod  = kassa.podVod;
+        nextRow.podCond = kassa.podCond;
+        if (nextRow.dt === r.dt && nextRow.kolBil === r.kolBil && nextRow.podVod === r.podVod && nextRow.podCond === r.podCond) {
+          return r;
+        }
+        changed = true;
+        return nextRow;
+      });
+      return changed ? next : prev;
+    });
   };
 
   useEffect(() => {
