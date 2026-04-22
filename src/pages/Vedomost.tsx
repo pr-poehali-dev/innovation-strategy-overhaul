@@ -122,6 +122,8 @@ const Vedomost = () => {
   });
   const [activeCell, setActiveCell] = useState<{ rowId: number; col: ColKey } | null>(null);
   const [monthKey, setMonthKey] = useState<string>(currentMonthKey());
+  // Тик для перечитывания кассы — инкрементим при событии "касса-обновилась"
+  const [kassaTick, setKassaTick] = useState(0);
 
   useEffect(() => {
     try { localStorage.setItem(LS_VEDOMOST, JSON.stringify(rows)); } catch (e) { console.warn(e); }
@@ -153,7 +155,65 @@ const Vedomost = () => {
       });
     });
     return acc;
-  }, [monthKey]);
+    // kassaTick форсирует перечитывание при событии kassa-updated / storage
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthKey, kassaTick]);
+
+  // Подписка на изменения Кассы: своё окно (CustomEvent) + другие вкладки (storage)
+  useEffect(() => {
+    const bump = () => setKassaTick((t) => t + 1);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "dat_kassa_v1" || e.key === null) bump();
+    };
+    window.addEventListener("kassa-updated", bump);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("kassa-updated", bump);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  // Автоприменение сумм из Кассы в строки Ведомости.
+  // 1) Обновляет nachisl и poluchPodrab у ФИО, которые уже есть в ведомости.
+  // 2) Добавляет новых сотрудников из Кассы, которых ещё нет в ведомости.
+  // Ручные поля (НДФЛ, аванс и т.д.) не трогаются.
+  useEffect(() => {
+    setRows((prev) => {
+      let changed = false;
+      const existingFios = new Set(
+        prev.map((r) => (r.fio || "").trim()).filter(Boolean)
+      );
+      const next = prev.map((r) => {
+        const fio = (r.fio || "").trim();
+        if (!fio) return r;
+        const agg = kassaAgg[fio] || { nachisl: 0, poluch: 0 };
+        const newNachisl = String(Math.round(agg.nachisl));
+        const newPoluch  = String(Math.round(agg.poluch));
+        const curNachisl = String(Math.round(parseFloat((r.nachisl || "0").replace(",", ".")) || 0));
+        const curPoluch  = String(Math.round(parseFloat((r.poluchPodrab || "0").replace(",", ".")) || 0));
+        if (curNachisl === newNachisl && curPoluch === newPoluch) return r;
+        changed = true;
+        return { ...r, nachisl: newNachisl, poluchPodrab: newPoluch };
+      });
+      // Добавляем ФИО из Кассы, которых ещё нет в ведомости
+      const toAdd: VedomostRow[] = [];
+      Object.entries(kassaAgg).forEach(([fio, agg]) => {
+        if (!fio || existingFios.has(fio)) return;
+        if (agg.nachisl <= 0 && agg.poluch <= 0) return;
+        toAdd.push({
+          ...emptyRow(),
+          fio,
+          nachisl:      String(Math.round(agg.nachisl)),
+          poluchPodrab: String(Math.round(agg.poluch)),
+        });
+      });
+      if (toAdd.length > 0) {
+        changed = true;
+        return [...next, ...toAdd];
+      }
+      return changed ? next : prev;
+    });
+  }, [kassaAgg]);
 
   // Автосинхронизация: добавить всех активных водителей/кондукторов из Кадров + заполнить Начислено и Получ.Подраб.
   const syncFromKadryAndKassa = () => {
