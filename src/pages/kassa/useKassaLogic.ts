@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useAppStore } from "@/store/appStore";
 import { calcPodrabotka } from "@/pages/dispatch/types";
 import { loadVedomostRows, calcVedomostRow } from "@/pages/Vedomost";
+import { uid } from "@/lib/uid";
 import {
   KassaRow, VyplataRow, ChastRow, Day, MonthlyKassaRow,
   MAIN_COLS, VYP_COLS,
@@ -258,6 +259,34 @@ export const useKassaLogic = () => {
     "viruchka", "beznal", "qr", "obed", "rashodDt", "chek", "vozvrat", "podrVod", "podrCond", "vPlus",
   ]);
 
+  // Пересчитать подработку из текущей выручки строки.
+  // Если в строке есть явная метка из наряда (podrabotkaNaryad === false) — НЕ начисляем.
+  // Если метки нет (ручная строка) — считаем как обычно.
+  const recalcPodrabotka = (r: KassaRow): { podrVod: string; podrCond: string } => {
+    if (r.podrabotkaNaryad === false) return { podrVod: "", podrCond: "" };
+    const v = toNum(r.viruchka);
+    const cena = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
+    // Маршрут №6 без кондуктора — фиксированная оплата, независимо от выручки
+    const hasCondFixed = !!(r.fioCond && r.fioCond !== "без" && r.fioCond.trim());
+    const routeNumFixed = r.mar?.split("/")[0]?.trim();
+    if (routeNumFixed === "6" && !hasCondFixed) {
+      return { podrVod: naryadSettings.fixedRoute6 || "0", podrCond: "" };
+    }
+    if (v <= 0 || cena <= 0) return { podrVod: "", podrCond: "" };
+    const topRub = (parseFloat(naryadSettings.rashod) / 100) * (v / cena) * (parseFloat(naryadSettings.stoimostTopliva) || 0);
+    const vyuchka = v - topRub;
+    if (!hasCondFixed) {
+      return {
+        podrVod: vyuchka > 0 ? String(Math.round(vyuchka * (parseFloat(naryadSettings.procentBez) / 100))) : "",
+        podrCond: "",
+      };
+    }
+    return {
+      podrVod:  vyuchka > 0 ? String(Math.round(vyuchka * (parseFloat(naryadSettings.procentVodS)  / 100))) : "",
+      podrCond: vyuchka > 0 ? String(Math.round(vyuchka * (parseFloat(naryadSettings.procentCondS) / 100))) : "",
+    };
+  };
+
   // ─── Обработчики кассы ───────────────────────────────────────────────────
   const updateCell = (id: number, col: keyof KassaRow, value: string) =>
     setRows((prev) => prev.map((r) => {
@@ -266,48 +295,16 @@ export const useKassaLogic = () => {
       if (col === "kolBil" || col === "beznal" || col === "qr") {
         updated.viruchka   = calcViruchka(r, { [col]: value });
         updated.prodBilety = calcProdBilety(updated.viruchka);
-        // Пересчитываем подработку из новой выручки
-        const newV = toNum(updated.viruchka);
-        const cenaP = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
-        if (newV > 0 && cenaP > 0) {
-          const topRub = (parseFloat(naryadSettings.rashod) / 100) * (newV / cenaP) * (parseFloat(naryadSettings.stoimostTopliva) || 0);
-          const vyuchkaP = newV - topRub;
-          const hasCond = !!(r.fioCond && r.fioCond !== "без" && r.fioCond.trim());
-          const routeNum = r.mar?.split("/")[0]?.trim();
-          if (routeNum === "6" && !hasCond) {
-            updated.podrVod  = naryadSettings.fixedRoute6 || "0";
-            updated.podrCond = "";
-          } else if (!hasCond) {
-            updated.podrVod  = vyuchkaP > 0 ? String(Math.round(vyuchkaP * (parseFloat(naryadSettings.procentBez) / 100))) : "";
-            updated.podrCond = "";
-          } else {
-            updated.podrVod  = vyuchkaP > 0 ? String(Math.round(vyuchkaP * (parseFloat(naryadSettings.procentVodS)  / 100))) : "";
-            updated.podrCond = vyuchkaP > 0 ? String(Math.round(vyuchkaP * (parseFloat(naryadSettings.procentCondS) / 100))) : "";
-          }
-        }
+        const { podrVod, podrCond } = recalcPodrabotka(updated);
+        updated.podrVod  = podrVod;
+        updated.podrCond = podrCond;
         updated.itogo = calcItogo(r, { [col]: value, viruchka: updated.viruchka, podrVod: updated.podrVod, podrCond: updated.podrCond });
       }
       if (col === "viruchka") {
         updated.prodBilety = calcProdBilety(value);
-        // Пересчитываем подработку из новой выручки
-        const v = toNum(value);
-        const cena = parseFloat(naryadSettings.stoimostProezda || naryadSettings.stoimostBileta) || 0;
-        if (v > 0 && cena > 0) {
-          const topRub = (parseFloat(naryadSettings.rashod) / 100) * (v / cena) * (parseFloat(naryadSettings.stoimostTopliva) || 0);
-          const vyuchka = v - topRub;
-          const hasCond = !!(r.fioCond && r.fioCond !== "без" && r.fioCond.trim());
-          const routeNum = r.mar?.split("/")[0]?.trim();
-          if (routeNum === "6" && !hasCond) {
-            updated.podrVod  = naryadSettings.fixedRoute6 || "0";
-            updated.podrCond = "";
-          } else if (!hasCond) {
-            updated.podrVod  = vyuchka > 0 ? String(Math.round(vyuchka * (parseFloat(naryadSettings.procentBez) / 100))) : "";
-            updated.podrCond = "";
-          } else {
-            updated.podrVod  = vyuchka > 0 ? String(Math.round(vyuchka * (parseFloat(naryadSettings.procentVodS)  / 100))) : "";
-            updated.podrCond = vyuchka > 0 ? String(Math.round(vyuchka * (parseFloat(naryadSettings.procentCondS) / 100))) : "";
-          }
-        }
+        const { podrVod, podrCond } = recalcPodrabotka(updated);
+        updated.podrVod  = podrVod;
+        updated.podrCond = podrCond;
         updated.itogo = calcItogo(r, { viruchka: value, podrVod: updated.podrVod, podrCond: updated.podrCond });
       }
       if (ITOGO_DEPS.has(col) && col !== "viruchka" && col !== "kolBil" && col !== "beznal" && col !== "qr") {
@@ -414,6 +411,9 @@ export const useKassaLogic = () => {
       const updated = { ...r, beznal: val };
       updated.viruchka = calcViruchka(updated);
       updated.prodBilety = calcProdBilety(updated.viruchka);
+      const { podrVod, podrCond } = recalcPodrabotka(updated);
+      updated.podrVod = podrVod;
+      updated.podrCond = podrCond;
       updated.itogo = calcItogo(updated);
       return updated;
     }));
@@ -440,6 +440,9 @@ export const useKassaLogic = () => {
           const updated = { ...r, beznal: val };
           updated.viruchka = calcViruchka(updated);
           updated.prodBilety = calcProdBilety(updated.viruchka);
+          const { podrVod, podrCond } = recalcPodrabotka(updated);
+          updated.podrVod = podrVod;
+          updated.podrCond = podrCond;
           updated.itogo = calcItogo(updated);
           return updated;
         });
@@ -552,7 +555,7 @@ export const useKassaLogic = () => {
         };
         if (!map.has(bortKey)) {
           map.set(bortKey, {
-            id: Math.random() * 1e15 + performance.now(),
+            id: uid(),
             bort: r.bort, mar: r.mar, fioVod: r.fioVod, fioCond: r.fioCond,
             kolBil: 0, beznal: 0, qr: 0, viruchka: 0,
             obed: 0, rashodDt: 0, chek: 0, vozvrat: 0,
