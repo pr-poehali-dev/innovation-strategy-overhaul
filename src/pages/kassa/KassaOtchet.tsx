@@ -223,7 +223,7 @@ const KassaOtchet = ({
                 const sumCond = toNum(row.podrCond) > 0;
                 const conflict = !allowPodr && (sumVod || sumCond);
                 return (
-                  <tr key={row.id} style={{
+                  <tr key={`${row.id}-${rowIdx}`} style={{
                     backgroundColor: bg,
                     outline: hasPodr ? "2px solid #f97316" : conflict ? "2px dashed #dc2626" : undefined,
                     outlineOffset: "-1px",
@@ -269,7 +269,7 @@ const KassaOtchet = ({
                     <table className="border-collapse text-xs w-full">
                       <tbody>
                         {dispRows.map((row, rowIdx) => (
-                          <tr key={row.id} style={{ backgroundColor: "#fffbe6" }}>
+                          <tr key={`disp-${row.id}-${rowIdx}`} style={{ backgroundColor: "#fffbe6" }}>
                             <td className="border border-gray-300 text-center text-amber-600 font-semibold select-none px-1" style={{ width: "24px" }}>
                               Д
                             </td>

@@ -151,31 +151,40 @@ export const useKassaLogic = () => {
           ? (naryadSettings.obedVodKond ?? "300")
           : (naryadSettings.obedVod ?? "150");
 
-        // Подработка: сначала пробуем из наряда, потом из выручки кассы
-        const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
-        let podrVod  = calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : "";
-        let podrCond = calc && calc.cond > 0 ? String(Math.round(calc.cond)) : "";
-
-        // Если наряд не дал подработку но галочка стоит — считаем из выручки кассы
-        if (r.podrabotka && !podrVod && existingRow.viruchka) {
-          const v = toNum(existingRow.viruchka);
-          const topRub = (parseFloat(naryadSettings.rashod) / 100) * (v / cena) * (parseFloat(naryadSettings.stoimostTopliva) || 0);
-          const vyuchka = v - topRub;
-          if (vyuchka > 0) {
-            const routeNum = r.marshrut.split("/")[0].trim();
-            if (routeNum === "6" && !hasCond) {
-              podrVod = naryadSettings.fixedRoute6 || "0";
-            } else if (!hasCond) {
-              podrVod = String(Math.round(vyuchka * (parseFloat(naryadSettings.procentBez) / 100)));
-            } else {
-              podrVod  = String(Math.round(vyuchka * (parseFloat(naryadSettings.procentVodS)  / 100)));
-              podrCond = String(Math.round(vyuchka * (parseFloat(naryadSettings.procentCondS) / 100)));
+        // Подработка:
+        // 1) если в наряде есть биле ты — считаем из них через calcPodrabotka
+        // 2) иначе, если в кассе уже есть выручка — считаем из выручки
+        // 3) иначе — оставляем то, что было (чтобы не обнулять пользовательский ввод)
+        let podrVod  = "";
+        let podrCond = "";
+        if (r.podrabotka) {
+          const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
+          if (calc) {
+            podrVod  = calc.vod  > 0 ? String(Math.round(calc.vod))  : "";
+            podrCond = calc.cond > 0 ? String(Math.round(calc.cond)) : "";
+          }
+          if (!podrVod && existingRow.viruchka) {
+            const v = toNum(existingRow.viruchka);
+            const topRub = (parseFloat(naryadSettings.rashod) / 100) * (v / cena) * (parseFloat(naryadSettings.stoimostTopliva) || 0);
+            const vyuchka = v - topRub;
+            if (vyuchka > 0) {
+              const routeNum = r.marshrut.split("/")[0].trim();
+              if (routeNum === "6" && !hasCond) {
+                podrVod = naryadSettings.fixedRoute6 || "0";
+              } else if (!hasCond) {
+                podrVod = String(Math.round(vyuchka * (parseFloat(naryadSettings.procentBez) / 100)));
+              } else {
+                podrVod  = String(Math.round(vyuchka * (parseFloat(naryadSettings.procentVodS)  / 100)));
+                podrCond = String(Math.round(vyuchka * (parseFloat(naryadSettings.procentCondS) / 100)));
+              }
             }
           }
         }
-        // Если были старые значения и новые пустые — оставляем старые
+        // Если наряд не посчитал подработку — сохраняем старые значения кассы
         if (!podrVod)  podrVod  = existingRow.podrVod;
         if (!podrCond) podrCond = existingRow.podrCond;
+        // А если в наряде галочка СНЯТА — обнуляем (это признак, что пользователь выключил подработку)
+        if (!r.podrabotka) { podrVod = ""; podrCond = ""; }
         const kolBil = r.biletov || existingRow.kolBil;
         const viruchka = reuse
           ? existingRow.viruchka
@@ -399,16 +408,17 @@ export const useKassaLogic = () => {
     const prodAll = loadProdazhiAll();
     const prodDay = prodAll[selectedKey];
     if (!prodDay?.rows) return;
-    const validByBort = new Map<string, string>();
-    (prodDay.rows as Array<{ bort?: string; valid?: string }>).forEach((r) => {
-      if (r.bort && r.valid) validByBort.set(r.bort, r.valid);
+    const byBort = new Map<string, { valid?: string; qr?: string }>();
+    (prodDay.rows as Array<{ bort?: string; valid?: string; qr?: string }>).forEach((r) => {
+      if (r.bort) byBort.set(r.bort, { valid: r.valid, qr: r.qr });
     });
-    if (validByBort.size === 0) return;
+    if (byBort.size === 0) return;
     setRows((prev) => prev.map((r) => {
-      const val = validByBort.get(r.bort);
-      if (!val) return r;
-      // Пересчитываем выручку и ИТОГО с новым безналом
-      const updated = { ...r, beznal: val };
+      const p = byBort.get(r.bort);
+      if (!p) return r;
+      const updated = { ...r };
+      if (p.valid) updated.beznal = p.valid;
+      if (p.qr)    updated.qr     = p.qr;
       updated.viruchka = calcViruchka(updated);
       updated.prodBilety = calcProdBilety(updated.viruchka);
       const { podrVod, podrCond } = recalcPodrabotka(updated);
@@ -419,25 +429,28 @@ export const useKassaLogic = () => {
     }));
   };
 
-  // ─── Автосинхронизация безнала из Продаж ────────────────────────────────
+  // ─── Автосинхронизация безнала и QR из Продаж ───────────────────────────
   useEffect(() => {
     const runSync = () => {
       const prodAll = loadProdazhiAll();
       const prodDay = prodAll[selectedKey];
       if (!prodDay?.rows) return;
-      const validByBort = new Map<string, string>();
-      (prodDay.rows as Array<{ bort?: string; valid?: string }>).forEach((r) => {
-        if (r.bort && r.valid) validByBort.set(r.bort, r.valid);
+      const byBort = new Map<string, { valid?: string; qr?: string }>();
+      (prodDay.rows as Array<{ bort?: string; valid?: string; qr?: string }>).forEach((r) => {
+        if (r.bort) byBort.set(r.bort, { valid: r.valid, qr: r.qr });
       });
-      if (validByBort.size === 0) return;
+      if (byBort.size === 0) return;
       setRows((prev) => {
         let changed = false;
         const next = prev.map((r) => {
           if (!r.bort) return r;
-          const val = validByBort.get(r.bort);
-          if (!val || val === r.beznal) return r;
+          const p = byBort.get(r.bort);
+          if (!p) return r;
+          const newBeznal = p.valid ?? r.beznal;
+          const newQr     = p.qr    ?? r.qr;
+          if (newBeznal === r.beznal && newQr === r.qr) return r;
           changed = true;
-          const updated = { ...r, beznal: val };
+          const updated = { ...r, beznal: newBeznal, qr: newQr };
           updated.viruchka = calcViruchka(updated);
           updated.prodBilety = calcProdBilety(updated.viruchka);
           const { podrVod, podrCond } = recalcPodrabotka(updated);

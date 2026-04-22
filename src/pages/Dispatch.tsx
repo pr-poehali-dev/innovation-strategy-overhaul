@@ -258,7 +258,7 @@ const Dispatch = () => {
     if (!weeklyNaryady[fromKey]?.length) return;
     const copied = weeklyNaryady[fromKey].map((r) => ({
       ...r,
-      id: Date.now() + Math.random(),
+      id: uid(),
       podrabotka: false,
       biletov: "",
       dtp: false,
