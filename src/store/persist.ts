@@ -1,7 +1,38 @@
 import { useState, useEffect } from "react";
+import { uid } from "@/lib/uid";
 
 // ─── localStorage persist ────────────────────────────────────────────────────
 const LS_KEY = "dat_app_store_v1";
+
+// Рекурсивно проходит по структуре и переставляет уникальные id в любых массивах,
+// где элементы-объекты содержат поле `id`, чтобы React не падал на дублях ключей.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function fixDuplicateIdsDeep(value: any): any {
+  if (Array.isArray(value)) {
+    const hasIdObjects = value.some((v) => v && typeof v === "object" && "id" in v);
+    if (hasIdObjects) {
+      const seen = new Set<unknown>();
+      return value.map((item) => {
+        const fixedChildren = fixDuplicateIdsDeep(item);
+        if (fixedChildren && typeof fixedChildren === "object" && "id" in fixedChildren) {
+          const curId = (fixedChildren as { id: unknown }).id;
+          if (curId == null || seen.has(curId)) {
+            return { ...(fixedChildren as object), id: uid() };
+          }
+          seen.add(curId);
+        }
+        return fixedChildren;
+      });
+    }
+    return value.map(fixDuplicateIdsDeep);
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const k of Object.keys(value)) out[k] = fixDuplicateIdsDeep(value[k]);
+    return out;
+  }
+  return value;
+}
 
 export function mergeWithFallback<T>(loaded: unknown, fallback: T): T {
   if (Array.isArray(fallback) && Array.isArray(loaded)) {
@@ -25,7 +56,8 @@ export function loadFromLS<T>(key: string, fallback: T): T {
     const raw = localStorage.getItem(`${LS_KEY}:${key}`);
     if (raw === null) return fallback;
     const parsed = JSON.parse(raw);
-    return mergeWithFallback(parsed, fallback);
+    const merged = mergeWithFallback(parsed, fallback);
+    return fixDuplicateIdsDeep(merged) as T;
   } catch {
     return fallback;
   }
