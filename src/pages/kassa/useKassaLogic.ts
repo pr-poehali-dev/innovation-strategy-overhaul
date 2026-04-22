@@ -174,7 +174,11 @@ export const useKassaLogic = () => {
             else if (kassaVyr > 0)          vBase = kassaVyr;
             else if (kassaBil > 0 && cena > 0) vBase = kassaBil * cena;
             if (vBase > 0 && cena > 0) {
-              const topRub = (parseFloat(naryadSettings.rashod) / 100) * (vBase / cena) * (parseFloat(naryadSettings.stoimostTopliva) || 0);
+              // Топливо: фактический ДТ из кассы имеет приоритет над нормативом
+              const factDt = toNum(existingRow.rashodDt);
+              const topRub = factDt > 0
+                ? factDt
+                : (parseFloat(naryadSettings.rashod) / 100) * (vBase / cena) * (parseFloat(naryadSettings.stoimostTopliva) || 0);
               const vyuchka = vBase - topRub;
               if (vyuchka > 0) {
                 if (!hasCond) {
@@ -291,7 +295,12 @@ export const useKassaLogic = () => {
       return { podrVod: naryadSettings.fixedRoute6 || "0", podrCond: "" };
     }
     if (v <= 0 || cena <= 0) return { podrVod: "", podrCond: "" };
-    const topRub = (parseFloat(naryadSettings.rashod) / 100) * (v / cena) * (parseFloat(naryadSettings.stoimostTopliva) || 0);
+    // Топливо: если в кассе уже введён фактический ДТ (rashodDt) — берём его,
+    // иначе считаем по нормативу из настроек.
+    const factDt = toNum(r.rashodDt);
+    const topRub = factDt > 0
+      ? factDt
+      : (parseFloat(naryadSettings.rashod) / 100) * (v / cena) * (parseFloat(naryadSettings.stoimostTopliva) || 0);
     const vyuchka = v - topRub;
     if (!hasCondFixed) {
       return {
@@ -326,7 +335,16 @@ export const useKassaLogic = () => {
         updated.itogo = calcItogo(r, { viruchka: value, podrVod: updated.podrVod, podrCond: updated.podrCond });
       }
       if (ITOGO_DEPS.has(col) && col !== "viruchka" && col !== "kolBil" && col !== "beznal" && col !== "qr") {
-        updated.itogo = calcItogo(r, { [col]: value });
+        // При изменении фактического ДТ подработка тоже должна пересчитаться,
+        // т.к. она зависит от "чистой выручки" = выручка − топливо.
+        if (col === "rashodDt") {
+          const { podrVod, podrCond } = recalcPodrabotka(updated);
+          updated.podrVod  = podrVod;
+          updated.podrCond = podrCond;
+          updated.itogo = calcItogo(r, { [col]: value, podrVod: updated.podrVod, podrCond: updated.podrCond });
+        } else {
+          updated.itogo = calcItogo(r, { [col]: value });
+        }
       }
       if (col === "rashodDt" && r.bort) {
         const cenaTopliva = parseFloat(naryadSettings.stoimostTopliva) || 0;
