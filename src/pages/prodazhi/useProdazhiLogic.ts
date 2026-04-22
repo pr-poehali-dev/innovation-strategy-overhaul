@@ -83,8 +83,10 @@ export const useProdazhiLogic = () => {
       if (r.rashodDt && parseFloat(r.rashodDt) > 0 && cenaTopliva > 0) {
         entry.dt = String(Math.round(parseFloat(r.rashodDt) / cenaTopliva * 100) / 100);
       }
-      if (r.podrVodVydano  && r.podrVod  && parseFloat(r.podrVod)  > 0) entry.podVod  = r.podrVod;
-      if (r.podrCondVydano && r.podrCond && parseFloat(r.podrCond) > 0) entry.podCond = r.podrCond;
+      // Переносим НАЧИСЛЕННУЮ подработку (не только уже выданную):
+      // если в Кассе есть сумма подработки — сразу показываем её в Продажах.
+      if (r.podrVod  && parseFloat(r.podrVod)  > 0) entry.podVod  = r.podrVod;
+      if (r.podrCond && parseFloat(r.podrCond) > 0) entry.podCond = r.podrCond;
       if (r.prodBilety && parseFloat(r.prodBilety) > 0) entry.kolBil = r.prodBilety;
       if (Object.keys(entry).length > 0) byBort.set(r.bort, entry);
     });
@@ -164,8 +166,10 @@ export const useProdazhiLogic = () => {
         const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
         const existingPodVod  = reuse ? base.podVod  : "";
         const existingPodCond = reuse ? base.podCond : "";
-        const newPodVod  = existingPodVod  || (calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : "");
-        const newPodCond = existingPodCond || (calc && calc.cond > 0 ? String(Math.round(calc.cond)) : "");
+        // Если в Наряде галочка «Подработка» СНЯТА — принудительно обнуляем
+        const noPodr = !r.podrabotka;
+        const newPodVod  = noPodr ? "" : (existingPodVod  || (calc && calc.vod  > 0 ? String(Math.round(calc.vod))  : ""));
+        const newPodCond = noPodr ? "" : (existingPodCond || (calc && calc.cond > 0 ? String(Math.round(calc.cond)) : ""));
         return {
           ...base,
           bort:    r.bortovoy,
