@@ -151,39 +151,46 @@ export const useKassaLogic = () => {
           ? (naryadSettings.obedVodKond ?? "300")
           : (naryadSettings.obedVod ?? "150");
 
-        // Подработка:
-        // 1) если в наряде есть биле ты — считаем из них через calcPodrabotka
-        // 2) иначе, если в кассе уже есть выручка — считаем из выручки
-        // 3) иначе — оставляем то, что было (чтобы не обнулять пользовательский ввод)
+        // Подработка — универсальная формула:
+        // Если в Наряде стоит галочка «Подработка» — ВСЕГДА пытаемся посчитать сумму.
+        // Берём лучший доступный источник для выручки:
+        //   - r.biletov × cena (из Наряда)
+        //   - existingRow.viruchka (если касса уже введена)
+        //   - existingRow.kolBil × cena (если в кассе есть кол-во билетов)
         let podrVod  = "";
         let podrCond = "";
         if (r.podrabotka) {
-          const calc = calcPodrabotka(r as Parameters<typeof calcPodrabotka>[0], naryadSettings);
-          if (calc) {
-            podrVod  = calc.vod  > 0 ? String(Math.round(calc.vod))  : "";
-            podrCond = calc.cond > 0 ? String(Math.round(calc.cond)) : "";
-          }
-          if (!podrVod && existingRow.viruchka) {
-            const v = toNum(existingRow.viruchka);
-            const topRub = (parseFloat(naryadSettings.rashod) / 100) * (v / cena) * (parseFloat(naryadSettings.stoimostTopliva) || 0);
-            const vyuchka = v - topRub;
-            if (vyuchka > 0) {
-              const routeNum = r.marshrut.split("/")[0].trim();
-              if (routeNum === "6" && !hasCond) {
-                podrVod = naryadSettings.fixedRoute6 || "0";
-              } else if (!hasCond) {
-                podrVod = String(Math.round(vyuchka * (parseFloat(naryadSettings.procentBez) / 100)));
-              } else {
-                podrVod  = String(Math.round(vyuchka * (parseFloat(naryadSettings.procentVodS)  / 100)));
-                podrCond = String(Math.round(vyuchka * (parseFloat(naryadSettings.procentCondS) / 100)));
+          const routeNum = r.marshrut.split("/")[0].trim();
+          // Спец-случай: маршрут №6 без кондуктора — фикс-оплата
+          if (routeNum === "6" && !hasCond) {
+            podrVod = naryadSettings.fixedRoute6 || "0";
+          } else {
+            // Определяем «выручку-базу» для расчёта
+            const naryadBil = parseFloat(r.biletov) || 0;
+            const kassaBil  = parseFloat(existingRow.kolBil) || 0;
+            const kassaVyr  = toNum(existingRow.viruchka);
+            let vBase = 0;
+            if (naryadBil > 0 && cena > 0) vBase = naryadBil * cena;
+            else if (kassaVyr > 0)          vBase = kassaVyr;
+            else if (kassaBil > 0 && cena > 0) vBase = kassaBil * cena;
+            if (vBase > 0 && cena > 0) {
+              const topRub = (parseFloat(naryadSettings.rashod) / 100) * (vBase / cena) * (parseFloat(naryadSettings.stoimostTopliva) || 0);
+              const vyuchka = vBase - topRub;
+              if (vyuchka > 0) {
+                if (!hasCond) {
+                  podrVod = String(Math.round(vyuchka * (parseFloat(naryadSettings.procentBez) / 100)));
+                } else {
+                  podrVod  = String(Math.round(vyuchka * (parseFloat(naryadSettings.procentVodS)  / 100)));
+                  podrCond = String(Math.round(vyuchka * (parseFloat(naryadSettings.procentCondS) / 100)));
+                }
               }
             }
           }
         }
-        // Если наряд не посчитал подработку — сохраняем старые значения кассы
+        // Если мы не смогли посчитать (нет ни billet ни выручки) — сохраняем старые значения кассы
         if (!podrVod)  podrVod  = existingRow.podrVod;
         if (!podrCond) podrCond = existingRow.podrCond;
-        // А если в наряде галочка СНЯТА — обнуляем (это признак, что пользователь выключил подработку)
+        // А если в Наряде галочка СНЯТА — принудительно обнуляем
         if (!r.podrabotka) { podrVod = ""; podrCond = ""; }
         const kolBil = r.biletov || existingRow.kolBil;
         const viruchka = reuse
