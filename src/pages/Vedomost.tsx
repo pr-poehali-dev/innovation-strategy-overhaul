@@ -93,17 +93,16 @@ export const NACH_KEYS_VED: ColKey[] = ["nachisl", "otpusk", "doplata", "pererab
 export const UDERZH_KEYS_VED: ColKey[] = ["ndfl", "poluchPodrab", "otpuskPol", "ispL", "avansKarta", "zpKarta", "dolg", "narusheniya", "shtrafGarazh", "avans"];
 export function calcVedomostRow(row: VedomostRow) {
   const toN = (v: string) => parseFloat(v.replace(",", ".")) || 0;
-  const vsegaNach = NACH_KEYS_VED.reduce((s, k) => s + toN(row[k]), 0);
-  const vsegaUd   = UDERZH_KEYS_VED.reduce((s, k) => s + toN(row[k]), 0);
-  return { vsegaNach, vsegaUd, ostatok: vsegaNach - vsegaUd };
+  const vsegaNach   = NACH_KEYS_VED.reduce((s, k) => s + toN(row[k]), 0);    // Всего начислено
+  const vsegaPoluch = UDERZH_KEYS_VED.reduce((s, k) => s + toN(row[k]), 0);  // Всего получ. (сумма удержаний)
+  return { vsegaNach, vsegaUd: vsegaPoluch, vsegaPoluch, ostatok: vsegaNach - vsegaPoluch };
 }
 
 function calcRow(row: VedomostRow) {
-  const vsegaNach  = NACH_KEYS.reduce((s, k) => s + toNum(row[k]), 0);
-  const vsegaUd    = UDERZH_KEYS.reduce((s, k) => s + toNum(row[k]), 0);
-  const vsegaPoluch = vsegaNach - vsegaUd;
-  const ostatok    = vsegaNach - vsegaUd;
-  return { vsegaNach, vsegaUd, vsegaPoluch, ostatok };
+  const vsegaNach   = NACH_KEYS.reduce((s, k) => s + toNum(row[k]), 0);   // ВСЕГО нач.
+  const vsegaPoluch = UDERZH_KEYS.reduce((s, k) => s + toNum(row[k]), 0); // ВСЕГО получ. = сумма удержаний
+  const ostatok     = vsegaNach - vsegaPoluch;                            // Остаток к получ.
+  return { vsegaNach, vsegaUd: vsegaPoluch, vsegaPoluch, ostatok };
 }
 
 const today = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -165,11 +164,13 @@ const Vedomost = () => {
         const existing = byFio.get(e.fio.trim());
         const agg = kassaAgg[e.fio.trim()] || { nachisl: 0, poluch: 0 };
         const base = existing ?? emptyRow();
+        // Всегда берём актуальные суммы из Кассы, даже если 0 —
+        // чтобы при снятии галочки «выдано» значение в ведомости уменьшилось.
         return {
           ...base,
           fio: e.fio,
-          nachisl: agg.nachisl > 0 ? String(Math.round(agg.nachisl)) : base.nachisl,
-          poluchPodrab: agg.poluch > 0 ? String(Math.round(agg.poluch)) : base.poluchPodrab,
+          nachisl:      String(Math.round(agg.nachisl)),
+          poluchPodrab: String(Math.round(agg.poluch)),
         };
       });
       // Сохраняем строки, которые не нашлись в Кадрах (ручные)
