@@ -223,7 +223,7 @@ const KassaOtchet = ({
                 const sumCond = toNum(row.podrCond) > 0;
                 const conflict = !allowPodr && (sumVod || sumCond);
                 return (
-                  <tr key={`${row.id}-${rowIdx}`} style={{
+                  <tr key={`route-${rowIdx}-${row.id}`} style={{
                     backgroundColor: bg,
                     outline: hasPodr ? "2px solid #f97316" : conflict ? "2px dashed #dc2626" : undefined,
                     outlineOffset: "-1px",
@@ -269,7 +269,7 @@ const KassaOtchet = ({
                     <table className="border-collapse text-xs w-full">
                       <tbody>
                         {dispRows.map((row, rowIdx) => (
-                          <tr key={`disp-${row.id}-${rowIdx}`} style={{ backgroundColor: "#fffbe6" }}>
+                          <tr key={`disp-${rowIdx}-${row.id}`} style={{ backgroundColor: "#fffbe6" }}>
                             <td className="border border-gray-300 text-center text-amber-600 font-semibold select-none px-1" style={{ width: "24px" }}>
                               Д
                             </td>
@@ -321,7 +321,7 @@ const KassaOtchet = ({
             </thead>
             <tbody>
               {vyplaty.map((vRow, rowIdx) => (
-                <tr key={vRow.id} className={rowIdx % 2 === 0 ? "bg-amber-50" : "bg-orange-50"}>
+                <tr key={`vyp-${rowIdx}-${vRow.id}`} className={rowIdx % 2 === 0 ? "bg-amber-50" : "bg-orange-50"}>
                   <td className="border border-gray-300 text-center text-gray-400 select-none text-xs" style={{ width: "22px" }}>
                     {rowIdx + 1}
                   </td>

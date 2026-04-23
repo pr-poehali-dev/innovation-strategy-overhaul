@@ -206,11 +206,11 @@ const NaryadTable = ({
         {condFios.map((f) => <option key={f} value={f} />)}
       </datalist>
       {/* per-row datalists — вне таблицы, но доступны по id из строк */}
-      {rows.map((row) => {
+      {rows.map((row, rowIdx) => {
         const freeDriversForRow = driverFios.filter((f) => f === row.fio || !dupFios.has(f));
         const freeCondsForRow   = condFios.filter((f)  => f === row.fioKond || !dupKonds.has(f));
         return (
-          <span key={row.id} style={{ display: "none" }}>
+          <span key={`dl-${rowIdx}-${row.id}`} style={{ display: "none" }}>
             <datalist id={`dl-vod-${row.id}`}>
               {freeDriversForRow.map((f) => <option key={f} value={f} />)}
             </datalist>
@@ -268,7 +268,7 @@ const NaryadTable = ({
                   : (rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50/40");
 
               return (
-                <tr key={row.id} className={rowBg}>
+                <tr key={`nar-${rowIdx}-${row.id}`} className={rowBg}>
                   <td className="border border-gray-300 text-center text-gray-400 select-none" style={{ width: "28px" }}>
                     {rowIdx + 1}
                   </td>
