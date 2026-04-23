@@ -98,7 +98,11 @@ export interface Employee {
   status: "active" | "inactive";
   inn: string;
   snils: string;
-  udostoverenie: string;  // номер водительского удостоверения
+  udostoverenie: string;      // номер водительского удостоверения
+  udostoverenieDo?: string;   // дата окончания ВУ (YYYY-MM-DD)
+  medSpravka?: string;        // номер мед. справки
+  medSpravkaDo?: string;      // дата окончания мед. справки (YYYY-MM-DD)
+  adresReg?: string;          // адрес регистрации
   tip?: string;           // тип водителя: "arendator" | "podrabotka" | "" (штатный)
   kadryTab?: "voditely" | "konduktery" | "itr"; // к какому табу принадлежит в Кадрах
 }

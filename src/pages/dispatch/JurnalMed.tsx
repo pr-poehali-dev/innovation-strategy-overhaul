@@ -22,6 +22,20 @@ const JurnalMed = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
 
   const getVehicle = (bort: string) => vehicles.find((v) => v.bortovoy === bort);
   const getVodInfo = (fio: string) => employees.find((e) => e.fio === fio || (fio && fio.startsWith(e.fio.split(" ")[0])));
+  // Срок действия ВУ/медсправки: "" — пустой, "ok" — ещё ок, "warn" — ≤30 дней, "exp" — просрочено
+  const checkExpiry = (dateStr?: string): "" | "ok" | "warn" | "exp" => {
+    if (!dateStr) return "";
+    const exp = new Date(dateStr);
+    if (isNaN(exp.getTime())) return "";
+    const now = new Date(); now.setHours(0,0,0,0);
+    const days = Math.ceil((exp.getTime() - now.getTime()) / 86400000);
+    if (days < 0) return "exp";
+    if (days <= 30) return "warn";
+    return "ok";
+  };
+  const expClass = (st: "" | "ok" | "warn" | "exp") =>
+    st === "exp"  ? "text-red-600 font-semibold" :
+    st === "warn" ? "text-orange-600 font-semibold" : "";
   const getRouteCompanyIdx = (marshrut: string) => {
     const num = marshrut.split("/")[0].trim();
     return routes.find((r) => r.nomer === num)?.companyIdx ?? 0;
@@ -111,7 +125,13 @@ const JurnalMed = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
                   <td className="border border-gray-300 px-1 py-2 font-medium">{row.fio}</td>
                   <td className="border border-gray-300 px-1 py-2 text-center">{vod?.dataRozhd || ""}</td>
                   <td className="border border-gray-300 px-1 py-2 text-center text-[8px]">{vod?.snils || ""}</td>
-                  <td className="border border-gray-300 px-1 py-2 text-center text-[8px]">{vod?.udostoverenie || ""}</td>
+                  <td
+                    className={`border border-gray-300 px-1 py-2 text-center text-[8px] ${expClass(checkExpiry(vod?.udostoverenieDo))}`}
+                    title={checkExpiry(vod?.udostoverenieDo) === "exp" ? `ВУ просрочено (до ${vod?.udostoverenieDo})` : checkExpiry(vod?.udostoverenieDo) === "warn" ? `ВУ скоро истекает (${vod?.udostoverenieDo})` : undefined}
+                  >
+                    {vod?.udostoverenie || ""}
+                    {vod?.udostoverenieDo && <div className="text-[7px] text-gray-500">до {vod.udostoverenieDo}</div>}
+                  </td>
                   <td className="border border-gray-300 px-1 py-2 text-center font-bold">{row.bortovoy}</td>
                   <td className="border border-gray-300 px-1 py-2 text-center">{veh?.gos || ""}</td>
                   <td className="border border-gray-300 px-1 py-2 text-center">{row.marshrut}</td>

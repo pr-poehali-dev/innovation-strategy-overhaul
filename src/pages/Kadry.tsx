@@ -31,33 +31,44 @@ const emptyEmployee = (dolzhnost: string, kadryTab: "voditely" | "konduktery" | 
   inn: "",
   snils: "",
   udostoverenie: "",
+  udostoverenieDo: "",
+  medSpravka: "",
+  medSpravkaDo: "",
+  adresReg: "",
   kadryTab,
 });
 
 const VOD_COLUMNS = [
-  { key: "tabNum",        label: "Таб. №",           width: "70px"  },
-  { key: "fio",           label: "ФИО",              width: "200px" },
-  { key: "bort",          label: "Борт №",           width: "80px"  },
-  { key: "kategoriya",    label: "Категория",        width: "90px"  },
-  { key: "udostoverenie", label: "Уд-ие вод. №",     width: "120px" },
-  { key: "telefon",       label: "Телефон",          width: "130px" },
-  { key: "inn",           label: "ИНН",              width: "120px" },
-  { key: "snils",         label: "СНИЛС",            width: "130px" },
-  { key: "dataRozhd",     label: "Дата рождения",    width: "110px" },
-  { key: "dataPriema",    label: "Дата приёма",      width: "110px" },
-  { key: "status",        label: "Статус",           width: "90px"  },
+  { key: "tabNum",          label: "Таб. №",           width: "70px"  },
+  { key: "fio",             label: "ФИО",              width: "200px" },
+  { key: "bort",            label: "Борт №",           width: "80px"  },
+  { key: "kategoriya",      label: "Категория",        width: "90px"  },
+  { key: "udostoverenie",   label: "Уд-ие вод. №",     width: "120px" },
+  { key: "udostoverenieDo", label: "ВУ действ. до",    width: "115px" },
+  { key: "medSpravka",      label: "Мед. справка №",   width: "120px" },
+  { key: "medSpravkaDo",    label: "Мед. действ. до",  width: "115px" },
+  { key: "telefon",         label: "Телефон",          width: "130px" },
+  { key: "inn",             label: "ИНН",              width: "120px" },
+  { key: "snils",           label: "СНИЛС",            width: "130px" },
+  { key: "dataRozhd",       label: "Дата рождения",    width: "110px" },
+  { key: "dataPriema",      label: "Дата приёма",      width: "110px" },
+  { key: "adresReg",        label: "Адрес регистрации", width: "220px" },
+  { key: "status",          label: "Статус",           width: "90px"  },
 ] as const;
 
 const COND_COLUMNS = [
-  { key: "tabNum",     label: "Таб. №",        width: "70px"  },
-  { key: "fio",        label: "ФИО",           width: "200px" },
-  { key: "bort",       label: "Борт №",        width: "80px"  },
-  { key: "telefon",    label: "Телефон",       width: "130px" },
-  { key: "inn",        label: "ИНН",           width: "120px" },
-  { key: "snils",      label: "СНИЛС",         width: "130px" },
-  { key: "dataRozhd",  label: "Дата рождения", width: "110px" },
-  { key: "dataPriema", label: "Дата приёма",   width: "110px" },
-  { key: "status",     label: "Статус",        width: "90px"  },
+  { key: "tabNum",     label: "Таб. №",           width: "70px"  },
+  { key: "fio",        label: "ФИО",              width: "200px" },
+  { key: "bort",       label: "Борт №",           width: "80px"  },
+  { key: "medSpravka",   label: "Мед. справка №",  width: "120px" },
+  { key: "medSpravkaDo", label: "Мед. действ. до", width: "115px" },
+  { key: "telefon",    label: "Телефон",          width: "130px" },
+  { key: "inn",        label: "ИНН",              width: "120px" },
+  { key: "snils",      label: "СНИЛС",            width: "130px" },
+  { key: "dataRozhd",  label: "Дата рождения",    width: "110px" },
+  { key: "dataPriema", label: "Дата приёма",      width: "110px" },
+  { key: "adresReg",   label: "Адрес регистрации", width: "220px" },
+  { key: "status",     label: "Статус",           width: "90px"  },
 ] as const;
 
 const ITR_COLUMNS = [
@@ -250,19 +261,32 @@ const Kadry = () => {
                         );
                       }
                       const isActive = activeCell?.rowId === row.id && activeCell?.col === col.key;
+                      // Поля-даты
+                      const isDate = col.key === "udostoverenieDo" || col.key === "medSpravkaDo";
+                      const val = (row[col.key as keyof Employee] as string) ?? "";
+                      // Подсветка: красная — просрочено, жёлтая — меньше 30 дней
+                      let warnBg = "";
+                      if (isDate && val) {
+                        const exp = new Date(val);
+                        const now = new Date(); now.setHours(0,0,0,0);
+                        const days = Math.ceil((exp.getTime() - now.getTime()) / 86400000);
+                        if (days < 0) warnBg = "bg-red-100 text-red-700 font-semibold";
+                        else if (days <= 30) warnBg = "bg-yellow-100 text-yellow-800 font-semibold";
+                      }
                       return (
                         <td key={col.key} className="border border-gray-300 p-0" style={{ width: col.width }}>
                           <input
-                            type="text"
-                            value={row[col.key as keyof Employee] as string}
+                            type={isDate ? "date" : "text"}
+                            value={val}
                             onChange={(e) => updateCell(row.id, col.key as keyof Employee, e.target.value)}
                             onFocus={() => setActiveCell({ rowId: row.id, col: col.key })}
                             onBlur={() => setActiveCell(null)}
                             onKeyDown={(e) => handleKeyDown(e, rowIdx, colIdx)}
                             autoFocus={isActive}
-                            className={`w-full h-7 px-2 text-gray-800 bg-transparent outline-none border-2 ${
+                            title={isDate && warnBg.includes("red") ? "Срок действия истёк" : isDate && warnBg ? "Скоро истекает срок" : undefined}
+                            className={`w-full h-7 px-2 bg-transparent outline-none border-2 ${
                               isActive ? "border-blue-500 bg-blue-50" : "border-transparent"
-                            } transition-colors`}
+                            } ${warnBg || "text-gray-800"} transition-colors`}
                           />
                         </td>
                       );
