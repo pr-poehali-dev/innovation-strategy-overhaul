@@ -107,7 +107,7 @@ const KassaMonthly = ({ rows, monthKey, onPrint, monthlyFixed }: Props) => {
               const bg = row.mar ? getRouteColor(row.mar) : i % 2 === 0 ? "#fff" : "#f5f8ff";
               const daysWorked = Object.keys(row.byDay).length;
               return (
-                <tr key={row.id} style={{ backgroundColor: bg }}>
+                <tr key={`month-${i}-${row.id}`} style={{ backgroundColor: bg }}>
                   <td className="border border-gray-300 text-center text-gray-400 text-xs" style={{ width: "28px" }}>{i + 1}</td>
                   <td className="border border-gray-300 px-1 text-center font-bold text-blue-800 text-xs">{row.bort}</td>
                   <td className="border border-gray-300 px-1 text-center text-xs">{row.mar}</td>
@@ -215,7 +215,7 @@ const KassaMonthly = ({ rows, monthKey, onPrint, monthlyFixed }: Props) => {
               {rows.map((row, i) => {
                 const bg = i % 2 === 0 ? "#fff" : "#eff6ff";
                 return (
-                  <tr key={row.id} style={{ backgroundColor: bg }}>
+                  <tr key={`month-det-${i}-${row.id}`} style={{ backgroundColor: bg }}>
                     <td className="border border-gray-300 px-1 text-center font-bold text-blue-800 sticky left-0 z-10" style={{ backgroundColor: bg }}>{row.bort}</td>
                     <td className="border border-gray-300 px-1 text-center sticky left-[45px] z-10" style={{ backgroundColor: bg }}>{row.mar}</td>
                     {days.map((d) => {

@@ -40,7 +40,7 @@ const ChastVydacha = ({ chastRows, onUpdateChast, onUpdateChastDay, onAddChastRo
               const ost = calcOstatok(row);
               const rowBg = idx % 2 === 0 ? "#ffffff" : "#f0f4ff";
               return (
-                <tr key={row.id} style={{ backgroundColor: rowBg }}>
+                <tr key={`chast-${idx}-${row.id}`} style={{ backgroundColor: rowBg }}>
                   <td className="border border-gray-300 text-center text-gray-400 select-none sticky left-0 z-10 text-xs" style={{ width: "28px", backgroundColor: rowBg }}>{idx + 1}</td>
                   <td className="border border-gray-300 p-0 sticky left-7 z-10" style={{ width: "160px", backgroundColor: rowBg }}>
                     <input

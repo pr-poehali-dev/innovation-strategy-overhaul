@@ -176,7 +176,7 @@ const ProdazhiTable = ({
             const isOff = OFF_STATUSES.includes(row.marGr);
             const rowBg = isOff ? "#f5f5f0" : rowIdx % 2 === 0 ? "#ffffff" : "#eff6ff";
             return (
-              <tr key={row.id} style={{ backgroundColor: rowBg }}>
+              <tr key={`prod-${rowIdx}-${row.id}`} style={{ backgroundColor: rowBg }}>
                 <td className="border border-gray-300 text-center text-gray-400 select-none" style={{ width: "28px" }}>
                   {rowIdx + 1}
                 </td>
