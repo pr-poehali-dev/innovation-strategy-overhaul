@@ -86,6 +86,8 @@ const JurnalMed = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
               <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "28px" }}>№</th>
               <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "130px" }}>ФИО водителя</th>
               <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "60px" }}>Дата рождения</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "80px" }}>СНИЛС</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "70px" }}>Уд-ие №</th>
               <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "50px" }}>Борт №</th>
               <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "65px" }}>Гос. знак</th>
               <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "60px" }}>Маршрут</th>
@@ -108,6 +110,8 @@ const JurnalMed = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
                   <td className="border border-gray-300 text-center py-2">{startNum + idx}</td>
                   <td className="border border-gray-300 px-1 py-2 font-medium">{row.fio}</td>
                   <td className="border border-gray-300 px-1 py-2 text-center">{vod?.dataRozhd || ""}</td>
+                  <td className="border border-gray-300 px-1 py-2 text-center text-[8px]">{vod?.snils || ""}</td>
+                  <td className="border border-gray-300 px-1 py-2 text-center text-[8px]">{vod?.udostoverenie || ""}</td>
                   <td className="border border-gray-300 px-1 py-2 text-center font-bold">{row.bortovoy}</td>
                   <td className="border border-gray-300 px-1 py-2 text-center">{veh?.gos || ""}</td>
                   <td className="border border-gray-300 px-1 py-2 text-center">{row.marshrut}</td>
@@ -125,7 +129,7 @@ const JurnalMed = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
             {Array.from({ length: Math.max(0, 3 - blockRows.length) }).map((_, i) => (
               <tr key={`empty-${i}`}>
                 <td className="border border-gray-300 text-center py-3 text-gray-300">{blockRows.length + i + 1}</td>
-                {Array.from({ length: 13 }).map((_, j) => (
+                {Array.from({ length: 15 }).map((_, j) => (
                   <td key={j} className="border border-gray-300 py-3"></td>
                 ))}
               </tr>

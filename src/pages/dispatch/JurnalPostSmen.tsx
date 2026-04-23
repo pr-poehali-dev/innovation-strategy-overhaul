@@ -94,6 +94,8 @@ const JurnalPostSmen = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
               <th className="border border-gray-500 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "24px" }}>№</th>
               <th className="border border-gray-500 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "125px" }}>ФИО водителя</th>
               <th className="border border-gray-500 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "58px" }}>Дата рождения</th>
+              <th className="border border-gray-500 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "80px" }}>СНИЛС</th>
+              <th className="border border-gray-500 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "70px" }}>Уд-ие №</th>
               <th className="border border-gray-500 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "46px" }}>Борт №</th>
               <th className="border border-gray-500 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "60px" }}>Гос. знак</th>
               <th className="border border-gray-500 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "55px" }}>Маршрут</th>
@@ -117,6 +119,8 @@ const JurnalPostSmen = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
                   <td className="border border-gray-300 text-center py-2.5 text-gray-400">{idx + 1}</td>
                   <td className="border border-gray-300 px-1 py-2 font-medium">{row.fio}</td>
                   <td className="border border-gray-300 px-1 py-2 text-center">{vod?.dataRozhd || ""}</td>
+                  <td className="border border-gray-300 px-1 py-2 text-center text-[8px]">{vod?.snils || ""}</td>
+                  <td className="border border-gray-300 px-1 py-2 text-center text-[8px]">{vod?.udostoverenie || ""}</td>
                   <td className="border border-gray-300 px-1 py-2 text-center font-bold text-blue-800">{row.bortovoy}</td>
                   <td className="border border-gray-300 px-1 py-2 text-center">{veh?.gos || ""}</td>
                   <td className="border border-gray-300 px-1 py-2 text-center">{row.marshrut}</td>
@@ -136,7 +140,7 @@ const JurnalPostSmen = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
             {Array.from({ length: Math.max(0, 3 - blockRows.length) }).map((_, i) => (
               <tr key={`e-${i}`}>
                 <td className="border border-gray-300 text-center py-3 text-gray-300">{blockRows.length + i + 1}</td>
-                {Array.from({ length: 14 }).map((_, j) => (
+                {Array.from({ length: 16 }).map((_, j) => (
                   <td key={j} className="border border-gray-300 py-3"></td>
                 ))}
               </tr>

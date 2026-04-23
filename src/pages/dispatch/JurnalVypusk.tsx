@@ -84,6 +84,7 @@ const JurnalVypusk = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
               <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "55px" }}>Путевой №</th>
               <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "120px" }}>ФИО водителя</th>
               <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "55px" }}>Уд-ие №</th>
+              <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "78px" }}>СНИЛС</th>
               <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "80px" }}>ФИО кондуктора</th>
               <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "48px" }}>Выезд план</th>
               <th className="border border-gray-600 px-1 py-1.5 text-white text-center font-semibold" style={{ width: "48px" }}>Выезд факт</th>
@@ -110,6 +111,7 @@ const JurnalVypusk = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
                   <td className="border border-gray-300 px-1 text-center font-semibold text-blue-700">{row.putevoy}</td>
                   <td className="border border-gray-300 px-1 font-medium">{row.fio}</td>
                   <td className="border border-gray-300 px-1 text-center text-[8px]">{vod?.udostoverenie || ""}</td>
+                  <td className="border border-gray-300 px-1 text-center text-[8px]">{vod?.snils || ""}</td>
                   <td className="border border-gray-300 px-1">{row.fioKond && row.fioKond !== "без" ? row.fioKond : ""}</td>
                   <td className="border border-gray-300 px-1 text-center font-semibold text-blue-900">{sched?.vypusk || ""}</td>
                   <td className="border border-gray-300"></td>
@@ -125,7 +127,7 @@ const JurnalVypusk = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
             {Array.from({ length: Math.max(0, 3 - blockRows.length) }).map((_, i) => (
               <tr key={`empty-${i}`}>
                 <td className="border border-gray-300 text-center py-3 text-gray-300">{blockRows.length + i + 1}</td>
-                {Array.from({ length: 16 }).map((_, j) => (
+                {Array.from({ length: 17 }).map((_, j) => (
                   <td key={j} className="border border-gray-300 py-3"></td>
                 ))}
               </tr>
