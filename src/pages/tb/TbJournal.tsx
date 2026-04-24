@@ -228,12 +228,12 @@ const TbJournal = ({
 
       {/* Datalists */}
       <datalist id="tb-fio-list">
-        {empList.map((e) => <option key={e.id} value={e.fio}>{e.fio} · {e.dolzhnost}</option>)}
+        {empList.map((e, i) => <option key={`tb-emp-${i}-${e.id}`} value={e.fio}>{e.fio} · {e.dolzhnost}</option>)}
       </datalist>
       <datalist id="tb-ruk-list">
         {company.direktor && <option value={company.direktor} />}
-        {empList.filter((e) => ["Директор", "Механик по выпуску", "Инженер по ОТ"].includes(e.dolzhnost)).map((e) => (
-          <option key={e.id} value={e.fio} />
+        {empList.filter((e) => ["Директор", "Механик по выпуску", "Инженер по ОТ"].includes(e.dolzhnost)).map((e, i) => (
+          <option key={`tb-ruk-${i}-${e.id}`} value={e.fio} />
         ))}
       </datalist>
     </div>

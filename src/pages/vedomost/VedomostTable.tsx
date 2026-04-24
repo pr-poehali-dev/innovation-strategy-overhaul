@@ -101,7 +101,7 @@ const VedomostTable = ({
           {rows.map((row, rowIdx) => {
             const { vsegaNach, vsegaPoluch, ostatok } = calcRow(row);
             return (
-              <tr key={row.id} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50/40"}>
+              <tr key={`ved-${rowIdx}-${row.id}`} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50/40"}>
                 {/* № */}
                 <td className="border border-gray-300 text-center text-gray-400 select-none" style={{ width: "28px" }}>{rowIdx + 1}</td>
 

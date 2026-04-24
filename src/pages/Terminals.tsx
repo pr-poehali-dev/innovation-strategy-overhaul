@@ -164,7 +164,7 @@ const Terminals = () => {
                   </tr>
                 ) : (
                   compTerminals.map((t, rowIdx) => (
-                    <tr key={t.id} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50"}>
+                    <tr key={`term-${rowIdx}-${t.id}`} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50"}>
                       <td className="border border-gray-300 text-center text-gray-400 select-none" style={{ width: "28px" }}>
                         {rowIdx + 1}
                       </td>

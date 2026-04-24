@@ -28,14 +28,14 @@ const Prodazhi = () => {
       {/* datalists */}
       <datalist id={vodFioList}>
         <option value="без" />
-        {driverList.map((e) => <option key={e.id} value={e.fio} />)}
+        {driverList.map((e, i) => <option key={`vod-${i}-${e.id}`} value={e.fio} />)}
       </datalist>
       <datalist id={condFioList}>
         <option value="без" />
-        {condList.map((e) => <option key={e.id} value={e.fio} />)}
+        {condList.map((e, i) => <option key={`cond-${i}-${e.id}`} value={e.fio} />)}
       </datalist>
       <datalist id={bortList}>
-        {vehicles.map((v) => <option key={v.id} value={v.bortovoy}>{v.bortovoy} {v.marka}</option>)}
+        {vehicles.map((v, i) => <option key={`veh-${i}-${v.id}`} value={v.bortovoy}>{v.bortovoy} {v.marka}</option>)}
       </datalist>
       <datalist id={grafikList}>
         <option value="вых" />

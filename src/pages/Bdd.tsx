@@ -378,9 +378,9 @@ const Bdd = () => {
                     </div>
                   </div>
                 ) : (
-                  filtered.map((rec) => (
+                  filtered.map((rec, i) => (
                     <DtpCard
-                      key={rec.id}
+                      key={`dtp-${i}-${rec.id}`}
                       rec={rec}
                       onUpdate={updateDtp}
                       onOpenDoc={setDocRec}

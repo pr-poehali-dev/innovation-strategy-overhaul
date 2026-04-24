@@ -78,7 +78,7 @@ const SettingsRoutesTab = ({ setSaved }: Props) => {
           </thead>
           <tbody>
             {compRoutes.map((row, rowIdx) => (
-              <tr key={row.id} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50"}>
+              <tr key={`rt-${rowIdx}-${row.id}`} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50"}>
                 <td className="border border-gray-300 text-center text-gray-400 select-none" style={{ width: "28px" }}>{rowIdx + 1}</td>
                 {ROUTE_COLS.map((col) => {
                   const isActive = routeActiveCell?.rowId === row.id && routeActiveCell?.col === col.key;

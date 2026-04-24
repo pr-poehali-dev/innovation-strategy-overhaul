@@ -360,8 +360,8 @@ const NaryadTable = ({
                       }`}
                     >
                       <option value="">—</option>
-                      {getRowTerminals(row.marshrut).map((t) => (
-                        <option key={t.id} value={t.nomer}>{t.nomer}</option>
+                      {getRowTerminals(row.marshrut).map((t, ti) => (
+                        <option key={`term-${ti}-${t.id}`} value={t.nomer}>{t.nomer}</option>
                       ))}
                     </select>
                   </td>

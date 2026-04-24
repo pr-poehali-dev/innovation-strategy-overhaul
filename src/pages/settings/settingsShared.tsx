@@ -125,7 +125,7 @@ export const PercentTable = ({
           </thead>
           <tbody>
             {rows.map((row, rowIdx) => (
-              <tr key={row.id} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50"}>
+              <tr key={`set-${rowIdx}-${row.id}`} className={rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50"}>
                 <td className="border border-gray-300 text-center text-gray-400 select-none" style={{ width: "28px" }}>{rowIdx + 1}</td>
                 {COLS.map((col, colIdx) => {
                   const isActive = activeCell?.rowId === row.id && activeCell?.col === col.key;

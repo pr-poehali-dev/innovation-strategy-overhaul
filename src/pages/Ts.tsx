@@ -226,7 +226,7 @@ const VehicleCard = ({
               <p className="text-xs text-gray-400 italic">Документы не загружены</p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {vehicle.docs.map((doc) => {
+                {vehicle.docs.map((doc, di) => {
                   const parts = doc.expiry?.split(".");
                   let expWarning = false;
                   if (parts?.length === 3) {
@@ -235,7 +235,7 @@ const VehicleCard = ({
                   }
                   return (
                     <div
-                      key={doc.id}
+                      key={`doc-${di}-${doc.id}`}
                       className={`flex items-center gap-1.5 px-2 py-1.5 rounded border text-xs ${
                         expWarning ? "border-red-300 bg-red-50" : "border-gray-200 bg-gray-50"
                       }`}
@@ -373,7 +373,7 @@ const Ts = () => {
                     };
                     const hasArenda = v.docs.some((d) => d.type === "arenda" || d.type === "lizing");
                     return (
-                      <tr key={v.id} className={i % 2 === 0 ? "bg-white" : "bg-blue-50"}>
+                      <tr key={`veh-${i}-${v.id}`} className={i % 2 === 0 ? "bg-white" : "bg-blue-50"}>
                         <td className="border border-gray-300 px-2 py-1 text-center font-bold text-blue-800">{v.bortovoy || "—"}</td>
                         <td className="border border-gray-300 px-2 py-1 text-center">{v.gos || "—"}</td>
                         <td className="border border-gray-300 px-2 py-1">{v.marka || "—"}</td>
