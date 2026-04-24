@@ -47,7 +47,7 @@ const KassaPodrabJournal = ({ podrabJournal, monthKey, onMonthChange }: Props) =
             const dateStr = d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
             const bg = i % 2 === 0 ? "#fff" : "#f5f8ff";
             return (
-              <tr key={`${e.dateKey}-${e.bort}`} style={{ backgroundColor: bg }}>
+              <tr key={`pj-${i}-${e.dateKey}-${e.bort}`} style={{ backgroundColor: bg }}>
                 <td className="border border-gray-300 px-2 py-1 text-center">{dateStr}</td>
                 <td className="border border-gray-300 px-2 py-1 text-center font-bold text-blue-800">{e.bort}</td>
                 <td className="border border-gray-300 px-2 py-1 text-center">{e.mar}</td>
