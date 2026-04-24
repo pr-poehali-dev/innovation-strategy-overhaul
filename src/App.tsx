@@ -1,9 +1,11 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppProvider } from "@/store/appStore";
+import { autoBackupIfDue } from "@/lib/backup";
 import Index from "./pages/Index";
 import Dispatch from "./pages/Dispatch";
 import Kassa from "./pages/Kassa";
@@ -19,7 +21,16 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  // Ежедневный автоснимок всех данных приложения в localStorage (__auto_backup_v1).
+  // Спасает, если данные случайно затёрли — можно восстановить из «Бэкап → Восстановить».
+  useEffect(() => {
+    // задержка, чтобы дождаться, пока usePersist прочитает и, возможно, мигрирует данные
+    const t = setTimeout(() => { autoBackupIfDue(); }, 1500);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
   <QueryClientProvider client={queryClient}>
     <AppProvider>
       <TooltipProvider>
@@ -45,6 +56,7 @@ const App = () => (
       </TooltipProvider>
     </AppProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

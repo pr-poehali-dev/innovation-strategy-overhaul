@@ -1,4 +1,5 @@
 import Icon from "@/components/ui/icon";
+import BackupButtons from "@/components/BackupButtons";
 import { TabType, today } from "./types";
 
 interface HeaderProps {
@@ -14,7 +15,8 @@ export const KadryTopBar = ({ addRow, onRestoreInitial, total }: HeaderProps) =>
         <h1 className="text-lg font-bold text-gray-800 uppercase tracking-wide">Кадры</h1>
         <p className="text-xs text-gray-500 mt-0.5">ООО «Дальавтотранс» · {today} · всего: {total}</p>
       </div>
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap justify-end">
+        <BackupButtons />
         <button
           onClick={onRestoreInitial}
           className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors print:hidden"
