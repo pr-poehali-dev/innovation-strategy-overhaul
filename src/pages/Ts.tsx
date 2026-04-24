@@ -415,9 +415,9 @@ const Ts = () => {
             <p className="text-gray-300 text-xs mt-1">Нажмите «Добавить ТС» чтобы начать</p>
           </div>
         ) : (
-          vehicles.map((v) => (
+          vehicles.map((v, i) => (
             <VehicleCard
-              key={v.id}
+              key={`vcard-${i}-${v.id}`}
               vehicle={v}
               onUpdate={updateVehicle}
               onDelete={deleteVehicle}
