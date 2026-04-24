@@ -120,7 +120,7 @@ const JurnalMed = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
               const veh = getVehicle(row.bortovoy);
               const vod = getVodInfo(row.fio);
               return (
-                <tr key={row.id} style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f5f8ff" }}>
+                <tr key={`med-${idx}-${row.id}`} style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f5f8ff" }}>
                   <td className="border border-gray-300 text-center py-2">{startNum + idx}</td>
                   <td className="border border-gray-300 px-1 py-2 font-medium">{row.fio}</td>
                   <td className="border border-gray-300 px-1 py-2 text-center">{vod?.dataRozhd || ""}</td>

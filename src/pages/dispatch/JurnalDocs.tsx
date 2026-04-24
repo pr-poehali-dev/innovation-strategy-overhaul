@@ -115,7 +115,7 @@ const JurnalDocs = () => {
                 </thead>
                 <tbody>
                   {compRoutes.map((r, idx) => (
-                    <tr key={r.id} style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f0f4ff" }}>
+                    <tr key={`docr-${idx}-${r.id}`} style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f0f4ff" }}>
                       <td className="border border-gray-300 text-center py-2 text-gray-400">{idx + 1}</td>
                       <td className="border border-gray-300 px-2 text-center font-bold text-blue-900">№{r.nomer}</td>
                       <td className="border border-gray-300 px-2">{r.nazvanie}</td>
@@ -151,7 +151,7 @@ const JurnalDocs = () => {
                 </thead>
                 <tbody>
                   {activeVehicles.map((v, idx) => (
-                    <tr key={v.id} style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f0f4ff" }}>
+                    <tr key={`docv-${idx}-${v.id}`} style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f0f4ff" }}>
                       <td className="border border-gray-300 text-center py-2 text-gray-400">{idx + 1}</td>
                       <td className="border border-gray-300 px-2 text-center font-bold text-blue-900">{v.bortovoy}</td>
                       <td className="border border-gray-300 px-2">{v.marka}</td>
@@ -225,7 +225,7 @@ const JurnalDocs = () => {
                 const comp = companies[r.companyIdx];
                 const routeVehicles = activeVehicles.length;
                 return (
-                  <tr key={r.id} style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f0f4ff" }}>
+                  <tr key={`docsvod-${idx}-${r.id}`} style={{ backgroundColor: idx % 2 === 0 ? "#fff" : "#f0f4ff" }}>
                     <td className="border border-gray-300 text-center py-2 text-gray-400">{idx + 1}</td>
                     <td className="border border-gray-300 px-2 text-center font-bold text-blue-900">№{r.nomer}</td>
                     <td className="border border-gray-300 px-2">{r.nazvanie}</td>

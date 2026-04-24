@@ -115,7 +115,7 @@ const JurnalVypusk = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
               const vod   = getVodInfo(row.fio);
               const sched = routeSchedule[row.marshrut];
               return (
-                <tr key={row.id} style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f0f4ff" }}>
+                <tr key={`vyp-${idx}-${row.id}`} style={{ backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f0f4ff" }}>
                   <td className="border border-gray-300 text-center py-2.5 text-gray-400">{idx + 1}</td>
                   <td className="border border-gray-300 px-1 text-center font-bold text-blue-800">{row.bortovoy}</td>
                   <td className="border border-gray-300 px-1 text-center">{veh?.gos || ""}</td>
