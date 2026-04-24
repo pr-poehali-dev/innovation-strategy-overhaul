@@ -1,6 +1,7 @@
 import { useState } from "react";
 import NavBar from "@/components/NavBar";
 import { useAppStore, Employee } from "@/store/appStore";
+import { INITIAL_EMPLOYEES } from "@/store/initialData";
 import {
   TabType,
   ITR_DOLZHNOSTI,
@@ -45,6 +46,32 @@ const Kadry = () => {
     setEmployees((prev) => [...prev, emptyEmployee(dolzhnost, tab)]);
   };
 
+  // Добавляет сотрудников из начального справочника (INITIAL_EMPLOYEES),
+  // которых сейчас нет в списке (матчинг по ФИО). Существующие записи не
+  // затрагиваются — у них останутся пользовательские правки.
+  const restoreInitial = () => {
+    setEmployees((prev) => {
+      const existingFios = new Set(prev.map((e) => (e.fio || "").trim()).filter(Boolean));
+      const toAdd = INITIAL_EMPLOYEES.filter((e) => e.fio && !existingFios.has(e.fio.trim()))
+        .map((e): Employee => {
+          const kadryTab: TabType = e.dolzhnost === "Водитель"
+            ? "voditely"
+            : e.dolzhnost === "Кондуктор"
+              ? "konduktery"
+              : "itr";
+          return { ...e, kadryTab };
+        });
+      if (toAdd.length === 0) {
+         
+        alert("Все сотрудники из начального справочника уже есть в списке.");
+        return prev;
+      }
+       
+      alert(`Добавлено сотрудников: ${toAdd.length}`);
+      return [...prev, ...toAdd];
+    });
+  };
+
   const deleteRow = (id: number) => {
     if (rows.length === 1) return;
     setEmployees((prev) => prev.filter((r) => r.id !== id));
@@ -78,7 +105,7 @@ const Kadry = () => {
 
       <div className="px-4 py-5 max-w-5xl mx-auto">
         <div className="bg-white border border-gray-300 shadow-sm">
-          <KadryTopBar addRow={addRow} />
+          <KadryTopBar addRow={addRow} onRestoreInitial={restoreInitial} total={employees.length} />
 
           <KadryExpiries expiries={expiries} setTab={setTab} />
 

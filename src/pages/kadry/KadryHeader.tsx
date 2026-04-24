@@ -3,16 +3,26 @@ import { TabType, today } from "./types";
 
 interface HeaderProps {
   addRow: () => void;
+  onRestoreInitial: () => void;
+  total: number;
 }
 
-export const KadryTopBar = ({ addRow }: HeaderProps) => {
+export const KadryTopBar = ({ addRow, onRestoreInitial, total }: HeaderProps) => {
   return (
     <div className="border-b border-gray-300 px-5 py-3 flex items-center justify-between">
       <div>
         <h1 className="text-lg font-bold text-gray-800 uppercase tracking-wide">Кадры</h1>
-        <p className="text-xs text-gray-500 mt-0.5">ООО «Дальавтотранс» · {today}</p>
+        <p className="text-xs text-gray-500 mt-0.5">ООО «Дальавтотранс» · {today} · всего: {total}</p>
       </div>
       <div className="flex gap-2">
+        <button
+          onClick={onRestoreInitial}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors print:hidden"
+          title="Добавить сотрудников из начального справочника, которых сейчас нет в списке. Существующие данные не будут изменены."
+        >
+          <Icon name="RefreshCw" size={14} />
+          Восстановить список
+        </button>
         <button
           onClick={addRow}
           className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
