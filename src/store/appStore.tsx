@@ -1,5 +1,6 @@
 import { createContext, useContext, ReactNode, useEffect } from "react";
 import { usePersist } from "./persist";
+import { uid } from "@/lib/uid";
 import type {
   TsVehicle,
   NaryadEntry,
@@ -65,6 +66,58 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [dtpRecords,      setDtpRecords]      = usePersist<DtpRecord[]>           ("dtpRecords",      []);
   const [weeklyDayMeta,   setWeeklyDayMeta]   = usePersist<WeeklyDayMeta>         ("weeklyDayMeta",   {});
   const [routeSchedule,   setRouteSchedule]   = usePersist<RouteSchedule>         ("routeSchedule",   INITIAL_ROUTE_SCHEDULE);
+
+  // ─── Одноразовая починка старых нарядов (последствия бага «дублирование ФИО по столбцу») ─
+  // Запускается один раз: чинит дубли id и снимает повторные ФИО водителей/кондукторов в днях,
+  // где явно видны следы прошлого бага (≥2 строк с одинаковым непустым ФИО).
+  useEffect(() => {
+    const FIX_KEY = "__naryad_dup_fix_v1";
+    try {
+      if (localStorage.getItem(FIX_KEY) === "1") return;
+    } catch { /* noop */ }
+
+    setWeeklyNaryady((prev) => {
+      let changedAny = false;
+      const next: WeeklyNaryady = {};
+      for (const [dayKey, rows] of Object.entries(prev)) {
+        if (!Array.isArray(rows) || rows.length === 0) {
+          next[dayKey] = rows;
+          continue;
+        }
+        // 1) Чиним дубли id
+        const seenIds = new Set<number>();
+        let dayChanged = false;
+        const stage1 = rows.map((r) => {
+          if (seenIds.has(r.id)) {
+            dayChanged = true;
+            return { ...r, id: uid() };
+          }
+          seenIds.add(r.id);
+          return r;
+        });
+        // 2) Убираем повторы ФИО водителя — оставляем первое, остальные очищаем
+        const seenVod = new Set<string>();
+        const seenCond = new Set<string>();
+        const stage2 = stage1.map((r) => {
+          let nr = r;
+          if (r.fio && r.fio.trim()) {
+            if (seenVod.has(r.fio)) { nr = { ...nr, fio: "" }; dayChanged = true; }
+            else seenVod.add(r.fio);
+          }
+          if (r.fioKond && r.fioKond.trim() && r.fioKond !== "без") {
+            if (seenCond.has(r.fioKond)) { nr = { ...nr, fioKond: "" }; dayChanged = true; }
+            else seenCond.add(r.fioKond);
+          }
+          return nr;
+        });
+        if (dayChanged) changedAny = true;
+        next[dayKey] = stage2;
+      }
+      try { localStorage.setItem(FIX_KEY, "1"); } catch { /* noop */ }
+      return changedAny ? next : prev;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── Постоянная синхронизация stoimostProezda ↔ stoimostBileta ─────────────
   // Цена проезда хранится в двух полях (historical reasons): Настройки пишут в
