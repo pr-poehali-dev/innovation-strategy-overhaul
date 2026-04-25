@@ -133,10 +133,22 @@ const Dispatch = () => {
   const [selectedKey, setSelectedKey] = useState<string>(todayKey);
   const [activeTab, setActiveTab] = useState<TabType>("narad");
 
-  const rowsForDay = (key: string): NaryadRowStore[] =>
-    weeklyNaryady[key] ?? makeRowsFromRoutes(routes);
+  // Стабильный массив строк для дня: если дня ещё нет в стейте — материализуем его ОДИН раз,
+  // чтобы id строк были постоянными между рендерами (иначе ввод в одну строку «дублируется» по всем).
+  useEffect(() => {
+    if (!weeklyNaryady[selectedKey]) {
+      setWeeklyNaryady((prev) =>
+        prev[selectedKey] ? prev : { ...prev, [selectedKey]: makeRowsFromRoutes(routes) }
+      );
+    }
+  }, [selectedKey, weeklyNaryady, routes, setWeeklyNaryady]);
 
-  const currentRows: NaryadRow[] = rowsForDay(selectedKey).map(toNaryadRow);
+  const rowsForDay = useCallback(
+    (key: string): NaryadRowStore[] => weeklyNaryady[key] ?? [],
+    [weeklyNaryady]
+  );
+
+  const currentRows: NaryadRow[] = (weeklyNaryady[selectedKey] ?? []).map(toNaryadRow);
 
   // Дежурные для выбранного дня — с автозаполнением из ИТР
   const dayMeta: DayMeta = useMemo(() => {
