@@ -1,13 +1,8 @@
-import { useMemo, useCallback } from "react";
-import Icon from "@/components/ui/icon";
-import { useAppStore, getGrafiki } from "@/store/appStore";
-import {
-  NaryadRow,
-  NormaSettings,
-  TEXT_COLS,
-  calcPodrabotka,
-  STATUS_OTSUTSTVIYA,
-} from "./types";
+import { useCallback } from "react";
+import { NaryadRow, NormaSettings, TEXT_COLS } from "./types";
+import { useNaryadData } from "./naryad/useNaryadData";
+import NaryadTableHeader from "./naryad/NaryadTableHeader";
+import NaryadTableRow from "./naryad/NaryadTableRow";
 
 interface Props {
   rows: NaryadRow[];
@@ -22,157 +17,28 @@ interface Props {
   onToggleDtp: (row: NaryadRow) => void;
 }
 
-// Выпадающая ячейка с <select> — исключает уже занятые значения
-const ExclSelect = ({
-  value,
-  options,
-  placeholder,
-  onChange,
-  width,
-  bold,
-}: {
-  value: string;
-  options: string[];
-  placeholder: string;
-  onChange: (v: string) => void;
-  width: string;
-  bold?: boolean;
-}) => (
-  <td className="border border-gray-300 p-0" style={{ width }}>
-    <div className="flex items-center">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`flex-1 h-7 px-1 text-xs bg-transparent outline-none border-0 cursor-pointer appearance-none min-w-0
-          ${bold ? "font-semibold text-gray-900" : "text-gray-800"}`}
-        style={{ WebkitAppearance: "none" }}
-      >
-        <option value="">{placeholder}</option>
-        {value && !options.includes(value) && (
-          <option value={value}>{value}</option>
-        )}
-        {options.map((o) => (
-          <option key={o} value={o}>{o}</option>
-        ))}
-      </select>
-      {value && (
-        <button
-          onClick={() => onChange("")}
-          className="px-1 text-gray-300 hover:text-red-400 flex-shrink-0"
-          tabIndex={-1}
-          title="Очистить"
-        >×</button>
-      )}
-    </div>
-  </td>
-);
-
-// Обычная ячейка ввода
-const TextCell = ({
-  value,
-  onChange,
-  onFocus,
-  onBlur,
-  onKeyDown,
-  isActive,
-  width,
-  listId,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  onFocus: () => void;
-  onBlur: () => void;
-  onKeyDown: (e: React.KeyboardEvent) => void;
-  isActive: boolean;
-  width: string;
-  listId?: string;
-}) => (
-  <td className="border border-gray-300 p-0" style={{ width }}>
-    <input
-      type="text"
-      list={listId}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      onKeyDown={onKeyDown}
-      autoFocus={isActive}
-      className={`w-full h-7 px-2 text-xs text-gray-800 bg-transparent outline-none border-2 transition-colors ${
-        isActive ? "border-blue-500 bg-blue-50" : "border-transparent"
-      }`}
-      placeholder=""
-    />
-  </td>
-);
-
 const NaryadTable = ({
   rows,
   activeCell,
-  settings,
   onUpdateCell,
-  onUpdateRow,
   onAddRow,
   onDeleteRow,
   onSetActiveCell,
   onOpenPutevoy,
   onToggleDtp,
 }: Props) => {
-  const { vehicles, employees, terminals, routes } = useAppStore();
-
-  // Мемоизируем справочные данные — пересчитываются только при изменении источника
-  const driverFios = useMemo(
-    () => employees.filter((e) => e.dolzhnost === "Водитель"  && e.status === "active").map((e) => e.fio),
-    [employees]
-  );
-  const condFios = useMemo(
-    () => employees.filter((e) => e.dolzhnost === "Кондуктор" && e.status === "active").map((e) => e.fio),
-    [employees]
-  );
-  const activeTerminals = useMemo(() => terminals.filter((t) => t.status === "active"), [terminals]);
-
-  // Терминалы организации маршрута + ИП Герасимов (companyIdx:2) для маршрута №3
-  const getRowTerminals = useCallback((marshrut: string) => {
-    const routeNum = marshrut.split("/")[0].trim();
-    const route = routes.find((r) => r.nomer === routeNum);
-    if (!route) return activeTerminals;
-    const allowed = new Set([route.companyIdx]);
-    if (routeNum === "3") allowed.add(2); // ИП Герасимов обслуживает маршрут №3
-    return activeTerminals.filter((t) => allowed.has(t.companyIdx));
-  }, [activeTerminals, routes]);
-  const allGrafiki      = useMemo(() => routes.flatMap((r) => getGrafiki(r)), [routes]);
-  const allBorts        = useMemo(
-    () => [...new Set(vehicles.map((v) => v.bortovoy).filter(Boolean))].sort((a, b) => Number(a) - Number(b)),
-    [vehicles]
-  );
-
-  // O(n) — вычисляем один раз, не в цикле строк
-  const allUsedBorts   = useMemo(() => new Set(rows.filter((r) => r.bortovoy).map((r) => r.bortovoy)), [rows]);
-  const allUsedGrafiki = useMemo(() => new Set(rows.filter((r) => r.marshrut).map((r) => r.marshrut)), [rows]);
-
-  // Дубли водителей и кондукторов (fio встречается > 1 раза в наряде)
-  const dupFios = useMemo(() => {
-    const seen = new Set<string>();
-    const dups = new Set<string>();
-    rows.forEach((r) => {
-      if (!r.fio) return;
-      if (seen.has(r.fio)) dups.add(r.fio);
-      else seen.add(r.fio);
-    });
-    return dups;
-  }, [rows]);
-
-  const dupKonds = useMemo(() => {
-    const seen = new Set<string>();
-    const dups = new Set<string>();
-    rows.forEach((r) => {
-      if (!r.fioKond || r.fioKond === "без") return;
-      if (seen.has(r.fioKond)) dups.add(r.fioKond);
-      else seen.add(r.fioKond);
-    });
-    return dups;
-  }, [rows]);
-
-
+  const {
+    employees,
+    driverFios,
+    condFios,
+    getRowTerminals,
+    allGrafiki,
+    allBorts,
+    allUsedBorts,
+    allUsedGrafiki,
+    dupFios,
+    dupKonds,
+  } = useNaryadData(rows);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
     if (e.key === "Tab" || e.key === "Enter") {
@@ -224,215 +90,31 @@ const NaryadTable = ({
 
       <div className="overflow-x-auto">
         <table className="border-collapse text-xs" style={{ minWidth: "900px" }}>
-          <thead>
-            <tr style={{ backgroundColor: "#1a3a6b" }}>
-              <th className="border border-blue-900 px-1 py-2 text-white text-center" style={{ width: "28px" }}>№</th>
-              {TEXT_COLS.map((col) => (
-                <th key={col.key} className="border border-blue-900 px-2 py-2 text-white font-semibold text-left"
-                  style={{ width: col.width, minWidth: col.width }}>
-                  {col.label}
-                </th>
-              ))}
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "180px" }}>ФИО водителя</th>
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "180px" }}>ФИО кондуктора</th>
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "120px" }}>Статус</th>
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "120px" }}>Терминал</th>
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-left" style={{ width: "110px" }}>Путевой лист</th>
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "75px" }}>Подработка</th>
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "75px" }}>Путевой</th>
-              <th className="border border-blue-900 px-2 py-2 text-white font-semibold text-center" style={{ width: "55px" }}>ДТП</th>
-              <th className="border border-blue-900 px-1 py-2" style={{ width: "28px" }}></th>
-            </tr>
-          </thead>
+          <NaryadTableHeader />
           <tbody>
-            {rows.map((row, rowIdx) => {
-              const freeBorts   = allBorts.filter((b) => b === row.bortovoy || !allUsedBorts.has(b));
-              const freeGrafiki = allGrafiki.filter((g) => g === row.marshrut || !allUsedGrafiki.has(g));
-
-              // Дубли для этой строки
-              const isDupFio  = !!(row.fio && dupFios.has(row.fio));
-              const isDupKond = !!(row.fioKond && row.fioKond !== "без" && dupKonds.has(row.fioKond));
-
-              // Уникальные datalist id для строки — исключаем уже занятых другими
-              const vodListId  = `dl-vod-${row.id}`;
-              const condListId = `dl-cond-${row.id}`;
-
-              // Подсветка по типу водителя: арендатор — жёлтый, подработчик — голубой
-              const driverEmp = employees.find((e) => e.fio === row.fio && e.dolzhnost === "Водитель");
-              const isArendator = driverEmp?.tip === "arendator";
-              const isPodrabotka = driverEmp?.tip === "podrabotka";
-              const rowBg = isArendator
-                ? "bg-yellow-100"
-                : isPodrabotka
-                  ? "bg-sky-100"
-                  : (rowIdx % 2 === 0 ? "bg-white" : "bg-blue-50/40");
-
-              return (
-                <tr key={`nar-${rowIdx}-${row.id}`} className={rowBg}>
-                  <td className="border border-gray-300 text-center text-gray-400 select-none" style={{ width: "28px" }}>
-                    {rowIdx + 1}
-                  </td>
-
-                  {/* Маршрут — select, исключает занятые графики */}
-                  <ExclSelect
-                    value={row.marshrut}
-                    options={freeGrafiki}
-                    placeholder="— График —"
-                    onChange={(v) => onUpdateCell(row.id, "marshrut", v)}
-                    width="90px"
-                  />
-
-                  {/* Борт № — select, исключает занятые */}
-                  <ExclSelect
-                    value={row.bortovoy}
-                    options={freeBorts}
-                    placeholder="— Борт —"
-                    onChange={(v) => onUpdateCell(row.id, "bortovoy", v)}
-                    width="90px"
-                    bold
-                  />
-
-                  {/* ФИО водителя */}
-                  <td className={`border p-0 ${isDupFio ? "border-red-400 bg-red-50" : "border-gray-300"}`} style={{ width: "180px" }}>
-                    <div className="flex items-center">
-                      <input
-                        type="text"
-                        list={vodListId}
-                        value={row.fio}
-                        onChange={(e) => onUpdateCell(row.id, "fio", e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(e, rowIdx, TEXT_COLS.length)}
-                        className={`flex-1 h-7 px-2 text-xs bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors min-w-0 ${isDupFio ? "text-red-600 font-semibold" : "text-gray-800"}`}
-                        placeholder=""
-                        autoComplete="off"
-                        title={isDupFio ? "⚠ Этот водитель уже есть в наряде!" : ""}
-                      />
-                      {row.fio && (
-                        <button onClick={() => onUpdateCell(row.id, "fio", "")}
-                          className="px-1 text-gray-300 hover:text-red-400 flex-shrink-0" tabIndex={-1} title="Очистить">×</button>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* ФИО кондуктора */}
-                  <td className={`border p-0 ${isDupKond ? "border-red-400 bg-red-50" : "border-gray-300"}`} style={{ width: "180px" }}>
-                    <div className="flex items-center">
-                      <input
-                        type="text"
-                        list={condListId}
-                        value={row.fioKond}
-                        onChange={(e) => onUpdateCell(row.id, "fioKond", e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(e, rowIdx, TEXT_COLS.length + 1)}
-                        className={`flex-1 h-7 px-2 text-xs bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors min-w-0 ${isDupKond ? "text-red-600 font-semibold" : "text-gray-800"}`}
-                        placeholder="без"
-                        autoComplete="off"
-                        title={isDupKond ? "⚠ Этот кондуктор уже есть в наряде!" : ""}
-                      />
-                      {row.fioKond && (
-                        <button onClick={() => onUpdateCell(row.id, "fioKond", "")}
-                          className="px-1 text-gray-300 hover:text-red-400 flex-shrink-0" tabIndex={-1} title="Очистить">×</button>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* Статус */}
-                  <td className="border border-gray-300 p-0" style={{ width: "120px" }}>
-                    <select
-                      value={row.statusOtsutstviya}
-                      onChange={(e) => onUpdateCell(row.id, "statusOtsutstviya", e.target.value)}
-                      className={`w-full h-7 px-1 text-xs bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors cursor-pointer ${
-                        row.statusOtsutstviya ? "text-red-600 font-semibold" : "text-gray-400"
-                      }`}
-                    >
-                      <option value="">—</option>
-                      {STATUS_OTSUTSTVIYA.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                  </td>
-
-                  {/* Терминал — select из справочника */}
-                  <td className="border border-gray-300 p-0" style={{ width: "120px" }}>
-                    <select
-                      value={row.terminal}
-                      onChange={(e) => onUpdateCell(row.id, "terminal", e.target.value)}
-                      className={`w-full h-7 px-1 text-xs bg-transparent outline-none border-2 border-transparent focus:border-blue-500 focus:bg-blue-50 transition-colors cursor-pointer ${
-                        row.terminal ? "text-gray-800" : "text-gray-400"
-                      }`}
-                    >
-                      <option value="">—</option>
-                      {getRowTerminals(row.marshrut).map((t, ti) => (
-                        <option key={`term-${ti}-${t.id}`} value={t.nomer}>{t.nomer}</option>
-                      ))}
-                    </select>
-                  </td>
-
-                  {/* Путевой лист — текстовый ввод */}
-                  <TextCell
-                    value={row.putevoy}
-                    onChange={(v) => onUpdateCell(row.id, "putevoy", v)}
-                    onFocus={() => onSetActiveCell({ rowId: row.id, col: "putevoy" })}
-                    onBlur={() => onSetActiveCell(null)}
-                    onKeyDown={(e) => handleKeyDown(e, rowIdx, TEXT_COLS.length + 3)}
-                    isActive={activeCell?.rowId === row.id && activeCell?.col === "putevoy"}
-                    width="110px"
-                  />
-
-                  {/* Подработка */}
-                  <td className="border border-gray-300 text-center" style={{ width: "75px" }}>
-                    <div className="flex flex-col items-center gap-0.5 py-0.5">
-                      <input
-                        type="checkbox"
-                        checked={row.podrabotka}
-                        onChange={(e) => onUpdateCell(row.id, "podrabotka", e.target.checked)}
-                        className="w-4 h-4 accent-blue-600 cursor-pointer"
-                      />
-                      {row.podrabotka && (
-                        <input
-                          type="text"
-                          value={row.biletov}
-                          onChange={(e) => onUpdateCell(row.id, "biletov", e.target.value)}
-                          className="w-12 h-5 px-1 text-xs text-center text-gray-800 bg-white border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-                          placeholder="бил"
-                        />
-                      )}
-                    </div>
-                  </td>
-
-                  {/* Путевой лист */}
-                  <td className="border border-gray-300 text-center" style={{ width: "75px" }}>
-                    <button
-                      onClick={() => onOpenPutevoy(row)}
-                      className="flex items-center gap-1 mx-auto px-2 py-0.5 text-xs bg-blue-50 text-blue-700 rounded border border-blue-200 hover:bg-blue-100 transition-colors"
-                    >
-                      <Icon name="FileText" size={11} />
-                      Лист
-                    </button>
-                  </td>
-
-                  {/* ДТП */}
-                  <td className="border border-gray-300 text-center" style={{ width: "55px" }}>
-                    <button
-                      onClick={() => onToggleDtp(row)}
-                      title={row.dtp ? "ДТП зафиксировано — нажмите для снятия" : "Отметить ДТП"}
-                      className={`flex items-center gap-1 mx-auto px-1.5 py-0.5 text-xs rounded border transition-colors ${
-                        row.dtp
-                          ? "bg-red-600 text-white border-red-700 hover:bg-red-700"
-                          : "bg-gray-50 text-gray-400 border-gray-300 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
-                      }`}
-                    >
-                      <Icon name="AlertTriangle" size={11} />
-                      {row.dtp ? "ДТП" : "—"}
-                    </button>
-                  </td>
-
-                  <td className="border border-gray-300 text-center" style={{ width: "28px" }}>
-                    <button onClick={() => onDeleteRow(row.id)} className="text-gray-300 hover:text-red-500 transition-colors p-0.5">
-                      <Icon name="X" size={12} />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+            {rows.map((row, rowIdx) => (
+              <NaryadTableRow
+                key={`nar-${rowIdx}-${row.id}`}
+                row={row}
+                rowIdx={rowIdx}
+                rows={rows}
+                activeCell={activeCell}
+                employees={employees}
+                allBorts={allBorts}
+                allUsedBorts={allUsedBorts}
+                allGrafiki={allGrafiki}
+                allUsedGrafiki={allUsedGrafiki}
+                dupFios={dupFios}
+                dupKonds={dupKonds}
+                getRowTerminals={getRowTerminals}
+                handleKeyDown={handleKeyDown}
+                onUpdateCell={onUpdateCell}
+                onSetActiveCell={onSetActiveCell}
+                onDeleteRow={onDeleteRow}
+                onOpenPutevoy={onOpenPutevoy}
+                onToggleDtp={onToggleDtp}
+              />
+            ))}
           </tbody>
 
           {podrabotkaRows.length > 0 && (
