@@ -81,8 +81,10 @@ const NaryadTableRow = ({
       <td className={`border p-0 ${isDupFio ? "border-red-400 bg-red-50" : "border-gray-300"}`} style={{ width: "180px" }}>
         <div className="flex items-center">
           <input
+            key={`fio-${row.id}`}
             type="text"
             name={`narad-fio-${row.id}`}
+            id={`narad-fio-${row.id}`}
             list={vodListId}
             value={row.fio}
             onChange={(e) => onUpdateCell(row.id, "fio", e.target.value)}
@@ -103,8 +105,10 @@ const NaryadTableRow = ({
       <td className={`border p-0 ${isDupKond ? "border-red-400 bg-red-50" : "border-gray-300"}`} style={{ width: "180px" }}>
         <div className="flex items-center">
           <input
+            key={`kond-${row.id}`}
             type="text"
             name={`narad-kond-${row.id}`}
+            id={`narad-kond-${row.id}`}
             list={condListId}
             value={row.fioKond}
             onChange={(e) => onUpdateCell(row.id, "fioKond", e.target.value)}

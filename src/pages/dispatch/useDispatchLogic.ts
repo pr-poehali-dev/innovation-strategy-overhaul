@@ -46,6 +46,33 @@ export const useDispatchLogic = () => {
     }
   }, [selectedKey, weeklyNaryady, routes, setWeeklyNaryady]);
 
+  // ЗАЩИТА: гарантируем уникальные id у всех строк дня. Если в данных оказались дубли id
+  // (старые сохранения, коллизии uid после reset), React реюзает DOM и ввод «расползается»
+  // по нескольким строкам. Перевыдаём id одноразово.
+  useEffect(() => {
+    const cur = weeklyNaryady[selectedKey];
+    if (!cur || cur.length === 0) return;
+    const seen = new Set<number>();
+    let hasDup = false;
+    for (const r of cur) {
+      if (!r.id || seen.has(r.id)) { hasDup = true; break; }
+      seen.add(r.id);
+    }
+    if (!hasDup) return;
+    const fixed = cur.map((r) => {
+      if (!r.id) return { ...r, id: uid() };
+      return r;
+    });
+    // второй проход — заменяем повторы
+    const seen2 = new Set<number>();
+    const final = fixed.map((r) => {
+      if (seen2.has(r.id)) return { ...r, id: uid() };
+      seen2.add(r.id);
+      return r;
+    });
+    setWeeklyNaryady((prev) => ({ ...prev, [selectedKey]: final }));
+  }, [selectedKey, weeklyNaryady, setWeeklyNaryady]);
+
   const rowsForDay = useCallback(
     (key: string): NaryadRowStore[] => weeklyNaryady[key] ?? [],
     [weeklyNaryady]
