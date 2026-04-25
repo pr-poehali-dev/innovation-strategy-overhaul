@@ -40,6 +40,23 @@ const NaryadTable = ({
     dupKonds,
   } = useNaryadData(rows);
 
+  // Защита от дублей: если пользователь выбрал ФИО, которое уже занято в другой строке —
+  // не сохраняем (молча игнорируем); ручной ввод (текст) разрешаем — там работает визуальная подсветка дублей.
+  const safeUpdateCell = useCallback((id: number, col: keyof NaryadRow, value: string | boolean) => {
+    if ((col === "fio" || col === "fioKond") && typeof value === "string" && value && value !== "без") {
+      const list = col === "fio" ? driverFios : condFios;
+      // Проверяем только если значение точно из списка справочника — это выбор, а не ручной ввод
+      if (list.includes(value)) {
+        const taken = rows.some((r) => r.id !== id && r[col] === value);
+        if (taken) {
+          // Дубль из списка — отклоняем выбор
+          return;
+        }
+      }
+    }
+    onUpdateCell(id, col, value);
+  }, [rows, driverFios, condFios, onUpdateCell]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent, rowIdx: number, colIdx: number) => {
     if (e.key === "Tab" || e.key === "Enter") {
       e.preventDefault();
@@ -72,11 +89,14 @@ const NaryadTable = ({
         {condFios.map((f) => <option key={f} value={f} />)}
       </datalist>
       {/* per-row datalists — вне таблицы, но доступны по id из строк */}
-      {rows.map((row, rowIdx) => {
-        const freeDriversForRow = driverFios.filter((f) => f === row.fio || !dupFios.has(f));
-        const freeCondsForRow   = condFios.filter((f)  => f === row.fioKond || !dupKonds.has(f));
+      {rows.map((row) => {
+        // Свободные водители для строки: текущий fio + все, кого ещё нет в наряде
+        const usedFios  = new Set(rows.filter((r) => r.id !== row.id && r.fio).map((r) => r.fio));
+        const usedKonds = new Set(rows.filter((r) => r.id !== row.id && r.fioKond && r.fioKond !== "без").map((r) => r.fioKond));
+        const freeDriversForRow = driverFios.filter((f) => f === row.fio || !usedFios.has(f));
+        const freeCondsForRow   = condFios.filter((f)  => f === row.fioKond || !usedKonds.has(f));
         return (
-          <span key={`dl-${rowIdx}-${row.id}`} style={{ display: "none" }}>
+          <span key={`dl-${row.id}`} style={{ display: "none" }}>
             <datalist id={`dl-vod-${row.id}`}>
               {freeDriversForRow.map((f) => <option key={f} value={f} />)}
             </datalist>
@@ -94,7 +114,7 @@ const NaryadTable = ({
           <tbody>
             {rows.map((row, rowIdx) => (
               <NaryadTableRow
-                key={`nar-${rowIdx}-${row.id}`}
+                key={`nar-${row.id}`}
                 row={row}
                 rowIdx={rowIdx}
                 rows={rows}
@@ -108,7 +128,7 @@ const NaryadTable = ({
                 dupKonds={dupKonds}
                 getRowTerminals={getRowTerminals}
                 handleKeyDown={handleKeyDown}
-                onUpdateCell={onUpdateCell}
+                onUpdateCell={safeUpdateCell}
                 onSetActiveCell={onSetActiveCell}
                 onDeleteRow={onDeleteRow}
                 onOpenPutevoy={onOpenPutevoy}

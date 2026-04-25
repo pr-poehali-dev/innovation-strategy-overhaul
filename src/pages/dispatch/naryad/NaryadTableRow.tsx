@@ -82,6 +82,7 @@ const NaryadTableRow = ({
         <div className="flex items-center">
           <input
             type="text"
+            name={`narad-fio-${row.id}`}
             list={vodListId}
             value={row.fio}
             onChange={(e) => onUpdateCell(row.id, "fio", e.target.value)}
@@ -103,6 +104,7 @@ const NaryadTableRow = ({
         <div className="flex items-center">
           <input
             type="text"
+            name={`narad-kond-${row.id}`}
             list={condListId}
             value={row.fioKond}
             onChange={(e) => onUpdateCell(row.id, "fioKond", e.target.value)}
