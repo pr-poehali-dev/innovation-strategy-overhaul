@@ -111,7 +111,7 @@ const JurnalBdd = ({ records, monthYear }: Props) => {
               const vod = getVodInfo(rec.fioVod);
               const orgName = getRouteCompany(rec.marshrut);
               return (
-                <tr key={`bdd-${idx}-${rec.id}`} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                <tr key={`bdd-${rec.id}`} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   <td className="border border-gray-300 px-1 text-center text-gray-500">{idx + 1}</td>
                   <td className="border border-gray-300 px-1 text-center">{rec.date}</td>
                   <td className="border border-gray-300 px-1 text-center">{rec.vremya || "—"}</td>

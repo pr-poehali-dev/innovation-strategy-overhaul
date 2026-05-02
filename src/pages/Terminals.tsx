@@ -94,7 +94,7 @@ const Terminals = () => {
           <div className="flex items-center gap-0 border-b border-gray-300 overflow-x-auto">
             {companies.map((c, i) => (
               <button
-                key={i}
+                key={`comp-${c.inn || c.kratkoeNazvanie || i}`}
                 onClick={() => setActiveCompIdx(i)}
                 className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 flex-shrink-0 ${
                   activeCompIdx === i

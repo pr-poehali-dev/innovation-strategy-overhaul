@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import NavBar from "@/components/NavBar";
 import { useAppStore } from "@/store/appStore";
+import { uid } from "@/lib/uid";
 import {
   TbEntry, EMPTY_COMPANY,
   loadTbEntries, saveTbEntries,
@@ -21,6 +22,7 @@ const Tb = () => {
 
   // ─── Журнал инструктажей ──────────────────────────────────────────────────
   const emptyEntry = (): TbEntry => ({
+    id: uid(),
     dateKey: toDateKey(new Date()),
     fio: "",
     dolzhnost: "Водитель",
@@ -33,7 +35,9 @@ const Tb = () => {
 
   const [entries, setEntries] = useState<TbEntry[]>(() => {
     const saved = loadTbEntries();
-    return saved.length > 0 ? saved : [emptyEntry()];
+    if (saved.length === 0) return [emptyEntry()];
+    // Миграция: добиваем id для записей без него (старые сохранения)
+    return saved.map((e) => (e.id ? e : { ...e, id: uid() }));
   });
   const [activeCell, setActiveCell] = useState<{ idx: number; field: string } | null>(null);
   const [globalVid, setGlobalVid] = useState("Повторный инструктаж");
@@ -86,6 +90,7 @@ const Tb = () => {
       existingKeys.add(key);
       const emp = employees.find((e) => e.fio === fio);
       newEntries.push({
+        id: uid(),
         dateKey: day,
         fio,
         dolzhnost,
@@ -150,7 +155,7 @@ const Tb = () => {
                 className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-400"
               >
                 {companies.map((c, i) => (
-                  <option key={i} value={i}>{c.nazvanie || `Организация ${i + 1}`}</option>
+                  <option key={`comp-${c.inn || c.kratkoeNazvanie || i}`} value={i}>{c.nazvanie || `Организация ${i + 1}`}</option>
                 ))}
               </select>
               <input

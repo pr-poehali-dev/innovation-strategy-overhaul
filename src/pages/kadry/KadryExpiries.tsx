@@ -64,7 +64,7 @@ const KadryExpiries = ({ expiries, setTab }: Props) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-1 max-h-48 overflow-y-auto">
         {expiries.map((x, i) => (
           <button
-            key={i}
+            key={`exp-${x.emp.id}-${x.doc}-${i}`}
             onClick={() => setTab(x.goTab)}
             className={`flex items-center justify-between gap-2 px-2 py-1 rounded text-xs border text-left transition-colors ${
               x.status === "exp"

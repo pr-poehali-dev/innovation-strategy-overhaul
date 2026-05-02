@@ -87,7 +87,7 @@ const TbJournal = ({
             {entries.map((entry, idx) => {
               const rowBg = idx % 2 === 0 ? "#fff" : "#eff6ff";
               return (
-                <tr key={idx} style={{ backgroundColor: rowBg }}>
+                <tr key={entry.id ?? `tb-${idx}`} style={{ backgroundColor: rowBg }}>
                   {/* № */}
                   <td className="border border-gray-300 text-center text-gray-400 text-xs">{idx + 1}</td>
 

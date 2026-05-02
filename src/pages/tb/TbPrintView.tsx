@@ -84,7 +84,7 @@ const TbPrintView = ({ company, monthKey, rows, onClose }: Props) => {
             </thead>
             <tbody>
               {rows.map((row, i) => (
-                <tr key={i} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f0f4ff" }}>
+                <tr key={row.id ?? `print-${i}`} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f0f4ff" }}>
                   <td className="border border-gray-400 px-1 py-1 text-center text-gray-500">{i + 1}</td>
                   <td className="border border-gray-400 px-1 py-1 text-center">{toDisplayDate(row.dateKey)}</td>
                   <td className="border border-gray-400 px-1 py-1">{row.fio}</td>

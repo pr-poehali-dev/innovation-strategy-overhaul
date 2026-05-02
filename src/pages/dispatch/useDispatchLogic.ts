@@ -170,7 +170,7 @@ export const useDispatchLogic = () => {
     const dateStr = toDisplayDate(new Date(selectedKey + "T00:00:00"));
     if (newDtp) {
       setDtpRecords((prev) => [...prev, {
-        id: Date.now() + Math.random(),
+        id: uid(),
         date: dateStr,
         bortovoy: row.bortovoy,
         marshrut: row.marshrut,

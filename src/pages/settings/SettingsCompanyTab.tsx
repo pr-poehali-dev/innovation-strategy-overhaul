@@ -90,7 +90,7 @@ const SettingsCompanyTab = ({ setSaved }: Props) => {
       <div className="flex gap-2 mb-6 flex-wrap">
         {companies.map((c, i) => (
           <button
-            key={i}
+            key={`comp-${c.inn || c.kratkoeNazvanie || i}`}
             onClick={() => setActiveCompanyIdx(i)}
             className={`px-4 py-2 text-sm rounded-lg border-2 transition-colors font-semibold ${
               activeCompanyIdx === i

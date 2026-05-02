@@ -73,6 +73,7 @@ export const INSTRUKTAZHI = [
 
 // ─── Тип записи журнала ──────────────────────────────────────────────────────
 export interface TbEntry {
+  id?:             number;   // стабильный идентификатор для React key
   dateKey:         string;
   fio:             string;
   dolzhnost:       string;

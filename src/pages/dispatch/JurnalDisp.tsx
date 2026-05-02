@@ -169,7 +169,7 @@ const JurnalDisp = ({ rows, dayMeta, displayDate, monthYear }: Props) => {
               const sched = routeSchedule[row.marshrut];
               const rowBg = idx % 2 === 0 ? "#ffffff" : "#f0f4ff";
               return (
-                <tr key={`disp-${idx}-${row.id}`} style={{ backgroundColor: rowBg }}>
+                <tr key={`disp-${row.id}`} style={{ backgroundColor: rowBg }}>
                   {/* 1 */ }<td className="border border-gray-300 text-center py-2.5 text-gray-400 text-[8px]">{idx + 1}</td>
                   {/* 2 */ }<td className="border border-gray-300 px-1 text-center font-bold text-blue-700">{row.putevoy}</td>
                   {/* 3 */ }<td className="border border-gray-300 px-1 text-center">{displayDate}</td>
